@@ -60,7 +60,3 @@ class CostEstimation(Document):
             })
         budget.insert(ignore_permissions=True)
         frappe.msgprint(_("Project Budget {0} created from this estimation").format(budget.name))
-
-
-def on_submit(doc, method):
-    doc.on_submit()

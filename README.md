@@ -20,13 +20,32 @@ Construction Management Suite (CMS) extends ERPNext with 7 specialized modules c
 |---|---|---|
 | **BOQ Management** | BOQ, BOQ Template | Bill of Quantities creation, revisions, templates, rate linkage |
 | **Estimation** | Rate Analysis, Cost Estimation | Resource-based costing, tender estimation, rate analysis |
-| **Project Costing** | Project Budget, Cost Code, WIP Entry | Budget monitoring, variance tracking, cash flow forecasting |
+| **Project Costing** | Project Budget, Cost Code | Budget monitoring, variance tracking |
 | **Site Management** | Daily Site Report, Site Material Request | Field operations, attendance, progress tracking |
-| **Progress Billing** | Interim Payment Certificate, Retention Release | IPC billing, running bills, retention handling |
+| **Progress Billing** | Interim Payment Certificate, Retention Release | IPC billing, retention handling |
 | **Subcontractor Management** | Subcontract Agreement, Work Order, Payment Certificate | Subcontract lifecycle, work orders, payment certs |
 | **Material Planning** | Material Forecast, Site Transfer, Consumption Entry | Procurement planning, forecasting, site-to-site transfers |
 
 ---
+
+---
+
+## Not yet implemented
+
+The following exist as Python stubs only (no DocType JSON) and are **not installed**
+by `bench install-app`. Do not scope work against them:
+
+`BOQ Revision` · `BOQ Revision Item` · `Resource Template` · `Resource Template Item`
+`Running Bill` · `Running Bill Item` · `Cost Variance Ledger` · `WIP Entry` · `WIP Entry Item`
+`Site Attendance`
+
+These scheduled/hook handlers are also empty (`pass`): `sync_erpnext_project`,
+`refresh_cash_flow_projections`, `create_monthly_wip_entries`,
+`ProjectBudget._distribute_actuals_to_items`, `DailySiteReport._create_timesheet_entries`.
+
+There is no **Variation Order** doctype — contract scope changes have no home in the
+app yet, and `Cost Code` is defined but never populated, so cost-code-level costing
+does not work.
 
 ## Requirements
 

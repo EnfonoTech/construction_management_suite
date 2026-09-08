@@ -16,6 +16,7 @@
   "currency",
   "revision_no",
   "is_revised",
+  "previous_boq",
   "amended_from",
   "section_contract",
   "contract_value",
@@ -46,7 +47,7 @@
   "amended_from_section"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Series", "label": "Series", "options": "BOQ-.YYYY.-.####", "reqd": 1},
+  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "BOQ-.YYYY.-.####", "reqd": 1},
   {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1, "search_index": 1},
   {"fieldname": "boq_title", "fieldtype": "Data", "label": "BOQ Title", "reqd": 1, "in_list_view": 1},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nApproved\nRevised\nCancelled", "default": "Draft", "in_list_view": 1},
@@ -55,6 +56,7 @@
   {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency", "reqd": 1},
   {"fieldname": "revision_no", "fieldtype": "Int", "label": "Revision No", "default": "0", "read_only": 1},
   {"fieldname": "is_revised", "fieldtype": "Check", "label": "Is Revised", "read_only": 1},
+  {"fieldname": "previous_boq", "fieldtype": "Link", "label": "Revision Of", "options": "BOQ", "read_only": 1},
   {"fieldname": "amended_from", "fieldtype": "Link", "label": "Amended From", "options": "BOQ", "read_only": 1, "print_hide": 1},
   {"fieldname": "section_contract", "fieldtype": "Section Break", "label": "Contract Details"},
   {"fieldname": "contract_value", "fieldtype": "Currency", "label": "Contract Value", "options": "currency"},

@@ -11,20 +11,24 @@ class ProjectBudget(Document):
         self.calculate_variance()
 
     def fetch_actual_costs(self):
-        """Sum stock entries, payroll, and purchase invoices tagged to this project."""
+        """Sum expense-account GL entries tagged to this project."""
         actual = (
             frappe.db.sql(
                 """
-                SELECT SUM(credit_amount - debit_amount) AS actual
-                FROM `tabGL Entry`
-                WHERE project = %s AND docstatus = 1 AND is_cancelled = 0
+                SELECT SUM(gle.debit - gle.credit) AS actual
+                FROM `tabGL Entry` gle
+                JOIN `tabAccount` acc ON acc.name = gle.account
+                WHERE gle.project = %s
+                  AND gle.docstatus = 1
+                  AND gle.is_cancelled = 0
+                  AND acc.root_type = 'Expense'
                 """,
                 self.project,
                 as_dict=True,
             )[0].get("actual")
             or 0
         )
-        self.total_actual_cost = flt(abs(actual))
+        self.total_actual_cost = flt(actual)
         self._distribute_actuals_to_items()
 
     def fetch_committed_costs(self):

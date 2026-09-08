@@ -15,7 +15,7 @@
   "purchase_invoice_ref", "notes"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Series", "label": "Series", "options": "SPCC-.YYYY.-.####", "reqd": 1},
+  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "SPCC-.YYYY.-.####", "reqd": 1},
   {"fieldname": "certificate_title", "fieldtype": "Data", "label": "Certificate Title", "reqd": 1, "in_list_view": 1},
   {"fieldname": "subcontract_agreement", "fieldtype": "Link", "label": "Subcontract Agreement", "options": "Subcontract Agreement", "reqd": 1, "in_list_view": 1},
   {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project"},

@@ -38,11 +38,12 @@ class SubcontractorPaymentCertificate(Document):
             "qty": 1,
             "rate": self.net_payable,
             "uom": "Nos",
+            # No item_code, so ERPNext cannot derive these — set them explicitly.
+            "expense_account": frappe.get_cached_value(
+                "Company", self.company, "default_expense_account"
+            ),
+            "cost_center": frappe.get_cached_value("Company", self.company, "cost_center"),
         })
         pi.insert(ignore_permissions=True)
         self.db_set("purchase_invoice_ref", pi.name)
         frappe.msgprint(_("Purchase Invoice {0} created").format(pi.name))
-
-
-def on_submit(doc, method):
-    doc.on_submit()

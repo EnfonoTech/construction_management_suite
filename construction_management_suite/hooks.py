@@ -34,38 +34,10 @@ fixtures = [
 ]
 
 # Document Events
+# NOTE: CMS's own doctypes must NOT be registered here. Frappe already calls the
+# controller's on_submit/on_cancel; adding a hook that re-calls it runs every
+# side effect twice (duplicate invoices, duplicate stock entries).
 doc_events = {
-    # BOQ auto-versioning on amendment
-    "BOQ": {
-        "on_submit": "construction_management_suite.boq_management.doctype.boq.boq.on_submit",
-        "on_cancel": "construction_management_suite.boq_management.doctype.boq.boq.on_cancel",
-        "on_update_after_submit": "construction_management_suite.boq_management.doctype.boq.boq.on_update_after_submit",
-    },
-    # Sync Cost Estimation approval to Project Budget
-    "Cost Estimation": {
-        "on_submit": "construction_management_suite.estimation.doctype.cost_estimation.cost_estimation.on_submit",
-    },
-    # When an IPC is submitted, create Sales Invoice draft
-    "Interim Payment Certificate": {
-        "on_submit": "construction_management_suite.progress_billing.doctype.interim_payment_certificate.interim_payment_certificate.on_submit",
-        "on_cancel": "construction_management_suite.progress_billing.doctype.interim_payment_certificate.interim_payment_certificate.on_cancel",
-    },
-    # Subcontractor Payment Certificate triggers Purchase Invoice
-    "Subcontractor Payment Certificate": {
-        "on_submit": "construction_management_suite.subcontractor_management.doctype.subcontractor_payment_certificate.subcontractor_payment_certificate.on_submit",
-    },
-    # Daily Site Report triggers actual cost entries
-    "Daily Site Report": {
-        "on_submit": "construction_management_suite.site_management.doctype.daily_site_report.daily_site_report.on_submit",
-    },
-    # Material Consumption Entry triggers Stock Entry
-    "Material Consumption Entry": {
-        "on_submit": "construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry.on_submit",
-    },
-    # Site Transfer triggers ERPNext Stock Entry
-    "Site Transfer": {
-        "on_submit": "construction_management_suite.material_planning.doctype.site_transfer.site_transfer.on_submit",
-    },
     # Link ERPNext Project to CMS Project Budget on save
     "Project": {
         "after_insert": "construction_management_suite.project_costing.utils.sync_erpnext_project",

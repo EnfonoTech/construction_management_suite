@@ -77,7 +77,10 @@ class BOQ(Document):
         new_boq.status = "Draft"
         new_boq.revision_no = flt(self.revision_no) + 1
         new_boq.is_revised = 1
-        new_boq.amended_from = self.name
+        # A revision is not an amendment — `amended_from` is reserved by Frappe for
+        # cancelled documents and would be rejected on insert.
+        new_boq.amended_from = None
+        new_boq.previous_boq = self.name
         new_boq.approved_date = None
         new_boq.insert(ignore_permissions=True)
 
@@ -93,13 +96,20 @@ class BOQ(Document):
             frappe.db.set_value("Project", self.project, "notes", self._build_project_notes())
 
     def _build_project_notes(self):
+        import re
+
         existing = frappe.db.get_value("Project", self.project, "notes") or ""
         marker = "<!-- cms_boq -->"
-        note = f"{marker}\nBOQ: {self.name} | Grand Total: {self.grand_total} {self.currency}\n"
+        block = (
+            f"{marker}\nBOQ: {self.name} | Grand Total: {self.grand_total} "
+            f"{self.currency}\n{marker}"
+        )
         if marker in existing:
-            import re
-            return re.sub(rf"{marker}.*?{marker}", f"{marker}\n{note}\n{marker}", existing, flags=re.DOTALL)
-        return existing + note
+            # The block is delimited by a matched pair of markers.
+            return re.sub(
+                re.escape(marker) + ".*?" + re.escape(marker), block, existing, flags=re.DOTALL
+            )
+        return existing + block
 
     # ----- Template Import -----
 
@@ -119,15 +129,3 @@ class BOQ(Document):
             })
         self.calculate_item_amounts()
         self.calculate_totals()
-
-
-def on_submit(doc, method):
-    doc.on_submit()
-
-
-def on_cancel(doc, method):
-    doc.on_cancel()
-
-
-def on_update_after_submit(doc, method):
-    doc.on_update_after_submit()

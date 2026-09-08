@@ -18,7 +18,7 @@
   "column_break_5", "approval_date", "purchase_order_ref", "notes"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Series", "label": "Series", "options": "SCA-.YYYY.-.####", "reqd": 1},
+  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "SCA-.YYYY.-.####", "reqd": 1},
   {"fieldname": "agreement_title", "fieldtype": "Data", "label": "Agreement Title", "reqd": 1, "in_list_view": 1},
   {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1},
   {"fieldname": "subcontractor", "fieldtype": "Link", "label": "Subcontractor", "options": "Supplier", "reqd": 1, "in_list_view": 1},
@@ -36,7 +36,7 @@
   {"fieldname": "column_break_2", "fieldtype": "Column Break"},
   {"fieldname": "advance_percent", "fieldtype": "Percent", "label": "Advance %"},
   {"fieldname": "advance_amount", "fieldtype": "Currency", "label": "Advance Amount", "options": "currency", "read_only": 1},
-  {"fieldname": "payment_terms", "fieldtype": "Link", "label": "Payment Terms", "options": "Payment Terms"},
+  {"fieldname": "payment_terms", "fieldtype": "Link", "label": "Payment Terms", "options": "Payment Terms Template"},
   {"fieldname": "section_dates", "fieldtype": "Section Break", "label": "Schedule"},
   {"fieldname": "start_date", "fieldtype": "Date", "label": "Planned Start"},
   {"fieldname": "end_date", "fieldtype": "Date", "label": "Planned End"},

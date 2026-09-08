@@ -5,14 +5,22 @@ Row-level permission helpers — multi-company isolation.
 import frappe
 
 
-def get_company_filter(user):
-    """Restrict queries to companies the user is allowed to access."""
+def get_company_filter(user, doctype=None):
+    """Restrict list queries to companies the user is allowed to access.
+
+    Frappe passes the doctype as the second argument, so the same helper can be
+    registered for every CMS doctype that carries a `company` field.
+    """
     if "CMS Admin" in frappe.get_roles(user):
         return ""
+
+    if not doctype:
+        return ""
+
     companies = frappe.db.sql_list(
         """
-        SELECT company FROM `tabUser Permission`
-        WHERE user = %s AND allow = 'Company' AND is_default = 0
+        SELECT for_value FROM `tabUser Permission`
+        WHERE user = %s AND allow = 'Company'
         """,
         user,
     )
@@ -22,8 +30,9 @@ def get_company_filter(user):
         companies = [default] if default else []
     if not companies:
         return "1=0"  # No access
-    placeholder = ", ".join(["%s"] * len(companies))
-    return f"`tabBOQ`.company in ({placeholder})" % tuple(companies)
+
+    values = ", ".join(frappe.db.escape(c) for c in companies)
+    return f"`tab{doctype}`.company in ({values})"
 
 
 def has_permission(doc, user=None, permission_type=None):

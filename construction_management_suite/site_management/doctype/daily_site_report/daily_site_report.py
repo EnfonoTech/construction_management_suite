@@ -28,19 +28,37 @@ class DailySiteReport(Document):
         self._create_timesheet_entries()
 
     def _update_project_progress(self):
-        """Update ERPNext Project percent_complete from this report."""
-        if self.project and self.cumulative_percent_complete:
-            frappe.db.set_value(
-                "Project",
-                self.project,
-                "percent_complete",
-                flt(self.cumulative_percent_complete),
-            )
+        """Update ERPNext Project percent_complete from the most recent report."""
+        if not (self.project and self.cumulative_percent_complete):
+            return
+
+        latest = frappe.db.get_value(
+            "Daily Site Report",
+            {
+                "project": self.project,
+                "docstatus": 1,
+                "name": ["!=", self.name],
+                "report_date": [">", self.report_date],
+            },
+            "name",
+        )
+        if latest:
+            # A later report already set progress — a backdated one must not undo it.
+            return
+
+        # ERPNext owns `percent_complete` and recomputes it from Tasks on every
+        # Project.save() — which it does whenever an invoice, stock entry or
+        # timesheet is submitted against the project. Unless the project is set to
+        # "Manual", site-reported progress is silently wiped minutes after we write it.
+        frappe.db.set_value(
+            "Project",
+            self.project,
+            {
+                "percent_complete_method": "Manual",
+                "percent_complete": flt(self.cumulative_percent_complete),
+            },
+        )
 
     def _create_timesheet_entries(self):
         """For each labour row, optionally create ERPNext Timesheet entries."""
         pass
-
-
-def on_submit(doc, method):
-    doc.on_submit()

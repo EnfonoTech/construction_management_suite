@@ -20,7 +20,7 @@
   "section_approval", "submitted_by", "reviewed_by", "review_remarks"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Series", "label": "Series", "options": "DSR-.YYYY.MM.-.####", "reqd": 1},
+  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "DSR-.YYYY.MM.-.####", "reqd": 1},
   {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1, "search_index": 1},
   {"fieldname": "report_date", "fieldtype": "Date", "label": "Report Date", "reqd": 1, "default": "Today", "in_list_view": 1},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nReviewed\nApproved", "default": "Draft", "in_list_view": 1},

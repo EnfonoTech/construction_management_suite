@@ -16,7 +16,7 @@
   "column_break_3", "notes"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Series", "label": "Series", "options": "PBGT-.YYYY.-.####", "reqd": 1},
+  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "PBGT-.YYYY.-.####", "reqd": 1},
   {"fieldname": "budget_title", "fieldtype": "Data", "label": "Budget Title", "reqd": 1, "in_list_view": 1},
   {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1, "search_index": 1},
   {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1},

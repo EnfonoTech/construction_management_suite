@@ -38,6 +38,8 @@ class SubcontractAgreement(Document):
 
     def _create_purchase_order(self):
         """Create a linked ERPNext PO on first submission."""
+        if self.purchase_order_ref:
+            return
         po = frappe.new_doc("Purchase Order")
         po.supplier = self.subcontractor
         po.company = self.company

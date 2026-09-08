@@ -73,6 +73,11 @@ class InterimPaymentCertificate(Document):
             "qty": 1,
             "rate": self.net_payable_this_period,
             "uom": "Nos",
+            # No item_code, so ERPNext cannot derive these — set them explicitly.
+            "income_account": frappe.get_cached_value(
+                "Company", self.company, "default_income_account"
+            ),
+            "cost_center": frappe.get_cached_value("Company", self.company, "cost_center"),
         })
         si.insert(ignore_permissions=True)
         self.db_set("sales_invoice_ref", si.name)
@@ -83,11 +88,3 @@ class InterimPaymentCertificate(Document):
             si = frappe.get_doc("Sales Invoice", self.sales_invoice_ref)
             if si.docstatus == 1:
                 si.cancel()
-
-
-def on_submit(doc, method):
-    doc.on_submit()
-
-
-def on_cancel(doc, method):
-    doc.on_cancel()
