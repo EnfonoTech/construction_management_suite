@@ -1,19 +1,103 @@
 {
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Child Table", "engine": "InnoDB",
- "field_order": ["item_code", "item_name", "description", "uom", "column_break_1", "qty_requested", "qty_approved", "qty_received", "warehouse", "boq_item_ref", "remarks"],
- "fields": [
-  {"fieldname": "item_code", "fieldtype": "Link", "label": "Item", "options": "Item", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "item_name", "fieldtype": "Data", "label": "Item Name", "fetch_from": "item_code.item_name", "read_only": 1, "in_list_view": 1},
-  {"fieldname": "description", "fieldtype": "Text", "label": "Specification"},
-  {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM", "fetch_from": "item_code.stock_uom"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "qty_requested", "fieldtype": "Float", "label": "Qty Requested", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "qty_approved", "fieldtype": "Float", "label": "Qty Approved"},
-  {"fieldname": "qty_received", "fieldtype": "Float", "label": "Qty Received", "read_only": 1},
-  {"fieldname": "warehouse", "fieldtype": "Link", "label": "Deliver To Warehouse", "options": "Warehouse"},
-  {"fieldname": "boq_item_ref", "fieldtype": "Data", "label": "BOQ Item Reference"},
-  {"fieldname": "remarks", "fieldtype": "Small Text", "label": "Remarks"}
+ "doctype": "DocType",
+ "document_type": "Child Table",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "item_name",
+  "description",
+  "uom",
+  "column_break_1",
+  "qty_requested",
+  "qty_approved",
+  "qty_received",
+  "warehouse",
+  "boq_item_ref",
+  "remarks"
  ],
- "istable": 1, "module": "Site Management", "name": "Site Material Request Item", "owner": "Administrator"
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "fetch_from": "item_code.item_name",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text",
+   "label": "Specification"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "fetch_from": "item_code.stock_uom",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty_requested",
+   "fieldtype": "Float",
+   "label": "Qty Requested",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "qty_approved",
+   "fieldtype": "Float",
+   "label": "Qty Approved",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "qty_received",
+   "fieldtype": "Float",
+   "label": "Qty Received",
+   "read_only": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Deliver To Warehouse",
+   "options": "Warehouse",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "boq_item_ref",
+   "fieldtype": "Data",
+   "label": "BOQ Item Reference"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "in_list_view": 1,
+   "columns": 1
+  }
+ ],
+ "istable": 1,
+ "module": "Site Management",
+ "name": "Site Material Request Item",
+ "owner": "Administrator",
+ "editable_grid": 1
 }

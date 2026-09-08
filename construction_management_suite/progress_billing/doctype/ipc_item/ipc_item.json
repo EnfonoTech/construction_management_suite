@@ -1,29 +1,121 @@
 {
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Child Table", "engine": "InnoDB",
+ "doctype": "DocType",
+ "document_type": "Child Table",
+ "engine": "InnoDB",
  "field_order": [
-  "boq_item_ref", "description", "uom",
+  "boq_item_ref",
+  "description",
+  "uom",
   "column_break_1",
-  "contract_qty", "contract_rate", "contract_amount",
-  "previous_qty_claimed", "qty_this_period", "cumulative_qty",
+  "contract_qty",
+  "contract_rate",
+  "contract_amount",
+  "previous_qty_claimed",
+  "qty_this_period",
+  "cumulative_qty",
   "column_break_2",
-  "amount_this_period", "cumulative_amount", "percent_complete"
+  "amount_this_period",
+  "cumulative_amount",
+  "percent_complete"
  ],
  "fields": [
-  {"fieldname": "boq_item_ref", "fieldtype": "Data", "label": "BOQ Item / Description Ref", "in_list_view": 1},
-  {"fieldname": "description", "fieldtype": "Data", "label": "Description", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "contract_qty", "fieldtype": "Float", "label": "Contract Qty"},
-  {"fieldname": "contract_rate", "fieldtype": "Currency", "label": "Contract Rate"},
-  {"fieldname": "contract_amount", "fieldtype": "Currency", "label": "Contract Amount", "read_only": 1},
-  {"fieldname": "previous_qty_claimed", "fieldtype": "Float", "label": "Prev Qty Claimed"},
-  {"fieldname": "qty_this_period", "fieldtype": "Float", "label": "Qty This Period", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "cumulative_qty", "fieldtype": "Float", "label": "Cumulative Qty", "read_only": 1},
-  {"fieldname": "column_break_2", "fieldtype": "Column Break"},
-  {"fieldname": "amount_this_period", "fieldtype": "Currency", "label": "Amount This Period", "read_only": 1, "in_list_view": 1},
-  {"fieldname": "cumulative_amount", "fieldtype": "Currency", "label": "Cumulative Amount", "read_only": 1},
-  {"fieldname": "percent_complete", "fieldtype": "Percent", "label": "% Complete", "read_only": 1, "in_list_view": 1}
+  {
+   "fieldname": "boq_item_ref",
+   "fieldtype": "Data",
+   "label": "BOQ Item / Description Ref",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "label": "Description",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "contract_qty",
+   "fieldtype": "Float",
+   "label": "Contract Qty",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "contract_rate",
+   "fieldtype": "Currency",
+   "label": "Contract Rate",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "contract_amount",
+   "fieldtype": "Currency",
+   "label": "Contract Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "previous_qty_claimed",
+   "fieldtype": "Float",
+   "label": "Prev Qty Claimed",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "qty_this_period",
+   "fieldtype": "Float",
+   "label": "Qty This Period",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "cumulative_qty",
+   "fieldtype": "Float",
+   "label": "Cumulative Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amount_this_period",
+   "fieldtype": "Currency",
+   "label": "Amount This Period",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "cumulative_amount",
+   "fieldtype": "Currency",
+   "label": "Cumulative Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "percent_complete",
+   "fieldtype": "Percent",
+   "label": "% Complete",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 1
+  }
  ],
- "istable": 1, "module": "Progress Billing", "name": "IPC Item", "owner": "Administrator"
+ "istable": 1,
+ "module": "Progress Billing",
+ "name": "IPC Item",
+ "owner": "Administrator",
+ "editable_grid": 1
 }

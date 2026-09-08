@@ -1,17 +1,86 @@
 {
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Child Table", "engine": "InnoDB",
- "field_order": ["item_code", "item_name", "uom", "column_break_1", "qty", "qty_received", "valuation_rate", "batch_no", "serial_no"],
- "fields": [
-  {"fieldname": "item_code", "fieldtype": "Link", "label": "Item", "options": "Item", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "item_name", "fieldtype": "Data", "label": "Item Name", "fetch_from": "item_code.item_name", "read_only": 1, "in_list_view": 1},
-  {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "qty", "fieldtype": "Float", "label": "Qty to Transfer", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "qty_received", "fieldtype": "Float", "label": "Qty Received", "read_only": 1},
-  {"fieldname": "valuation_rate", "fieldtype": "Currency", "label": "Valuation Rate"},
-  {"fieldname": "batch_no", "fieldtype": "Link", "label": "Batch No", "options": "Batch"},
-  {"fieldname": "serial_no", "fieldtype": "Text", "label": "Serial No"}
+ "doctype": "DocType",
+ "document_type": "Child Table",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "item_name",
+  "uom",
+  "column_break_1",
+  "qty",
+  "qty_received",
+  "valuation_rate",
+  "batch_no",
+  "serial_no"
  ],
- "istable": 1, "module": "Material Planning", "name": "Site Transfer Item", "owner": "Administrator"
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "fetch_from": "item_code.item_name",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty to Transfer",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "qty_received",
+   "fieldtype": "Float",
+   "label": "Qty Received",
+   "read_only": 1
+  },
+  {
+   "fieldname": "valuation_rate",
+   "fieldtype": "Currency",
+   "label": "Valuation Rate"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "label": "Batch No",
+   "options": "Batch",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "serial_no",
+   "fieldtype": "Text",
+   "label": "Serial No"
+  }
+ ],
+ "istable": 1,
+ "module": "Material Planning",
+ "name": "Site Transfer Item",
+ "owner": "Administrator",
+ "editable_grid": 1
 }

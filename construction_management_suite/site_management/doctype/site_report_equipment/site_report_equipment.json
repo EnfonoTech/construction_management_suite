@@ -1,16 +1,78 @@
 {
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Child Table", "engine": "InnoDB",
- "field_order": ["equipment_type", "equipment_id", "operator", "column_break_1", "hours_worked", "idle_hours", "hourly_rate", "cost"],
- "fields": [
-  {"fieldname": "equipment_type", "fieldtype": "Data", "label": "Equipment Type", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "equipment_id", "fieldtype": "Data", "label": "Equipment ID / Plate No"},
-  {"fieldname": "operator", "fieldtype": "Data", "label": "Operator Name"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "hours_worked", "fieldtype": "Float", "label": "Hours Worked", "in_list_view": 1},
-  {"fieldname": "idle_hours", "fieldtype": "Float", "label": "Idle Hours"},
-  {"fieldname": "hourly_rate", "fieldtype": "Currency", "label": "Hourly Rate"},
-  {"fieldname": "cost", "fieldtype": "Currency", "label": "Cost", "read_only": 1, "in_list_view": 1}
+ "doctype": "DocType",
+ "document_type": "Child Table",
+ "engine": "InnoDB",
+ "field_order": [
+  "equipment_type",
+  "equipment_id",
+  "operator",
+  "column_break_1",
+  "hours_worked",
+  "idle_hours",
+  "hourly_rate",
+  "cost"
  ],
- "istable": 1, "module": "Site Management", "name": "Site Report Equipment", "owner": "Administrator"
+ "fields": [
+  {
+   "fieldname": "equipment_type",
+   "fieldtype": "Data",
+   "label": "Equipment Type",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "equipment_id",
+   "fieldtype": "Data",
+   "label": "Equipment ID / Plate No",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "operator",
+   "fieldtype": "Data",
+   "label": "Operator Name",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "hours_worked",
+   "fieldtype": "Float",
+   "label": "Hours Worked",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "idle_hours",
+   "fieldtype": "Float",
+   "label": "Idle Hours",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "hourly_rate",
+   "fieldtype": "Currency",
+   "label": "Hourly Rate",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "cost",
+   "fieldtype": "Currency",
+   "label": "Cost",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  }
+ ],
+ "istable": 1,
+ "module": "Site Management",
+ "name": "Site Report Equipment",
+ "owner": "Administrator",
+ "editable_grid": 1
 }

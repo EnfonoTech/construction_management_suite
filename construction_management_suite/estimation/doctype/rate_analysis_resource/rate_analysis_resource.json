@@ -5,25 +5,100 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
-  "resource_type", "resource_item", "description", "uom",
+  "resource_type",
+  "resource_item",
+  "description",
+  "uom",
   "column_break_1",
-  "qty", "rate", "amount", "waste_factor", "net_amount"
+  "qty",
+  "rate",
+  "amount",
+  "waste_factor",
+  "net_amount"
  ],
  "fields": [
-  {"fieldname": "resource_type", "fieldtype": "Select", "label": "Resource Type", "options": "Material\nLabour\nEquipment\nSubcontract\nOverhead", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "resource_item", "fieldtype": "Link", "label": "Resource / Item", "options": "Item", "in_list_view": 1},
-  {"fieldname": "description", "fieldtype": "Data", "label": "Description", "in_list_view": 1, "fetch_from": "resource_item.item_name"},
-  {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM", "fetch_from": "resource_item.stock_uom"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "qty", "fieldtype": "Float", "label": "Qty", "reqd": 1, "in_list_view": 1, "default": "1"},
-  {"fieldname": "rate", "fieldtype": "Currency", "label": "Rate", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "amount", "fieldtype": "Currency", "label": "Amount", "read_only": 1, "in_list_view": 1},
-  {"fieldname": "waste_factor", "fieldtype": "Percent", "label": "Waste %", "default": "0"},
-  {"fieldname": "net_amount", "fieldtype": "Currency", "label": "Net Amount (with Waste)", "read_only": 1}
+  {
+   "fieldname": "resource_type",
+   "fieldtype": "Select",
+   "label": "Resource Type",
+   "options": "Material\nLabour\nEquipment\nSubcontract\nOverhead",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "resource_item",
+   "fieldtype": "Link",
+   "label": "Resource / Item",
+   "options": "Item",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "label": "Description",
+   "in_list_view": 1,
+   "fetch_from": "resource_item.item_name",
+   "columns": 2
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "fetch_from": "resource_item.stock_uom",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty",
+   "reqd": 1,
+   "in_list_view": 1,
+   "default": "1",
+   "columns": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "waste_factor",
+   "fieldtype": "Percent",
+   "label": "Waste %",
+   "default": "0",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "net_amount",
+   "fieldtype": "Currency",
+   "label": "Net Amount (with Waste)",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  }
  ],
  "istable": 1,
  "links": [],
  "module": "Estimation",
  "name": "Rate Analysis Resource",
- "owner": "Administrator"
+ "owner": "Administrator",
+ "editable_grid": 1
 }

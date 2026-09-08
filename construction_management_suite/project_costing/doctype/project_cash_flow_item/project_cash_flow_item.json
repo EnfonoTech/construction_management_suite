@@ -4,29 +4,93 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
-  "period_label", "month", "year",
+  "period_label",
+  "month",
+  "year",
   "column_break_1",
-  "planned_inflow", "planned_outflow", "planned_net",
-  "actual_inflow", "actual_outflow", "actual_net",
+  "planned_inflow",
+  "planned_outflow",
+  "planned_net",
+  "actual_inflow",
+  "actual_outflow",
+  "actual_net",
   "variance"
  ],
  "fields": [
-  {"fieldname": "period_label", "fieldtype": "Data",    "label": "Period",          "reqd": 1, "in_list_view": 1},
-  {"fieldname": "month",        "fieldtype": "Select",  "label": "Month",
-   "options": "\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember"},
-  {"fieldname": "year",         "fieldtype": "Int",     "label": "Year"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "planned_inflow",  "fieldtype": "Currency", "label": "Planned Inflow",   "in_list_view": 1},
-  {"fieldname": "planned_outflow", "fieldtype": "Currency", "label": "Planned Outflow",  "in_list_view": 1},
-  {"fieldname": "planned_net",     "fieldtype": "Currency", "label": "Planned Net",      "read_only": 1, "in_list_view": 1},
-  {"fieldname": "actual_inflow",   "fieldtype": "Currency", "label": "Actual Inflow"},
-  {"fieldname": "actual_outflow",  "fieldtype": "Currency", "label": "Actual Outflow"},
-  {"fieldname": "actual_net",      "fieldtype": "Currency", "label": "Actual Net",       "read_only": 1},
-  {"fieldname": "variance",        "fieldtype": "Currency", "label": "Variance",         "read_only": 1}
+  {
+   "fieldname": "period_label",
+   "fieldtype": "Data",
+   "label": "Period",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "month",
+   "fieldtype": "Select",
+   "label": "Month",
+   "options": "\nJanuary\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember"
+  },
+  {
+   "fieldname": "year",
+   "fieldtype": "Int",
+   "label": "Year"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_inflow",
+   "fieldtype": "Currency",
+   "label": "Planned Inflow",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "planned_outflow",
+   "fieldtype": "Currency",
+   "label": "Planned Outflow",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "planned_net",
+   "fieldtype": "Currency",
+   "label": "Planned Net",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "actual_inflow",
+   "fieldtype": "Currency",
+   "label": "Actual Inflow"
+  },
+  {
+   "fieldname": "actual_outflow",
+   "fieldtype": "Currency",
+   "label": "Actual Outflow"
+  },
+  {
+   "fieldname": "actual_net",
+   "fieldtype": "Currency",
+   "label": "Actual Net",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "variance",
+   "fieldtype": "Currency",
+   "label": "Variance",
+   "read_only": 1
+  }
  ],
  "istable": 1,
  "links": [],
  "module": "Project Costing",
  "name": "Project Cash Flow Item",
- "owner": "Administrator"
+ "owner": "Administrator",
+ "editable_grid": 1
 }

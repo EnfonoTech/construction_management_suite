@@ -4,24 +4,83 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
-  "description", "uom", "column_break_1",
-  "contract_qty", "contract_rate", "contract_amount",
-  "completed_qty", "completed_amount", "completion_percent"
+  "description",
+  "uom",
+  "column_break_1",
+  "contract_qty",
+  "contract_rate",
+  "contract_amount",
+  "completed_qty",
+  "completed_amount",
+  "completion_percent"
  ],
  "fields": [
-  {"fieldname": "description", "fieldtype": "Data", "label": "Work Item Description", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "contract_qty", "fieldtype": "Float", "label": "Contract Qty", "in_list_view": 1},
-  {"fieldname": "contract_rate", "fieldtype": "Currency", "label": "Contract Rate", "in_list_view": 1},
-  {"fieldname": "contract_amount", "fieldtype": "Currency", "label": "Contract Amount", "read_only": 1, "in_list_view": 1},
-  {"fieldname": "completed_qty", "fieldtype": "Float", "label": "Completed Qty"},
-  {"fieldname": "completed_amount", "fieldtype": "Currency", "label": "Completed Amount", "read_only": 1},
-  {"fieldname": "completion_percent", "fieldtype": "Percent", "label": "% Complete", "read_only": 1}
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "label": "Work Item Description",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "contract_qty",
+   "fieldtype": "Float",
+   "label": "Contract Qty",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "contract_rate",
+   "fieldtype": "Currency",
+   "label": "Contract Rate",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "contract_amount",
+   "fieldtype": "Currency",
+   "label": "Contract Amount",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "completed_qty",
+   "fieldtype": "Float",
+   "label": "Completed Qty",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "completed_amount",
+   "fieldtype": "Currency",
+   "label": "Completed Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completion_percent",
+   "fieldtype": "Percent",
+   "label": "% Complete",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  }
  ],
  "istable": 1,
  "links": [],
  "module": "Subcontractor Management",
  "name": "Subcontractor Work Order Item",
- "owner": "Administrator"
+ "owner": "Administrator",
+ "editable_grid": 1
 }

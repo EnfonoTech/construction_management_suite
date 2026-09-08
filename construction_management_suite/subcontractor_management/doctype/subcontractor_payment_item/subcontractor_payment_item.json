@@ -1,16 +1,75 @@
 {
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Child Table", "engine": "InnoDB",
- "field_order": ["description", "work_order_ref", "uom", "column_break_1", "qty_completed", "contract_rate", "amount_claimed", "remarks"],
- "fields": [
-  {"fieldname": "description", "fieldtype": "Data", "label": "Work Item", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "work_order_ref", "fieldtype": "Link", "label": "Work Order Ref", "options": "Subcontractor Work Order"},
-  {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "qty_completed", "fieldtype": "Float", "label": "Qty Completed", "in_list_view": 1},
-  {"fieldname": "contract_rate", "fieldtype": "Currency", "label": "Contract Rate", "in_list_view": 1},
-  {"fieldname": "amount_claimed", "fieldtype": "Currency", "label": "Amount Claimed", "in_list_view": 1},
-  {"fieldname": "remarks", "fieldtype": "Small Text", "label": "Remarks"}
+ "doctype": "DocType",
+ "document_type": "Child Table",
+ "engine": "InnoDB",
+ "field_order": [
+  "description",
+  "work_order_ref",
+  "uom",
+  "column_break_1",
+  "qty_completed",
+  "contract_rate",
+  "amount_claimed",
+  "remarks"
  ],
- "istable": 1, "module": "Subcontractor Management", "name": "Subcontractor Payment Item", "owner": "Administrator"
+ "fields": [
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "label": "Work Item",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "work_order_ref",
+   "fieldtype": "Link",
+   "label": "Work Order Ref",
+   "options": "Subcontractor Work Order",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty_completed",
+   "fieldtype": "Float",
+   "label": "Qty Completed",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "contract_rate",
+   "fieldtype": "Currency",
+   "label": "Contract Rate",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "amount_claimed",
+   "fieldtype": "Currency",
+   "label": "Amount Claimed",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "istable": 1,
+ "module": "Subcontractor Management",
+ "name": "Subcontractor Payment Item",
+ "owner": "Administrator",
+ "editable_grid": 1
 }

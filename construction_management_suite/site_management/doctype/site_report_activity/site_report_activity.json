@@ -1,17 +1,84 @@
 {
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Child Table", "engine": "InnoDB",
- "field_order": ["activity_description", "boq_item_ref", "location", "column_break_1", "planned_qty", "actual_qty", "uom", "percent_complete", "remarks"],
- "fields": [
-  {"fieldname": "activity_description", "fieldtype": "Data", "label": "Activity", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "boq_item_ref", "fieldtype": "Data", "label": "BOQ Item Ref", "in_list_view": 1},
-  {"fieldname": "location", "fieldtype": "Data", "label": "Location / Zone"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "planned_qty", "fieldtype": "Float", "label": "Planned Qty"},
-  {"fieldname": "actual_qty", "fieldtype": "Float", "label": "Actual Qty", "in_list_view": 1},
-  {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM"},
-  {"fieldname": "percent_complete", "fieldtype": "Percent", "label": "% Complete", "in_list_view": 1},
-  {"fieldname": "remarks", "fieldtype": "Small Text", "label": "Remarks"}
+ "doctype": "DocType",
+ "document_type": "Child Table",
+ "engine": "InnoDB",
+ "field_order": [
+  "activity_description",
+  "boq_item_ref",
+  "location",
+  "column_break_1",
+  "planned_qty",
+  "actual_qty",
+  "uom",
+  "percent_complete",
+  "remarks"
  ],
- "istable": 1, "module": "Site Management", "name": "Site Report Activity", "owner": "Administrator"
+ "fields": [
+  {
+   "fieldname": "activity_description",
+   "fieldtype": "Data",
+   "label": "Activity",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "boq_item_ref",
+   "fieldtype": "Data",
+   "label": "BOQ Item Ref"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location / Zone",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_qty",
+   "fieldtype": "Float",
+   "label": "Planned Qty",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "actual_qty",
+   "fieldtype": "Float",
+   "label": "Actual Qty",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "percent_complete",
+   "fieldtype": "Percent",
+   "label": "% Complete",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "in_list_view": 1,
+   "columns": 2
+  }
+ ],
+ "istable": 1,
+ "module": "Site Management",
+ "name": "Site Report Activity",
+ "owner": "Administrator",
+ "editable_grid": 1
 }

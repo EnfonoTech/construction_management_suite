@@ -1,27 +1,119 @@
 {
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Child Table", "engine": "InnoDB",
+ "doctype": "DocType",
+ "document_type": "Child Table",
+ "engine": "InnoDB",
  "field_order": [
-  "item_code", "item_name", "uom", "column_break_1",
-  "boq_qty", "waste_factor", "net_qty_required",
-  "already_ordered_qty", "qty_to_order",
-  "estimated_rate", "estimated_value",
-  "required_by_date", "warehouse"
+  "item_code",
+  "item_name",
+  "uom",
+  "column_break_1",
+  "boq_qty",
+  "waste_factor",
+  "net_qty_required",
+  "already_ordered_qty",
+  "qty_to_order",
+  "estimated_rate",
+  "estimated_value",
+  "required_by_date",
+  "warehouse"
  ],
  "fields": [
-  {"fieldname": "item_code", "fieldtype": "Link", "label": "Item", "options": "Item", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "item_name", "fieldtype": "Data", "label": "Item Name", "fetch_from": "item_code.item_name", "read_only": 1, "in_list_view": 1},
-  {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "boq_qty", "fieldtype": "Float", "label": "BOQ Qty", "in_list_view": 1},
-  {"fieldname": "waste_factor", "fieldtype": "Percent", "label": "Waste %", "default": "5"},
-  {"fieldname": "net_qty_required", "fieldtype": "Float", "label": "Net Qty Required", "read_only": 1, "in_list_view": 1},
-  {"fieldname": "already_ordered_qty", "fieldtype": "Float", "label": "Already Ordered", "read_only": 1},
-  {"fieldname": "qty_to_order", "fieldtype": "Float", "label": "Qty to Order", "read_only": 1, "in_list_view": 1},
-  {"fieldname": "estimated_rate", "fieldtype": "Currency", "label": "Estimated Rate"},
-  {"fieldname": "estimated_value", "fieldtype": "Currency", "label": "Estimated Value", "read_only": 1},
-  {"fieldname": "required_by_date", "fieldtype": "Date", "label": "Required By"},
-  {"fieldname": "warehouse", "fieldtype": "Link", "label": "Target Warehouse", "options": "Warehouse"}
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "fetch_from": "item_code.item_name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "boq_qty",
+   "fieldtype": "Float",
+   "label": "BOQ Qty",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "waste_factor",
+   "fieldtype": "Percent",
+   "label": "Waste %",
+   "default": "5",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "net_qty_required",
+   "fieldtype": "Float",
+   "label": "Net Qty Required",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "already_ordered_qty",
+   "fieldtype": "Float",
+   "label": "Already Ordered",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "qty_to_order",
+   "fieldtype": "Float",
+   "label": "Qty to Order",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "estimated_rate",
+   "fieldtype": "Currency",
+   "label": "Estimated Rate"
+  },
+  {
+   "fieldname": "estimated_value",
+   "fieldtype": "Currency",
+   "label": "Estimated Value",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "required_by_date",
+   "fieldtype": "Date",
+   "label": "Required By"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Target Warehouse",
+   "options": "Warehouse"
+  }
  ],
- "istable": 1, "module": "Material Planning", "name": "Material Forecast Item", "owner": "Administrator"
+ "istable": 1,
+ "module": "Material Planning",
+ "name": "Material Forecast Item",
+ "owner": "Administrator",
+ "editable_grid": 1
 }

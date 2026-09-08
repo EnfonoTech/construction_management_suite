@@ -1,16 +1,80 @@
 {
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Child Table", "engine": "InnoDB",
- "field_order": ["trade", "nationality", "headcount", "column_break_1", "daily_rate", "daily_cost", "overtime_hours", "overtime_rate"],
- "fields": [
-  {"fieldname": "trade", "fieldtype": "Data", "label": "Trade / Designation", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "nationality", "fieldtype": "Data", "label": "Nationality"},
-  {"fieldname": "headcount", "fieldtype": "Int", "label": "Headcount", "reqd": 1, "in_list_view": 1, "default": "1"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "daily_rate", "fieldtype": "Currency", "label": "Daily Rate"},
-  {"fieldname": "daily_cost", "fieldtype": "Currency", "label": "Daily Cost", "read_only": 1, "in_list_view": 1},
-  {"fieldname": "overtime_hours", "fieldtype": "Float", "label": "Overtime Hours"},
-  {"fieldname": "overtime_rate", "fieldtype": "Currency", "label": "Overtime Rate"}
+ "doctype": "DocType",
+ "document_type": "Child Table",
+ "engine": "InnoDB",
+ "field_order": [
+  "trade",
+  "nationality",
+  "headcount",
+  "column_break_1",
+  "daily_rate",
+  "daily_cost",
+  "overtime_hours",
+  "overtime_rate"
  ],
- "istable": 1, "module": "Site Management", "name": "Site Report Labour", "owner": "Administrator"
+ "fields": [
+  {
+   "fieldname": "trade",
+   "fieldtype": "Data",
+   "label": "Trade / Designation",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "nationality",
+   "fieldtype": "Data",
+   "label": "Nationality",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "headcount",
+   "fieldtype": "Int",
+   "label": "Headcount",
+   "reqd": 1,
+   "in_list_view": 1,
+   "default": "1",
+   "columns": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "daily_rate",
+   "fieldtype": "Currency",
+   "label": "Daily Rate",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "daily_cost",
+   "fieldtype": "Currency",
+   "label": "Daily Cost",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "overtime_hours",
+   "fieldtype": "Float",
+   "label": "Overtime Hours",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "overtime_rate",
+   "fieldtype": "Currency",
+   "label": "Overtime Rate",
+   "in_list_view": 1,
+   "columns": 1
+  }
+ ],
+ "istable": 1,
+ "module": "Site Management",
+ "name": "Site Report Labour",
+ "owner": "Administrator",
+ "editable_grid": 1
 }
