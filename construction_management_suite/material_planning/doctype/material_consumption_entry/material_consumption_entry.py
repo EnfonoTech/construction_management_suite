@@ -3,6 +3,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from construction_management_suite.utils.accounting import get_cost_center
+
 
 class MaterialConsumptionEntry(Document):
     def validate(self):
@@ -32,6 +34,7 @@ class MaterialConsumptionEntry(Document):
         se.company = self.company
         se.posting_date = self.posting_date
         se.project = self.project
+        cost_center = get_cost_center(self.project, self.company)
         for item in self.items:
             se.append("items", {
                 "item_code": item.item_code,
@@ -39,6 +42,7 @@ class MaterialConsumptionEntry(Document):
                 "uom": item.uom,
                 "s_warehouse": self.warehouse,
                 "batch_no": item.batch_no,
+                "cost_center": cost_center,
             })
         se.insert(ignore_permissions=True)
         se.submit()

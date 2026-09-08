@@ -3,6 +3,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate
 
+from construction_management_suite.utils.accounting import get_cost_center
+
 
 class InterimPaymentCertificate(Document):
     def validate(self):
@@ -77,7 +79,7 @@ class InterimPaymentCertificate(Document):
             "income_account": frappe.get_cached_value(
                 "Company", self.company, "default_income_account"
             ),
-            "cost_center": frappe.get_cached_value("Company", self.company, "cost_center"),
+            "cost_center": get_cost_center(self.project, self.company),
         })
         si.insert(ignore_permissions=True)
         self.db_set("sales_invoice_ref", si.name)

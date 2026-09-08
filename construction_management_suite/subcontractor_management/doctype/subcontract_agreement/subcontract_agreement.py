@@ -3,6 +3,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from construction_management_suite.utils.accounting import get_cost_center
+
 
 class SubcontractAgreement(Document):
     def validate(self):
@@ -49,6 +51,7 @@ class SubcontractAgreement(Document):
         po.schedule_date = self.end_date or frappe.utils.add_months(frappe.utils.nowdate(), 6)
         if self.payment_terms:
             po.payment_terms_template = self.payment_terms
+        cost_center = get_cost_center(self.project, self.company)
         for item in self.items:
             po.append("items", {
                 "item_code": item.item_code,
@@ -58,6 +61,7 @@ class SubcontractAgreement(Document):
                 "uom": item.uom,
                 "rate": item.rate,
                 "project": self.project,
+                "cost_center": cost_center,
                 "schedule_date": po.schedule_date,
             })
         po.insert(ignore_permissions=True)
