@@ -52,7 +52,7 @@
   {"fieldname": "boq_title", "fieldtype": "Data", "label": "BOQ Title", "reqd": 1, "in_list_view": 1},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nApproved\nRevised\nCancelled", "default": "Draft", "in_list_view": 1},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "default": "{frappe.defaults.get_user_default('Company')}"},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
   {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency", "reqd": 1},
   {"fieldname": "revision_no", "fieldtype": "Int", "label": "Revision No", "default": "0", "read_only": 1},
   {"fieldname": "is_revised", "fieldtype": "Check", "label": "Is Revised", "read_only": 1},

@@ -16,7 +16,7 @@
   {"fieldname": "required_date", "fieldtype": "Date", "label": "Required By Date"},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nPending Approval\nApproved\nOrdered\nReceived\nRejected", "default": "Draft", "in_list_view": 1},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
   {"fieldname": "requested_by", "fieldtype": "Link", "label": "Requested By", "options": "User"},
   {"fieldname": "approved_by", "fieldtype": "Link", "label": "Approved By", "options": "User"},
   {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Requested Items"},

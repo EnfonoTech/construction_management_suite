@@ -23,7 +23,7 @@
   {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1},
   {"fieldname": "subcontractor", "fieldtype": "Link", "label": "Subcontractor", "options": "Supplier", "reqd": 1, "in_list_view": 1},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
   {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency", "reqd": 1},
   {"fieldname": "contract_date", "fieldtype": "Date", "label": "Contract Date", "default": "Today"},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nActive\nSuspended\nCompleted\nTerminated", "default": "Draft", "in_list_view": 1},

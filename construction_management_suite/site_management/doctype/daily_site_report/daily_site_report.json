@@ -25,7 +25,7 @@
   {"fieldname": "report_date", "fieldtype": "Date", "label": "Report Date", "reqd": 1, "default": "Today", "in_list_view": 1},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nReviewed\nApproved", "default": "Draft", "in_list_view": 1},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
   {"fieldname": "site_engineer", "fieldtype": "Link", "label": "Site Engineer", "options": "User"},
   {"fieldname": "supervisor", "fieldtype": "Link", "label": "Supervisor", "options": "User"},
   {"fieldname": "section_weather", "fieldtype": "Section Break", "label": "Weather Conditions"},

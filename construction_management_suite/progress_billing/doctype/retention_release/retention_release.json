@@ -18,7 +18,7 @@
   {"fieldname": "client", "fieldtype": "Link", "label": "Client", "options": "Customer", "reqd": 1},
   {"fieldname": "release_type", "fieldtype": "Select", "label": "Release Type", "options": "Practical Completion\nDefects Liability\nFull Final Release", "reqd": 1, "in_list_view": 1},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
   {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency"},
   {"fieldname": "release_date", "fieldtype": "Date", "label": "Release Date", "default": "Today"},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nRequested\nApproved\nInvoiced", "default": "Draft", "in_list_view": 1},

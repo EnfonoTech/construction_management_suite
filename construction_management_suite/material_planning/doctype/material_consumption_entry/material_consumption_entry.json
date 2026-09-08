@@ -15,7 +15,7 @@
   {"fieldname": "posting_date", "fieldtype": "Date", "label": "Posting Date", "default": "Today", "reqd": 1},
   {"fieldname": "daily_site_report_ref", "fieldtype": "Link", "label": "Daily Site Report", "options": "Daily Site Report"},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
   {"fieldname": "warehouse", "fieldtype": "Link", "label": "Consume From Warehouse", "options": "Warehouse", "reqd": 1},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nCancelled", "default": "Draft"},
   {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Consumption Items"},

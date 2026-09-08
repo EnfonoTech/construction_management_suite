@@ -16,7 +16,7 @@
   {"fieldname": "parent_cost_code", "fieldtype": "Link", "label": "Parent Cost Code", "options": "Cost Code"},
   {"fieldname": "cost_category", "fieldtype": "Select", "label": "Category", "options": "\nMaterial\nLabour\nEquipment\nSubcontract\nOverhead\nProvisional", "in_list_view": 1},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company"},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "remember_last_selected_value": 1},
   {"fieldname": "is_group", "fieldtype": "Check", "label": "Is Group"},
   {"fieldname": "disabled", "fieldtype": "Check", "label": "Disabled"},
   {"fieldname": "section_account_map", "fieldtype": "Section Break", "label": "Account Mapping", "collapsible": 1},

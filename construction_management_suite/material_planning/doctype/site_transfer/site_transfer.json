@@ -18,7 +18,7 @@
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
   {"fieldname": "from_warehouse", "fieldtype": "Link", "label": "From Warehouse", "options": "Warehouse", "reqd": 1},
   {"fieldname": "to_warehouse", "fieldtype": "Link", "label": "To Warehouse", "options": "Warehouse", "reqd": 1},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nDispatched\nReceived\nCancelled", "default": "Draft"},
   {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Items"},
   {"fieldname": "items", "fieldtype": "Table", "label": "Transfer Items", "options": "Site Transfer Item", "reqd": 1},

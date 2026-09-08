@@ -21,7 +21,7 @@
   {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "fetch_from": "subcontract_agreement.project"},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},
   {"fieldname": "subcontractor", "fieldtype": "Link", "label": "Subcontractor", "options": "Supplier", "fetch_from": "subcontract_agreement.subcontractor", "in_list_view": 1},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
   {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency"},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nIssued\nIn Progress\nCompleted\nCancelled", "default": "Draft", "in_list_view": 1},
   {"fieldname": "section_schedule", "fieldtype": "Section Break", "label": "Schedule"},
