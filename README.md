@@ -30,22 +30,33 @@ Construction Management Suite (CMS) extends ERPNext with 7 specialized modules c
 
 ---
 
-## Not yet implemented
+## Scope and known limits
 
-The following exist as Python stubs only (no DocType JSON) and are **not installed**
-by `bench install-app`. Do not scope work against them:
+Every DocType in this app is installed and working. Ten DocTypes that previously
+shipped as empty Python stubs with no JSON — and so were never installed — have been
+removed rather than left to imply features that do not exist:
 
-`BOQ Revision` · `BOQ Revision Item` · `Resource Template` · `Resource Template Item`
-`Running Bill` · `Running Bill Item` · `Cost Variance Ledger` · `WIP Entry` · `WIP Entry Item`
-`Site Attendance`
+`BOQ Revision`, `BOQ Revision Item`, `Running Bill`, `Running Bill Item`,
+`Resource Template`, `Resource Template Item`, `Cost Variance Ledger`,
+`WIP Entry`, `WIP Entry Item`, `Site Attendance`.
 
-These scheduled/hook handlers are also empty (`pass`): `sync_erpnext_project`,
-`refresh_cash_flow_projections`, `create_monthly_wip_entries`,
-`ProjectBudget._distribute_actuals_to_items`, `DailySiteReport._create_timesheet_entries`.
+Four of those were redundant in any case: BOQ revisions are handled by
+`BOQ.revision_no` / `previous_boq` / **Create Revision**, and a "running bill" is
+the Interim Payment Certificate under another name.
 
-There is no **Variation Order** doctype — contract scope changes have no home in the
-app yet, and `Cost Code` is defined but never populated, so cost-code-level costing
-does not work.
+Not built, and worth knowing before you scope a project around this app:
+
+- **No Variation Order DocType.** Contract scope changes have no home; they have to
+  be handled as a BOQ revision, which loses the approval trail. This is the largest
+  functional gap.
+- **No print formats.** A BOQ and an IPC are documents you print, sign and issue to a
+  client. Both currently print with the Frappe standard format only.
+- **No WIP journals.** Work-in-progress is not posted at month end.
+- **No test suite.**
+
+`Cost Code` is a working WBS tree, but its actuals only populate for Project Budget
+rows that name a cost code whose **Debit Account** is set — spend is matched by GL
+account, so rows without one keep whatever was entered by hand.
 
 ## Requirements
 

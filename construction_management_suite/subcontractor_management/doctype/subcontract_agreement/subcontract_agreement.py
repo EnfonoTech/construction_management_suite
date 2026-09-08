@@ -47,6 +47,8 @@ class SubcontractAgreement(Document):
         po.project = self.project
         po.cms_subcontract_ref = self.name
         po.schedule_date = self.end_date or frappe.utils.add_months(frappe.utils.nowdate(), 6)
+        if self.payment_terms:
+            po.payment_terms_template = self.payment_terms
         for item in self.items:
             po.append("items", {
                 "item_code": item.item_code,

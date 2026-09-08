@@ -25,7 +25,6 @@ class DailySiteReport(Document):
     def on_submit(self):
         self.status = "Submitted"
         self._update_project_progress()
-        self._create_timesheet_entries()
 
     def _update_project_progress(self):
         """Update ERPNext Project percent_complete from the most recent report."""
@@ -58,7 +57,3 @@ class DailySiteReport(Document):
                 "percent_complete": flt(self.cumulative_percent_complete),
             },
         )
-
-    def _create_timesheet_entries(self):
-        """For each labour row, optionally create ERPNext Timesheet entries."""
-        pass

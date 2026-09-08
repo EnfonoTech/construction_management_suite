@@ -48,8 +48,45 @@ class ProjectBudget(Document):
         self.total_committed_cost = flt(committed)
 
     def _distribute_actuals_to_items(self):
-        """Placeholder — in production this should break down by cost code GL tags."""
-        pass
+        """Break the project's actual spend down onto rows that name a Cost Code.
+
+        A Cost Code carries the expense account its spend lands in, so each row's
+        actual is the sum of that account's GL entries for this project. Rows with
+        no cost code keep whatever was entered manually.
+        """
+        coded = [i for i in self.items if i.cost_code]
+        if not coded:
+            return
+
+        accounts = {}
+        for code in {i.cost_code for i in coded}:
+            account = frappe.db.get_value("Cost Code", code, "debit_account")
+            if account:
+                accounts.setdefault(account, []).append(code)
+        if not accounts:
+            return
+
+        rows = frappe.db.sql(
+            """
+            SELECT account, SUM(debit - credit) AS actual
+            FROM `tabGL Entry`
+            WHERE project = %(project)s
+              AND docstatus = 1
+              AND is_cancelled = 0
+              AND account IN %(accounts)s
+            GROUP BY account
+            """,
+            {"project": self.project, "accounts": tuple(accounts)},
+            as_dict=True,
+        )
+        by_code = {}
+        for row in rows:
+            for code in accounts[row.account]:
+                by_code[code] = flt(by_code.get(code)) + flt(row.actual)
+
+        for item in coded:
+            if item.cost_code in by_code:
+                item.actual_amount = flt(by_code[item.cost_code])
 
     def calculate_variance(self):
         self.variance_amount = flt(self.total_budget) - flt(self.total_actual_cost)

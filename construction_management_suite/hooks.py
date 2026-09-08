@@ -37,13 +37,7 @@ fixtures = [
 # NOTE: CMS's own doctypes must NOT be registered here. Frappe already calls the
 # controller's on_submit/on_cancel; adding a hook that re-calls it runs every
 # side effect twice (duplicate invoices, duplicate stock entries).
-doc_events = {
-    # Link ERPNext Project to CMS Project Budget on save
-    "Project": {
-        "after_insert": "construction_management_suite.project_costing.utils.sync_erpnext_project",
-        "on_update": "construction_management_suite.project_costing.utils.sync_erpnext_project",
-    },
-}
+doc_events = {}
 
 # Scheduled Tasks
 scheduler_events = {
@@ -56,14 +50,8 @@ scheduler_events = {
         "construction_management_suite.material_planning.utils.recompute_forecasts",
     ],
     "weekly": [
-        # Cash flow projection refresh
-        "construction_management_suite.project_costing.utils.refresh_cash_flow_projections",
         # Subcontractor aging report
         "construction_management_suite.subcontractor_management.utils.generate_aging_report",
-    ],
-    "monthly": [
-        # WIP journal entry creation
-        "construction_management_suite.project_costing.utils.create_monthly_wip_entries",
     ],
 }
 
