@@ -116,7 +116,8 @@ has_permission = {
 # Standard controllers override
 override_doctype_class = {}
 
-# Custom dashboard charts
-dashboards = {
-    "Project Overview": "construction_management_suite.config.dashboards.project_overview",
+# Show the construction documents in the Project's Connections tab.
+# (`dashboards` is not a Frappe hook — nothing reads it; this is the real one.)
+override_doctype_dashboards = {
+    "Project": "construction_management_suite.overrides.project_dashboard.get_dashboard_data",
 }

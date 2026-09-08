@@ -2,6 +2,16 @@ frappe.ui.form.on("Cost Estimation", {
     refresh(frm) {
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
         CMS.filterProjects(frm);
+
+        if (frm.doc.docstatus === 1 && frm.doc.project) {
+            frappe.db.get_value("Project Budget",
+                { project: frm.doc.project, docstatus: ["<", 2] }, "name"
+            ).then(r => {
+                if (r.message && r.message.name) {
+                    CMS.linkButton(frm, __("Project Budget"), "Project Budget", r.message.name);
+                }
+            });
+        }
     },
 
     project(frm) {

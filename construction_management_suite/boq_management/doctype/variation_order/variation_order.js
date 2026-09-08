@@ -2,6 +2,7 @@ frappe.ui.form.on("Variation Order", {
     refresh(frm) {
         CMS.filterProjects(frm);
         frm.set_query("boq_ref", () => ({ filters: { project: frm.doc.project, docstatus: 1 } }));
+        CMS.linkButton(frm, __("BOQ"), "BOQ", frm.doc.boq_ref);
     },
 
     company(frm) {

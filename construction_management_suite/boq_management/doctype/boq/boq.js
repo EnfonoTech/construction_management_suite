@@ -15,6 +15,21 @@ frappe.ui.form.on("BOQ", {
         }
 
         if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__("Cost Estimation"), () => {
+                frappe.new_doc("Cost Estimation", {
+                    project: frm.doc.project, boq_ref: frm.doc.name,
+                    company: frm.doc.company, currency: frm.doc.currency,
+                });
+            }, __("Create"));
+
+            frm.add_custom_button(__("Interim Payment Certificate"), () => {
+                frappe.new_doc("Interim Payment Certificate", {
+                    project: frm.doc.project, boq_ref: frm.doc.name,
+                    company: frm.doc.company, currency: frm.doc.currency,
+                    client: frm.doc.client, contract_value: frm.doc.grand_total,
+                });
+            }, __("Create"));
+
             frm.add_custom_button(__("Variation Order"), () => {
                 frappe.new_doc("Variation Order", {
                     project: frm.doc.project,

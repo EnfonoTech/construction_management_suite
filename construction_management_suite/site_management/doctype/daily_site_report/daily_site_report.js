@@ -2,6 +2,16 @@ frappe.ui.form.on("Daily Site Report", {
     refresh(frm) {
         CMS.filterProjects(frm);
         if (!frm.doc.report_date) frm.set_value("report_date", frappe.datetime.get_today());
+
+        if (frm.doc.docstatus === 1 && (frm.doc.materials_used || []).length) {
+            frm.add_custom_button(__("Material Consumption"), () => {
+                frappe.new_doc("Material Consumption Entry", {
+                    project: frm.doc.project, company: frm.doc.company,
+                    posting_date: frm.doc.report_date,
+                    daily_site_report_ref: frm.doc.name,
+                });
+            }, __("Create"));
+        }
     },
     company(frm) {
         CMS.filterProjects(frm);

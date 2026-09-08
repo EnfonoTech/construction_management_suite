@@ -45,39 +45,85 @@ CMS.quickCreateSMR = function (project) {
     frappe.new_doc("Site Material Request", { project });
 };
 
-/* ── Form-level Shortcuts ── */
+/* ── Project form: construction cockpit ── */
+
 frappe.ui.form.on("Project", {
     refresh(frm) {
-        if (frm.doc.name && !frm.is_new()) {
-            frm.add_custom_button(__("View BOQs"), () => {
-                frappe.set_route("List", "BOQ", { project: frm.doc.name });
-            }, __("CMS"));
-            frm.add_custom_button(__("Project Budget"), () => {
-                frappe.set_route("List", "Project Budget", { project: frm.doc.name });
-            }, __("CMS"));
-            frm.add_custom_button(__("Daily Reports"), () => {
-                frappe.set_route("List", "Daily Site Report", { project: frm.doc.name });
-            }, __("CMS"));
-            frm.add_custom_button(__("Cost Dashboard"), () => {
-                CMS.getProjectDashboard(frm.doc.name, (data) => {
-                    if (!data) return;
-                    const dialog = new frappe.ui.Dialog({
-                        title: __("Project Cost Dashboard — {0}", [frm.doc.name]),
-                        size: "large",
-                    });
-                    const $body = $(dialog.body);
-                    $body.css({ display: "flex", flexWrap: "wrap", padding: "16px" });
-                    const b = data.budget || {};
-                    CMS.renderKPICard($body, __("Total Budget"), b.total_budget, frm.doc.currency, "");
-                    CMS.renderKPICard($body, __("Actual Cost"), b.total_actual_cost, frm.doc.currency,
-                        (b.budget_utilization_percent || 0) > 90 ? "over-budget" : "on-track");
-                    CMS.renderKPICard($body, __("Total Billed"), (data.billing || {}).total_billed, frm.doc.currency, "");
-                    dialog.show();
-                });
-            }, __("CMS"));
-        }
+        if (frm.is_new()) return;
+
+        const make = (label, doctype, extra) => {
+            frm.add_custom_button(__(label), () => {
+                frappe.new_doc(doctype, Object.assign({
+                    project: frm.doc.name,
+                    company: frm.doc.company,
+                }, extra || {}));
+            }, __("Create"));
+        };
+
+        // The order a job actually runs in.
+        make("BOQ", "BOQ", { client: frm.doc.customer, client_po: frm.doc.cms_client_po });
+        make("Cost Estimation", "Cost Estimation");
+        make("Variation Order", "Variation Order", { client: frm.doc.customer });
+        make("Interim Payment Certificate", "Interim Payment Certificate", {
+            client: frm.doc.customer,
+            retention_percent: frm.doc.cms_retention_percent,
+            contract_value: frm.doc.cms_contract_value,
+        });
+        make("Daily Site Report", "Daily Site Report");
+        make("Subcontract Agreement", "Subcontract Agreement");
+        make("Material Forecast", "Material Forecast");
+
+        [
+            ["BOQs", "BOQ"],
+            ["Certificates", "Interim Payment Certificate"],
+            ["Budget", "Project Budget"],
+            ["Site Reports", "Daily Site Report"],
+            ["Subcontracts", "Subcontract Agreement"],
+        ].forEach(([label, doctype]) => {
+            frm.add_custom_button(__(label), () => {
+                frappe.set_route("List", doctype, { project: frm.doc.name });
+            }, __("Construction"));
+        });
+
+        render_headline(frm);
     },
 });
+
+/** Contract position at a glance, above the form. */
+function render_headline(frm) {
+    frappe.call({
+        method: "construction_management_suite.api.boq.get_project_cost_dashboard",
+        args: { project: frm.doc.name },
+        callback: (r) => {
+            const d = r.message;
+            if (!d) return;
+            const cur = frm.doc.currency || frappe.defaults.get_default("currency");
+            const money = (v) => format_currency(flt(v), cur);
+            const billed = (d.billing || {}).total_billed;
+            const budget = (d.budget || {}).total_budget;
+            const actual = (d.budget || {}).total_actual_cost;
+            const contract = flt(frm.doc.cms_contract_value);
+
+            if (!contract && !billed && !budget) return;
+
+            const cells = [
+                [__("Contract"), money(contract)],
+                [__("Billed"), money(billed) + (contract ? ` (${(flt(billed) / contract * 100).toFixed(0)}%)` : "")],
+                [__("Retention held"), money((d.retention || {}).net_retention)],
+                [__("Budget"), money(budget)],
+                [__("Actual"), money(actual)],
+                [__("Complete"), `${flt(frm.doc.percent_complete).toFixed(1)}%`],
+            ];
+            frm.dashboard.clear_headline();
+            frm.dashboard.set_headline(
+                `<div style="display:flex;flex-wrap:wrap;gap:6px 26px">` +
+                cells.map(([k, v]) =>
+                    `<span><span class="text-muted">${k}</span> <b>${v}</b></span>`).join("") +
+                `</div>`
+            );
+        },
+    });
+}
 
 /* ══════════════════ Shared form helpers ══════════════════
  * Construction documents nearly all hang off a Project, and nearly all of

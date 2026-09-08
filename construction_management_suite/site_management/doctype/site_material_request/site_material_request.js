@@ -4,6 +4,14 @@ frappe.ui.form.on("Site Material Request", {
         CMS.filterByCompany(frm, "warehouse", { is_group: 0 });
         if (!frm.doc.request_date) frm.set_value("request_date", frappe.datetime.get_today());
         CMS.linkButton(frm, __("Material Request"), "Material Request", frm.doc.material_request_ref);
+
+        if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__("Site Transfer"), () => {
+                frappe.new_doc("Site Transfer", {
+                    to_project: frm.doc.project, company: frm.doc.company,
+                });
+            }, __("Create"));
+        }
     },
     project(frm) { CMS.fillFromProject(frm, { company: "company" }); },
     company(frm) {

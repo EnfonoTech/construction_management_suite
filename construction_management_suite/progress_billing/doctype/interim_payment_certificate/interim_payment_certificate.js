@@ -3,6 +3,24 @@ frappe.ui.form.on("Interim Payment Certificate", {
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
         CMS.filterProjects(frm);
         CMS.linkButton(frm, __("Sales Invoice"), "Sales Invoice", frm.doc.sales_invoice_ref);
+
+        if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__("Next Certificate"), () => {
+                frappe.new_doc("Interim Payment Certificate", {
+                    project: frm.doc.project, boq_ref: frm.doc.boq_ref,
+                    company: frm.doc.company, currency: frm.doc.currency,
+                    client: frm.doc.client, contract_value: frm.doc.contract_value,
+                    retention_percent: frm.doc.retention_percent,
+                });
+            }, __("Create"));
+
+            frm.add_custom_button(__("Retention Release"), () => {
+                frappe.new_doc("Retention Release", {
+                    project: frm.doc.project, client: frm.doc.client,
+                    company: frm.doc.company, currency: frm.doc.currency,
+                });
+            }, __("Create"));
+        }
     },
 
     project(frm) {

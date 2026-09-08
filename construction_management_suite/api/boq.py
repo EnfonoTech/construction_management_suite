@@ -82,6 +82,7 @@ def get_project_cost_dashboard(project):
         "budget": budget,
         "billing": billing,
         "subcontract": subcontract,
+        "retention": get_retention_summary(project),
     }
 
 
