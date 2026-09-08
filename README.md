@@ -18,7 +18,7 @@ Construction Management Suite (CMS) extends ERPNext with 7 specialized modules c
 
 | Module | Key Doctypes | Purpose |
 |---|---|---|
-| **BOQ Management** | BOQ, BOQ Template | Bill of Quantities creation, revisions, templates, rate linkage |
+| **BOQ Management** | BOQ, BOQ Template, Variation Order | Bill of Quantities, revisions, templates, rate linkage, contract variations |
 | **Estimation** | Rate Analysis, Cost Estimation | Resource-based costing, tender estimation, rate analysis |
 | **Project Costing** | Project Budget, Cost Code | Budget monitoring, variance tracking |
 | **Site Management** | Daily Site Report, Site Material Request | Field operations, attendance, progress tracking |
@@ -29,6 +29,18 @@ Construction Management Suite (CMS) extends ERPNext with 7 specialized modules c
 ---
 
 ---
+
+## Print formats
+
+Five simple Jinja print formats ship with the app: **BOQ**, **Interim Payment
+Certificate**, **Variation Order**, **Subcontract Agreement** and **Subcontractor
+Payment Certificate**. Each has a ruled items table, a valuation summary and
+signature blocks.
+
+None is registered as a doctype's default print format — pick it from the print
+view's format selector. To make one the default for your site, set it on the
+DocType (Customize Form → Default Print Format); that is a site preference, not
+something the app should impose.
 
 ## Scope and known limits
 
@@ -46,11 +58,6 @@ the Interim Payment Certificate under another name.
 
 Not built, and worth knowing before you scope a project around this app:
 
-- **No Variation Order DocType.** Contract scope changes have no home; they have to
-  be handled as a BOQ revision, which loses the approval trail. This is the largest
-  functional gap.
-- **No print formats.** A BOQ and an IPC are documents you print, sign and issue to a
-  client. Both currently print with the Frappe standard format only.
 - **No WIP journals.** Work-in-progress is not posted at month end.
 - **No test suite.**
 

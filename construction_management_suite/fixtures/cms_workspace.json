@@ -12,6 +12,7 @@
       {"type": "Card Break", "label": "BOQ Management",             "hidden": 0, "is_query_report": 0, "link_count": 0, "onboard": 0},
       {"type": "Link", "label": "BOQ",               "link_to": "BOQ",               "link_type": "DocType", "onboard": 1, "hidden": 0, "is_query_report": 0, "link_count": 0},
       {"type": "Link", "label": "BOQ Template",      "link_to": "BOQ Template",      "link_type": "DocType", "onboard": 1, "hidden": 0, "is_query_report": 0, "link_count": 0},
+      {"type": "Link", "label": "Variation Order",   "link_to": "Variation Order",   "link_type": "DocType", "onboard": 0, "hidden": 0, "is_query_report": 0, "link_count": 0},
       {"type": "Link", "label": "BOQ Summary",       "link_to": "BOQ Summary",       "link_type": "Report",  "report_ref_doctype": "BOQ", "onboard": 0, "hidden": 0, "is_query_report": 1, "link_count": 0},
 
       {"type": "Card Break", "label": "Estimation",                  "hidden": 0, "is_query_report": 0, "link_count": 0, "onboard": 0},
