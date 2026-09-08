@@ -162,3 +162,28 @@ def get_retention_summary(project):
         "total_released": flt(released),
         "net_retention": flt(held) - flt(released),
     }
+
+
+@frappe.whitelist()
+def get_previous_ipc_position(project):
+    """Where the last certificate on this project left off.
+
+    Saves the billing officer looking up the previous certificate by hand —
+    getting the cumulative figure wrong is how a client gets double-billed.
+    """
+    row = frappe.db.sql(
+        """
+        SELECT SUM(gross_amount_this_period) AS cumulative_amount,
+               MAX(ipc_number) AS last_ipc_number,
+               COUNT(*) AS certificates
+        FROM `tabInterim Payment Certificate`
+        WHERE project = %s AND docstatus = 1
+        """,
+        project,
+        as_dict=True,
+    )[0]
+    return {
+        "cumulative_amount": flt(row.cumulative_amount),
+        "certificates": row.certificates or 0,
+        "next_ipc_number": (row.last_ipc_number or 0) + 1,
+    }

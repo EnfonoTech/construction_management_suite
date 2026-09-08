@@ -78,3 +78,82 @@ frappe.ui.form.on("Project", {
         }
     },
 });
+
+/* ══════════════════ Shared form helpers ══════════════════
+ * Construction documents nearly all hang off a Project, and nearly all of
+ * their header fields are already recorded on it. These helpers pull that
+ * across so the same six fields are not retyped on every certificate.
+ */
+
+CMS.PROJECT_FIELDS = [
+    "company", "customer", "cost_center", "cms_contract_value",
+    "cms_retention_percent", "cms_client_po", "expected_start_date", "expected_end_date",
+];
+
+/** Does this form actually have that field? Avoids set_value warnings. */
+CMS.has = function (frm, fieldname) {
+    return Boolean(frm.meta.fields.find(f => f.fieldname === fieldname));
+};
+
+/** Set a field only when it is still empty, so typed input is never clobbered. */
+CMS.fillIfBlank = function (frm, fieldname, value) {
+    if (!value) return;
+    if (!CMS.has(frm, fieldname)) return;
+    if (frm.doc[fieldname]) return;
+    frm.set_value(fieldname, value);
+};
+
+/**
+ * Copy fields across from the linked Project.
+ * @param map  {target_fieldname: project_fieldname}
+ * @param projectField  defaults to "project"
+ */
+CMS.fillFromProject = function (frm, map, projectField) {
+    const project = frm.doc[projectField || "project"];
+    if (!project) return Promise.resolve();
+    return frappe.db.get_value("Project", project, CMS.PROJECT_FIELDS).then(r => {
+        const p = r.message;
+        if (!p) return;
+        Object.entries(map).forEach(([target, source]) => CMS.fillIfBlank(frm, target, p[source]));
+        if (CMS.has(frm, "currency") && !frm.doc.currency && p.company) {
+            return CMS.currencyFromCompany(frm, p.company);
+        }
+    });
+};
+
+CMS.currencyFromCompany = function (frm, company) {
+    return frappe.db.get_value("Company", company, "default_currency").then(r => {
+        if (r.message) CMS.fillIfBlank(frm, "currency", r.message.default_currency);
+    });
+};
+
+/** Restrict a link field to the document's own company. */
+CMS.filterByCompany = function (frm, fieldname, extra) {
+    frm.set_query(fieldname, () => ({
+        filters: Object.assign({ company: frm.doc.company }, extra || {}),
+    }));
+};
+
+/** Restrict a link field to the document's own project. */
+CMS.filterByProject = function (frm, fieldname, extra) {
+    frm.set_query(fieldname, () => ({
+        filters: Object.assign({ project: frm.doc.project }, extra || {}),
+    }));
+};
+
+/** Sum a child table column. */
+CMS.sum = function (rows, field) {
+    return (rows || []).reduce((t, r) => t + flt(r[field]), 0);
+};
+
+/** Recompute a child row's amount = qty × rate, under any field names. */
+CMS.rowAmount = function (cdt, cdn, qtyField, rateField, amountField) {
+    const row = locals[cdt][cdn];
+    frappe.model.set_value(cdt, cdn, amountField, flt(row[qtyField]) * flt(row[rateField]));
+};
+
+/** A "go to the document this one created" button. */
+CMS.linkButton = function (frm, label, doctype, name) {
+    if (!name) return;
+    frm.add_custom_button(label, () => frappe.set_route("Form", doctype, name), __("View"));
+};

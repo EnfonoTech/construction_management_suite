@@ -104,5 +104,12 @@ class ProjectBudget(Document):
         self.fetch_actual_costs()
         self.fetch_committed_costs()
         self.calculate_variance()
-        self.save()
+        if self.docstatus == 1:
+            # A submitted budget cannot be save()d, but refreshing it is the
+            # whole point of the button — write the figures straight through.
+            self.db_update()
+            for item in self.items:
+                item.db_update()
+        else:
+            self.save()
         frappe.msgprint(_("Actuals refreshed"))

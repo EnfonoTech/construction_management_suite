@@ -14,6 +14,18 @@ frappe.ui.form.on("BOQ", {
             }, __("Actions"));
         }
 
+        if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__("Variation Order"), () => {
+                frappe.new_doc("Variation Order", {
+                    project: frm.doc.project,
+                    boq_ref: frm.doc.name,
+                    company: frm.doc.company,
+                    currency: frm.doc.currency,
+                    client: frm.doc.client,
+                });
+            }, __("Create"));
+        }
+
         if (frm.doc.docstatus === 0) {
             frm.add_custom_button(__("Import from Template"), () => {
                 frappe.prompt(
