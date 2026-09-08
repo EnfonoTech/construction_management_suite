@@ -97,9 +97,8 @@ class ProjectBudget(Document):
         for item in self.items:
             item.variance = flt(item.budgeted_amount) - flt(item.actual_amount)
 
-    def on_submit(self):
+    def before_submit(self):
         self.status = "Active"
-        self.db_set("status", "Active")
 
     @frappe.whitelist()
     def refresh_actuals(self):

@@ -13,12 +13,16 @@ class SiteTransfer(Document):
         if self.from_warehouse == self.to_warehouse:
             frappe.throw(_("Source and destination warehouses must be different"))
 
-    def on_submit(self):
+    def before_submit(self):
         self.status = "Submitted"
+
+    def on_submit(self):
         self._create_stock_entry()
 
-    def on_cancel(self):
+    def before_cancel(self):
         self.status = "Cancelled"
+
+    def on_cancel(self):
         self._cancel_stock_entry()
 
     def _cancel_stock_entry(self):

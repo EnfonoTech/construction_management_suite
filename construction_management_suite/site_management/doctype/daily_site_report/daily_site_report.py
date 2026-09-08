@@ -24,8 +24,10 @@ class DailySiteReport(Document):
         for row in self.labour:
             row.daily_cost = flt(row.headcount) * flt(row.daily_rate)
 
-    def on_submit(self):
+    def before_submit(self):
         self.status = "Submitted"
+
+    def on_submit(self):
         self._update_project_progress()
 
     def _update_project_progress(self):

@@ -13,12 +13,16 @@ class MaterialConsumptionEntry(Document):
         for item in self.items:
             item.amount = flt(item.qty) * flt(item.valuation_rate)
 
-    def on_submit(self):
+    def before_submit(self):
         self.status = "Submitted"
+
+    def on_submit(self):
         self._create_stock_entry()
 
-    def on_cancel(self):
+    def before_cancel(self):
         self.status = "Cancelled"
+
+    def on_cancel(self):
         self._cancel_stock_entry()
 
     def _cancel_stock_entry(self):

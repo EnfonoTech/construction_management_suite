@@ -24,12 +24,16 @@ class SiteMaterialRequest(Document):
                     _("Row {0}: Requested quantity must be greater than zero").format(row.idx)
                 )
 
-    def on_submit(self):
+    def before_submit(self):
         self.status = "Pending Approval"
+
+    def on_submit(self):
         self._create_material_request()
 
-    def on_cancel(self):
+    def before_cancel(self):
         self.status = "Rejected"
+
+    def on_cancel(self):
         self._cancel_material_request()
 
     def _create_material_request(self):

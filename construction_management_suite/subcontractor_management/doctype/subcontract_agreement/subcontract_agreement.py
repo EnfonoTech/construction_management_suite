@@ -36,8 +36,10 @@ class SubcontractAgreement(Document):
         self.total_paid = flt(data.total_paid)
         self.balance_due = flt(self.subcontract_value) - flt(self.total_paid)
 
-    def on_submit(self):
+    def before_submit(self):
         self.status = "Active"
+
+    def on_submit(self):
         self._create_purchase_order()
 
     def _create_purchase_order(self):
