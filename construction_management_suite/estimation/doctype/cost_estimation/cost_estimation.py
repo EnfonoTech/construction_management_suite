@@ -54,6 +54,7 @@ class CostEstimation(Document):
         budget.company = self.company
         budget.currency = self.currency
         budget.budget_title = f"Budget from {self.name}"
+        budget.cost_estimation_ref = self.name
         budget.total_budget = self.total_estimated_cost
         for item in self.items:
             budget.append("items", {
