@@ -12,18 +12,8 @@ frappe.ui.form.on("Material Consumption Entry", {
         CMS.filterProjects(frm);
         CMS.clearForeignProject(frm);
     },
-    items_remove: total,
+    items_remove(frm) { CMS.recalc(frm); },
+
 });
 
-frappe.ui.form.on("Material Consumption Item", {
-    qty: (frm, cdt, cdn) => { CMS.rowAmount(cdt, cdn, "qty", "valuation_rate", "amount"); total(frm); },
-    valuation_rate: (frm, cdt, cdn) => { CMS.rowAmount(cdt, cdn, "qty", "valuation_rate", "amount"); total(frm); },
-});
-
-function total(frm) {
-    const t = CMS.sum(frm.doc.items, "amount");
-    if (!t) return;
-    frm.dashboard.clear_headline();
-    frm.dashboard.set_headline(
-        __("Consuming {0}", [format_currency(t, frappe.defaults.get_default("currency"))]));
-}
+CMS.liveRows("Material Consumption Item", ["qty", "valuation_rate"]);

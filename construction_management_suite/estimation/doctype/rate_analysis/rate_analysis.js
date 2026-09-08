@@ -7,8 +7,9 @@ frappe.ui.form.on("Rate Analysis", {
     qty(frm, cdt, cdn) { calc_resource(frm, cdt, cdn); },
     rate(frm, cdt, cdn) { calc_resource(frm, cdt, cdn); },
     waste_factor(frm, cdt, cdn) { calc_resource(frm, cdt, cdn); },
-    output_qty(frm) { calc_totals(frm); },
-    resources_remove(frm) { calc_totals(frm); },
+    output_qty(frm) { CMS.recalc(frm); },
+    resources_remove(frm) { CMS.recalc(frm); },
+
 });
 
 function calc_resource(frm, cdt, cdn) {
@@ -52,3 +53,5 @@ function apply_to_boq(frm) {
         __("Apply Rate Analysis to BOQ")
     );
 }
+
+CMS.liveRows("Rate Analysis Resource", ["resource_type", "qty", "rate", "waste_factor"]);

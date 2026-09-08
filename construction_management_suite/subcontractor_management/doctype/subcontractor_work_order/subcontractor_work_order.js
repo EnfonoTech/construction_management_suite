@@ -14,29 +14,8 @@ frappe.ui.form.on("Subcontractor Work Order", {
                 .forEach(f => CMS.fillIfBlank(frm, f, a[f]));
         });
     },
+    items_remove(frm) { CMS.recalc(frm); },
 
-    items_remove: recalc,
 });
 
-frappe.ui.form.on("Subcontractor Work Order Item", {
-    contract_qty: row_calc,
-    contract_rate: row_calc,
-    completed_qty: row_calc,
-});
-
-function row_calc(frm, cdt, cdn) {
-    const row = locals[cdt][cdn];
-    frappe.model.set_value(cdt, cdn, "contract_amount", flt(row.contract_qty) * flt(row.contract_rate));
-    frappe.model.set_value(cdt, cdn, "completed_amount", flt(row.completed_qty) * flt(row.contract_rate));
-    frappe.model.set_value(cdt, cdn, "completion_percent",
-        flt(row.contract_qty) > 0 ? flt(row.completed_qty) / flt(row.contract_qty) * 100 : 0);
-    recalc(frm);
-}
-
-function recalc(frm) {
-    const contract = CMS.sum(frm.doc.items, "contract_amount");
-    const done = CMS.sum(frm.doc.items, "completed_amount");
-    frm.set_value("total_contract_value", contract);
-    frm.set_value("total_completed_value", done);
-    frm.set_value("completion_percent", contract > 0 ? done / contract * 100 : 0);
-}
+CMS.liveRows("Subcontractor Work Order Item", ["contract_qty", "contract_rate", "completed_qty"]);

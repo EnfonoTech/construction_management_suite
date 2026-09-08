@@ -232,3 +232,183 @@ CMS.linkButton = function (frm, label, doctype, name) {
     if (!name) return;
     frm.add_custom_button(label, () => frappe.set_route("Form", doctype, name), __("View"));
 };
+
+/* ══════════════════ Calculations ══════════════════
+ * One pure function per document, mirroring its Python controller exactly.
+ * Each takes a doc, mutates it, and touches no Frappe API — so the same code
+ * runs in the browser on every keystroke and in the test harness that checks
+ * it against the server. Anything needing a database read (retention held to
+ * date, previously approved variations) stays server-side and is not here.
+ */
+CMS.calc = {};
+
+CMS.calc["BOQ"] = function (doc) {
+    let mat = 0, lab = 0, eqp = 0, ovh = 0, tot = 0;
+    (doc.items || []).forEach(r => {
+        r.amount = flt(r.qty) * flt(r.rate);
+        r.material_amount = flt(r.qty) * flt(r.material_rate);
+        r.labour_amount = flt(r.qty) * flt(r.labour_rate);
+        r.equipment_amount = flt(r.qty) * flt(r.equipment_rate);
+        r.overhead_amount = flt(r.qty) * flt(r.overhead_rate);
+        r.variance_qty = flt(r.actual_qty) - flt(r.qty);
+        r.variance_amount = flt(r.variance_qty) * flt(r.rate);
+        mat += r.material_amount; lab += r.labour_amount;
+        eqp += r.equipment_amount; ovh += r.overhead_amount; tot += r.amount;
+    });
+    doc.total_material_amount = mat;
+    doc.total_labour_amount = lab;
+    doc.total_equipment_amount = eqp;
+    doc.total_overhead_amount = ovh;
+    doc.total_amount = tot;
+    doc.profit_margin_amount = flt(doc.total_amount) * flt(doc.profit_margin_percent) / 100;
+    doc.grand_total = flt(doc.total_amount) + flt(doc.profit_margin_amount);
+};
+
+CMS.calc["Rate Analysis"] = function (doc) {
+    const t = { Material: 0, Labour: 0, Equipment: 0, Subcontract: 0, Overhead: 0 };
+    (doc.resources || []).forEach(r => {
+        r.amount = flt(r.qty) * flt(r.rate);
+        r.net_amount = flt(r.amount) * (1 + flt(r.waste_factor) / 100);
+        if (r.resource_type in t) t[r.resource_type] += flt(r.net_amount);
+    });
+    doc.total_material_cost = t.Material;
+    doc.total_labour_cost = t.Labour;
+    doc.total_equipment_cost = t.Equipment;
+    doc.total_subcontract_cost = t.Subcontract;
+    doc.total_overhead_cost = t.Overhead;
+    doc.total_cost = t.Material + t.Labour + t.Equipment + t.Subcontract + t.Overhead;
+    doc.rate_per_unit = doc.total_cost / (flt(doc.output_qty) || 1);
+};
+
+CMS.calc["Cost Estimation"] = function (doc) {
+    let m = 0, l = 0, e = 0, o = 0, sub = 0;
+    (doc.items || []).forEach(r => {
+        // Rows linked to a Rate Analysis are priced by the server from that
+        // analysis; leave their unit cost alone.
+        if (!r.rate_analysis_ref) {
+            r.unit_cost = flt(r.material_cost) + flt(r.labour_cost)
+                + flt(r.equipment_cost) + flt(r.overhead_cost);
+        }
+        r.total_cost = flt(r.qty) * flt(r.unit_cost);
+        m += flt(r.material_cost) * flt(r.qty);
+        l += flt(r.labour_cost) * flt(r.qty);
+        e += flt(r.equipment_cost) * flt(r.qty);
+        o += flt(r.overhead_cost) * flt(r.qty);
+        sub += flt(r.total_cost);
+    });
+    doc.estimated_material_cost = m;
+    doc.estimated_labour_cost = l;
+    doc.estimated_equipment_cost = e;
+    doc.estimated_overhead_cost = o;
+    doc.contingency_amount = flt(sub) * flt(doc.contingency_percent) / 100;
+    doc.total_estimated_cost = sub + flt(doc.contingency_amount);
+    if (flt(doc.selling_price) > 0) {
+        doc.margin_percent =
+            (flt(doc.selling_price) - flt(doc.total_estimated_cost)) / flt(doc.selling_price) * 100;
+    }
+};
+
+CMS.calc["Interim Payment Certificate"] = function (doc) {
+    let gross = 0;
+    (doc.items || []).forEach(r => {
+        r.contract_amount = flt(r.contract_qty) * flt(r.contract_rate);
+        r.cumulative_qty = flt(r.previous_qty_claimed) + flt(r.qty_this_period);
+        r.amount_this_period = flt(r.qty_this_period) * flt(r.contract_rate);
+        r.cumulative_amount = flt(r.cumulative_qty) * flt(r.contract_rate);
+        r.percent_complete = flt(r.contract_amount) > 0
+            ? flt(r.cumulative_amount) / flt(r.contract_amount) * 100 : 0;
+        gross += flt(r.amount_this_period);
+    });
+    doc.gross_amount_this_period = gross;
+    doc.cumulative_amount_to_date = flt(doc.previous_cumulative_amount) + gross;
+    doc.retention_amount = flt(doc.gross_amount_this_period) * flt(doc.retention_percent) / 100;
+    doc.net_payable_this_period = flt(doc.gross_amount_this_period)
+        - flt(doc.retention_amount) - flt(doc.advance_recovery_amount) - flt(doc.other_deductions);
+};
+
+CMS.calc["Variation Order"] = function (doc) {
+    let add = 0, omit = 0;
+    (doc.items || []).forEach(r => {
+        r.amount = flt(r.qty) * flt(r.rate);
+        if (r.nature === "Addition") add += flt(r.amount);
+        else if (r.nature === "Omission") omit += flt(r.amount);
+    });
+    doc.addition_amount = add;
+    doc.omission_amount = omit;
+    doc.net_variation_amount = add - omit;
+};
+
+CMS.calc["Subcontract Agreement"] = function (doc) {
+    (doc.items || []).forEach(r => { r.amount = flt(r.qty) * flt(r.rate); });
+    doc.advance_amount = flt(doc.subcontract_value) * flt(doc.advance_percent) / 100;
+};
+
+CMS.calc["Subcontractor Payment Certificate"] = function (doc) {
+    doc.gross_amount_claimed = (doc.items || []).reduce((t, r) => t + flt(r.amount_claimed), 0);
+    doc.retention_deduction = flt(doc.certified_amount) * flt(doc.retention_percent) / 100;
+    doc.net_payable = flt(doc.certified_amount) - flt(doc.retention_deduction)
+        - flt(doc.advance_recovery) - flt(doc.other_deductions);
+};
+
+CMS.calc["Subcontractor Work Order"] = function (doc) {
+    let contract = 0, done = 0;
+    (doc.items || []).forEach(r => {
+        r.contract_amount = flt(r.contract_qty) * flt(r.contract_rate);
+        r.completed_amount = flt(r.completed_qty) * flt(r.contract_rate);
+        r.completion_percent = flt(r.contract_qty) > 0
+            ? flt(r.completed_qty) / flt(r.contract_qty) * 100 : 0;
+        contract += flt(r.contract_amount);
+        done += flt(r.completed_amount);
+    });
+    doc.total_contract_value = contract;
+    doc.total_completed_value = done;
+    doc.completion_percent = contract > 0 ? done / contract * 100 : 0;
+};
+
+CMS.calc["Material Forecast"] = function (doc) {
+    (doc.items || []).forEach(r => {
+        r.net_qty_required = flt(r.boq_qty) * (1 + flt(r.waste_factor) / 100);
+        r.qty_to_order = Math.max(0, flt(r.net_qty_required) - flt(r.already_ordered_qty));
+        r.estimated_value = flt(r.qty_to_order) * flt(r.estimated_rate);
+    });
+    doc.total_forecast_qty_value = (doc.items || []).reduce((t, r) => t + flt(r.estimated_value), 0);
+};
+
+CMS.calc["Material Consumption Entry"] = function (doc) {
+    (doc.items || []).forEach(r => { r.amount = flt(r.qty) * flt(r.valuation_rate); });
+};
+
+CMS.calc["Project Budget"] = function (doc) {
+    (doc.items || []).forEach(r => { r.variance = flt(r.budgeted_amount) - flt(r.actual_amount); });
+    doc.variance_amount = flt(doc.total_budget) - flt(doc.total_actual_cost);
+    doc.budget_utilization_percent = flt(doc.total_budget) > 0
+        ? flt(doc.total_actual_cost) / flt(doc.total_budget) * 100 : 0;
+};
+
+CMS.calc["Daily Site Report"] = function (doc) {
+    (doc.labour || []).forEach(r => {
+        r.daily_cost = flt(r.headcount) * flt(r.daily_rate)
+            + flt(r.overtime_hours) * flt(r.overtime_rate);
+    });
+    (doc.equipment || []).forEach(r => {
+        r.cost = (flt(r.hours_worked) + flt(r.idle_hours)) * flt(r.hourly_rate);
+    });
+};
+
+/**
+ * Recalculate and repaint. Called on every keystroke, so the figures on screen
+ * are always the ones that will be saved.
+ */
+CMS.recalc = function (frm) {
+    const fn = CMS.calc[frm.doc.doctype];
+    if (!fn) return;
+    fn(frm.doc);
+    frm.refresh_fields();
+};
+
+/** Wire every input field of a child table to recalculate the parent. */
+CMS.liveRows = function (childDoctype, fields) {
+    const handlers = {};
+    fields.forEach(f => { handlers[f] = (frm) => CMS.recalc(frm); });
+    frappe.ui.form.on(childDoctype, handlers);
+};

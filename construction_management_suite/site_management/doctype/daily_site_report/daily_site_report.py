@@ -9,8 +9,10 @@ class DailySiteReport(Document):
     def validate(self):
         validate_project_company(self)
         self.validate_date()
+        self.validate_one_per_day()
         self.set_submitted_by()
         self.calculate_labour_cost()
+        self.calculate_equipment_cost()
 
     def validate_date(self):
         if self.report_date and self.report_date > nowdate():
@@ -20,9 +22,42 @@ class DailySiteReport(Document):
         if not self.submitted_by:
             self.submitted_by = frappe.session.user
 
+    def validate_one_per_day(self):
+        """A site diary is one entry per day — a second one for the same date
+        splits the day's record in two and makes the labour totals wrong."""
+        if not (self.project and self.report_date):
+            return
+        existing = frappe.db.get_value(
+            "Daily Site Report",
+            {
+                "project": self.project,
+                "report_date": self.report_date,
+                "docstatus": ["<", 2],
+                "name": ["!=", self.name or ""],
+            },
+            "name",
+        )
+        if existing:
+            frappe.throw(
+                _("{0} already covers {1} on this project").format(
+                    frappe.utils.get_link_to_form("Daily Site Report", existing),
+                    frappe.utils.formatdate(self.report_date),
+                ),
+                title=_("Report Already Filed"),
+            )
+
     def calculate_labour_cost(self):
+        """Overtime is worked and paid, so it belongs in the day's labour cost."""
         for row in self.labour:
-            row.daily_cost = flt(row.headcount) * flt(row.daily_rate)
+            row.daily_cost = (
+                flt(row.headcount) * flt(row.daily_rate)
+                + flt(row.overtime_hours) * flt(row.overtime_rate)
+            )
+
+    def calculate_equipment_cost(self):
+        """Idle plant still costs — it is on hire whether it turns or not."""
+        for row in self.equipment:
+            row.cost = (flt(row.hours_worked) + flt(row.idle_hours)) * flt(row.hourly_rate)
 
     def before_submit(self):
         self.status = "Submitted"

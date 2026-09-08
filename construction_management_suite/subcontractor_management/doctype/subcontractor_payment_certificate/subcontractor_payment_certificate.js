@@ -16,23 +16,12 @@ frappe.ui.form.on("Subcontractor Payment Certificate", {
             CMS.fillIfBlank(frm, "previous_amount_certified", a.total_certified);
         });
     },
+    certified_amount(frm) { CMS.recalc(frm); },
+    retention_percent(frm) { CMS.recalc(frm); },
+    advance_recovery(frm) { CMS.recalc(frm); },
+    other_deductions(frm) { CMS.recalc(frm); },
+    items_remove(frm) { CMS.recalc(frm); },
 
-    certified_amount: recalc,
-    retention_percent: recalc,
-    advance_recovery: recalc,
-    other_deductions: recalc,
-    items_remove: recalc,
 });
 
-frappe.ui.form.on("Subcontractor Payment Item", {
-    amount_claimed: recalc,
-});
-
-function recalc(frm) {
-    const claimed = CMS.sum(frm.doc.items, "amount_claimed");
-    const retention = flt(frm.doc.certified_amount) * flt(frm.doc.retention_percent) / 100;
-    frm.set_value("gross_amount_claimed", claimed);
-    frm.set_value("retention_deduction", retention);
-    frm.set_value("net_payable", flt(frm.doc.certified_amount) - retention
-        - flt(frm.doc.advance_recovery) - flt(frm.doc.other_deductions));
-}
+CMS.liveRows("Subcontractor Payment Item", ["amount_claimed"]);

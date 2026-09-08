@@ -1,0 +1,263 @@
+{
+ "BOQ": {
+  "profit_margin_percent": 12,
+  "items": [
+   {
+    "qty": 180,
+    "rate": 62.5,
+    "material_rate": 25.856,
+    "labour_rate": 16.8,
+    "equipment_rate": 6.25,
+    "overhead_rate": 3.5,
+    "actual_qty": 112
+   },
+   {
+    "qty": 22500,
+    "rate": 0.42,
+    "material_rate": 0.31,
+    "labour_rate": 0.08,
+    "equipment_rate": 0.01,
+    "overhead_rate": 0.02,
+    "actual_qty": 0
+   },
+   {
+    "qty": 1240,
+    "rate": 8.75,
+    "material_rate": 4.603,
+    "labour_rate": 3.4,
+    "equipment_rate": 0.15,
+    "overhead_rate": 0.4,
+    "actual_qty": 620
+   }
+  ]
+ },
+ "Rate Analysis": {
+  "output_qty": 1,
+  "resources": [
+   {
+    "resource_type": "Material",
+    "qty": 7,
+    "rate": 2.1,
+    "waste_factor": 5
+   },
+   {
+    "resource_type": "Material",
+    "qty": 0.85,
+    "rate": 8.5,
+    "waste_factor": 5
+   },
+   {
+    "resource_type": "Labour",
+    "qty": 0.6,
+    "rate": 12,
+    "waste_factor": 0
+   },
+   {
+    "resource_type": "Equipment",
+    "qty": 0.25,
+    "rate": 25,
+    "waste_factor": 0
+   },
+   {
+    "resource_type": "Subcontract",
+    "qty": 1,
+    "rate": 40,
+    "waste_factor": 2
+   },
+   {
+    "resource_type": "Overhead",
+    "qty": 1,
+    "rate": 3.5,
+    "waste_factor": 0
+   }
+  ]
+ },
+ "Cost Estimation": {
+  "contingency_percent": 5,
+  "selling_price": 129603.04,
+  "items": [
+   {
+    "qty": 180,
+    "material_cost": 25.856,
+    "labour_cost": 16.8,
+    "equipment_cost": 6.25,
+    "overhead_cost": 3.5
+   },
+   {
+    "qty": 10,
+    "material_cost": 100,
+    "labour_cost": 50,
+    "equipment_cost": 0,
+    "overhead_cost": 7.25
+   }
+  ]
+ },
+ "Interim Payment Certificate": {
+  "retention_percent": 10,
+  "advance_recovery_amount": 450,
+  "other_deductions": 25.5,
+  "previous_cumulative_amount": 5671,
+  "items": [
+   {
+    "contract_qty": 180,
+    "contract_rate": 62.5,
+    "previous_qty_claimed": 40,
+    "qty_this_period": 72
+   },
+   {
+    "contract_qty": 22500,
+    "contract_rate": 0.42,
+    "previous_qty_claimed": 0,
+    "qty_this_period": 12000
+   },
+   {
+    "contract_qty": 0,
+    "contract_rate": 8.75,
+    "previous_qty_claimed": 0,
+    "qty_this_period": 5
+   }
+  ]
+ },
+ "Variation Order": {
+  "items": [
+   {
+    "nature": "Addition",
+    "qty": 62,
+    "rate": 88.5
+   },
+   {
+    "nature": "Omission",
+    "qty": 140,
+    "rate": 8.75
+   },
+   {
+    "nature": "Addition",
+    "qty": 40,
+    "rate": 12.5
+   }
+  ]
+ },
+ "Subcontract Agreement": {
+  "subcontract_value": 9500,
+  "advance_percent": 10,
+  "items": [
+   {
+    "qty": 1240,
+    "rate": 7.661
+   },
+   {
+    "qty": 3,
+    "rate": 250
+   }
+  ]
+ },
+ "Subcontractor Payment Certificate": {
+  "certified_amount": 4750,
+  "retention_percent": 10,
+  "advance_recovery": 475,
+  "other_deductions": 12.25,
+  "items": [
+   {
+    "amount_claimed": 5000
+   },
+   {
+    "amount_claimed": 250.75
+   }
+  ]
+ },
+ "Subcontractor Work Order": {
+  "items": [
+   {
+    "contract_qty": 1240,
+    "contract_rate": 7.661,
+    "completed_qty": 620
+   },
+   {
+    "contract_qty": 0,
+    "contract_rate": 10,
+    "completed_qty": 0
+   },
+   {
+    "contract_qty": 50,
+    "contract_rate": 33.333,
+    "completed_qty": 50
+   }
+  ]
+ },
+ "Material Forecast": {
+  "items": [
+   {
+    "boq_qty": 1260,
+    "waste_factor": 5,
+    "already_ordered_qty": 0,
+    "estimated_rate": 2.1
+   },
+   {
+    "boq_qty": 153,
+    "waste_factor": 5,
+    "already_ordered_qty": 0,
+    "estimated_rate": 8.5
+   },
+   {
+    "boq_qty": 15500,
+    "waste_factor": 3,
+    "already_ordered_qty": 0,
+    "estimated_rate": 0.32
+   }
+  ]
+ },
+ "Material Consumption Entry": {
+  "items": [
+   {
+    "qty": 336,
+    "valuation_rate": 2.1
+   },
+   {
+    "qty": 41,
+    "valuation_rate": 8.5
+   }
+  ]
+ },
+ "Project Budget": {
+  "total_budget": 115558.898,
+  "total_actual_cost": 1186.1,
+  "items": [
+   {
+    "budgeted_amount": 9433.08,
+    "actual_amount": 1186.1
+   },
+   {
+    "budgeted_amount": 500,
+    "actual_amount": 0
+   }
+  ]
+ },
+ "Daily Site Report": {
+  "labour": [
+   {
+    "headcount": 12,
+    "daily_rate": 12,
+    "overtime_hours": 3,
+    "overtime_rate": 18
+   },
+   {
+    "headcount": 8,
+    "daily_rate": 14,
+    "overtime_hours": 0,
+    "overtime_rate": 0
+   }
+  ],
+  "equipment": [
+   {
+    "hours_worked": 8,
+    "idle_hours": 1,
+    "hourly_rate": 12
+   },
+   {
+    "hours_worked": 6,
+    "idle_hours": 0,
+    "hourly_rate": 4.5
+   }
+  ]
+ }
+}

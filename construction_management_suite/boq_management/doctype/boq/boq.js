@@ -75,50 +75,12 @@ frappe.ui.form.on("BOQ", {
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
 
-    qty(frm, cdt, cdn) { calculate_row(frm, cdt, cdn); },
-    rate(frm, cdt, cdn) { calculate_row(frm, cdt, cdn); },
-    material_rate(frm, cdt, cdn) { calculate_row(frm, cdt, cdn); },
-    labour_rate(frm, cdt, cdn) { calculate_row(frm, cdt, cdn); },
-    equipment_rate(frm, cdt, cdn) { calculate_row(frm, cdt, cdn); },
-    overhead_rate(frm, cdt, cdn) { calculate_row(frm, cdt, cdn); },
+    profit_margin_percent(frm) { CMS.recalc(frm); },
+    items_remove(frm) { CMS.recalc(frm); },
 
-    profit_margin_percent(frm) {
-        frm.doc.profit_margin_amount = flt(frm.doc.total_amount) * flt(frm.doc.profit_margin_percent) / 100;
-        frm.doc.grand_total = flt(frm.doc.total_amount) + flt(frm.doc.profit_margin_amount);
-        frm.refresh_fields(["profit_margin_amount", "grand_total"]);
-    },
-
-    items_remove(frm) { recalculate_totals(frm); },
 });
 
-function calculate_row(frm, cdt, cdn) {
-    const row = locals[cdt][cdn];
-    row.amount = flt(row.qty) * flt(row.rate);
-    row.material_amount = flt(row.qty) * flt(row.material_rate);
-    row.labour_amount = flt(row.qty) * flt(row.labour_rate);
-    row.equipment_amount = flt(row.qty) * flt(row.equipment_rate);
-    row.overhead_amount = flt(row.qty) * flt(row.overhead_rate);
-    frappe.model.set_value(cdt, cdn, "amount", row.amount);
-    recalculate_totals(frm);
-}
 
-function recalculate_totals(frm) {
-    let mat = 0, lab = 0, eqp = 0, ovh = 0, total = 0;
-    (frm.doc.items || []).forEach(row => {
-        mat += flt(row.material_amount);
-        lab += flt(row.labour_amount);
-        eqp += flt(row.equipment_amount);
-        ovh += flt(row.overhead_amount);
-        total += flt(row.amount);
-    });
-    frm.set_value("total_material_amount", mat);
-    frm.set_value("total_labour_amount", lab);
-    frm.set_value("total_equipment_amount", eqp);
-    frm.set_value("total_overhead_amount", ovh);
-    frm.set_value("total_amount", total);
-    frm.set_value("profit_margin_amount", flt(total) * flt(frm.doc.profit_margin_percent) / 100);
-    frm.set_value("grand_total", flt(total) + flt(frm.doc.profit_margin_amount));
-}
 
 function render_cost_breakdown(frm) {
     const data = [
@@ -141,3 +103,5 @@ function render_cost_breakdown(frm) {
         __("Cost Breakdown")
     );
 }
+
+CMS.liveRows("BOQ Item", ["qty", "rate", "material_rate", "labour_rate", "equipment_rate", "overhead_rate", "actual_qty"]);

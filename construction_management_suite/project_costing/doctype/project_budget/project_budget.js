@@ -21,26 +21,10 @@ frappe.ui.form.on("Project Budget", {
         CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
-    items_remove: recalc,
+    total_budget(frm) { CMS.recalc(frm); },
+    total_actual_cost(frm) { CMS.recalc(frm); },
+    items_remove(frm) { CMS.recalc(frm); },
+
 });
 
-frappe.ui.form.on("Project Budget Item", {
-    budgeted_amount: row_calc,
-    actual_amount: row_calc,
-});
-
-function row_calc(frm, cdt, cdn) {
-    const row = locals[cdt][cdn];
-    frappe.model.set_value(cdt, cdn, "variance", flt(row.budgeted_amount) - flt(row.actual_amount));
-    recalc(frm);
-}
-
-function recalc(frm) {
-    const budget = CMS.sum(frm.doc.items, "budgeted_amount");
-    if (budget && !flt(frm.doc.total_budget)) frm.set_value("total_budget", budget);
-    frm.set_value("variance_amount", flt(frm.doc.total_budget) - flt(frm.doc.total_actual_cost));
-    if (flt(frm.doc.total_budget) > 0) {
-        frm.set_value("budget_utilization_percent",
-            flt(frm.doc.total_actual_cost) / flt(frm.doc.total_budget) * 100);
-    }
-}
+CMS.liveRows("Project Budget Item", ["budgeted_amount", "actual_amount"]);

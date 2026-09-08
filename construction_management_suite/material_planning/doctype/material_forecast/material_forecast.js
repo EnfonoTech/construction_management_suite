@@ -25,26 +25,8 @@ frappe.ui.form.on("Material Forecast", {
     },
 
     project(frm) { CMS.fillFromProject(frm, { company: "company" }); },
-    items_remove: recalc,
+    items_remove(frm) { CMS.recalc(frm); },
+
 });
 
-frappe.ui.form.on("Material Forecast Item", {
-    boq_qty: row_calc,
-    waste_factor: row_calc,
-    estimated_rate: row_calc,
-    already_ordered_qty: row_calc,
-});
-
-function row_calc(frm, cdt, cdn) {
-    const row = locals[cdt][cdn];
-    const net = flt(row.boq_qty) * (1 + flt(row.waste_factor) / 100);
-    const to_order = Math.max(0, net - flt(row.already_ordered_qty));
-    frappe.model.set_value(cdt, cdn, "net_qty_required", net);
-    frappe.model.set_value(cdt, cdn, "qty_to_order", to_order);
-    frappe.model.set_value(cdt, cdn, "estimated_value", to_order * flt(row.estimated_rate));
-    recalc(frm);
-}
-
-function recalc(frm) {
-    frm.set_value("total_forecast_qty_value", CMS.sum(frm.doc.items, "estimated_value"));
-}
+CMS.liveRows("Material Forecast Item", ["boq_qty", "waste_factor", "already_ordered_qty", "estimated_rate"]);

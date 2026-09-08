@@ -10,8 +10,13 @@ from construction_management_suite.utils.validations import validate_project_com
 class SubcontractAgreement(Document):
     def validate(self):
         validate_project_company(self)
+        self.calculate_items()
         self.calculate_advance()
         self.fetch_payment_summary()
+
+    def calculate_items(self):
+        for row in self.items:
+            row.amount = flt(row.qty) * flt(row.rate)
 
     def calculate_advance(self):
         self.advance_amount = flt(self.subcontract_value) * flt(self.advance_percent) / 100

@@ -19,15 +19,8 @@ frappe.ui.form.on("Variation Order", {
             }
         });
     },
+    items_remove(frm) { CMS.recalc(frm); },
+
 });
 
-frappe.ui.form.on("Variation Order Item", {
-    qty: (frm, cdt, cdn) => set_amount(frm, cdt, cdn),
-    rate: (frm, cdt, cdn) => set_amount(frm, cdt, cdn),
-    nature: (frm) => frm.script_manager.trigger("validate"),
-});
-
-function set_amount(frm, cdt, cdn) {
-    const row = locals[cdt][cdn];
-    frappe.model.set_value(cdt, cdn, "amount", flt(row.qty) * flt(row.rate));
-}
+CMS.liveRows("Variation Order Item", ["nature", "qty", "rate"]);

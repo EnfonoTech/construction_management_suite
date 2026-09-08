@@ -26,24 +26,14 @@ frappe.ui.form.on("Subcontract Agreement", {
         CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
+    subcontract_value(frm) { CMS.recalc(frm); },
+    advance_percent(frm) { CMS.recalc(frm); },
+    items_remove(frm) { CMS.recalc(frm); },
 
-    subcontract_value: advance,
-    advance_percent: advance,
-    items_remove: totals,
 });
 
-frappe.ui.form.on("Subcontract Item", {
-    qty: (frm, cdt, cdn) => { CMS.rowAmount(cdt, cdn, "qty", "rate", "amount"); totals(frm); },
-    rate: (frm, cdt, cdn) => { CMS.rowAmount(cdt, cdn, "qty", "rate", "amount"); totals(frm); },
-});
 
-function advance(frm) {
-    frm.set_value("advance_amount", flt(frm.doc.subcontract_value) * flt(frm.doc.advance_percent) / 100);
-}
 
 /** Offer the line total as the contract value while the agreement is still a draft. */
-function totals(frm) {
-    if (frm.doc.docstatus !== 0) return;
-    const lines = CMS.sum(frm.doc.items, "amount");
-    if (lines && !flt(frm.doc.subcontract_value)) frm.set_value("subcontract_value", lines);
-}
+
+CMS.liveRows("Subcontract Item", ["qty", "rate"]);
