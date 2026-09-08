@@ -4,10 +4,12 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.validations import validate_project_company
 
 
 class SiteTransfer(Document):
     def validate(self):
+        validate_project_company(self, ("from_project", "to_project"))
         if self.from_warehouse == self.to_warehouse:
             frappe.throw(_("Source and destination warehouses must be different"))
 

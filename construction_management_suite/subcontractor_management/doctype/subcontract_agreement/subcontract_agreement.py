@@ -4,10 +4,12 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.validations import validate_project_company
 
 
 class SubcontractAgreement(Document):
     def validate(self):
+        validate_project_company(self)
         self.calculate_advance()
         self.fetch_payment_summary()
 

@@ -2,12 +2,14 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate
+from construction_management_suite.utils.validations import validate_project_company
 
 
 class BOQ(Document):
     # ----- Lifecycle -----
 
     def validate(self):
+        validate_project_company(self)
         self.set_currency_from_project()
         self.calculate_item_amounts()
         self.calculate_totals()

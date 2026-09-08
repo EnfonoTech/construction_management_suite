@@ -1,12 +1,16 @@
 frappe.ui.form.on("Site Material Request", {
     refresh(frm) {
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
         CMS.filterByCompany(frm, "warehouse", { is_group: 0 });
         if (!frm.doc.request_date) frm.set_value("request_date", frappe.datetime.get_today());
         CMS.linkButton(frm, __("Material Request"), "Material Request", frm.doc.material_request_ref);
     },
     project(frm) { CMS.fillFromProject(frm, { company: "company" }); },
-    company(frm) { CMS.filterByCompany(frm, "warehouse", { is_group: 0 }); },
+    company(frm) {
+        CMS.filterByCompany(frm, "warehouse", { is_group: 0 });
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
+    },
 });
 
 frappe.ui.form.on("Site Material Request Item", {

@@ -1,6 +1,6 @@
 frappe.ui.form.on("BOQ", {
     refresh(frm) {
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
 
         if (frm.doc.docstatus === 1 && frm.doc.status !== "Revised") {
             frm.add_custom_button(__("Create Revision"), () => {
@@ -43,6 +43,21 @@ frappe.ui.form.on("BOQ", {
         if (frm.doc.total_amount > 0) {
             render_cost_breakdown(frm);
         }
+    },
+
+    project(frm) {
+        CMS.fillFromProject(frm, {
+            company: "company",
+            client: "customer",
+            client_po: "cms_client_po",
+            contract_value: "cms_contract_value",
+        });
+    },
+
+    company(frm) {
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
+        if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
 
     qty(frm, cdt, cdn) { calculate_row(frm, cdt, cdn); },

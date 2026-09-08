@@ -2,10 +2,12 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate
+from construction_management_suite.utils.validations import validate_project_company
 
 
 class DailySiteReport(Document):
     def validate(self):
+        validate_project_company(self)
         self.validate_date()
         self.set_submitted_by()
         self.calculate_labour_cost()

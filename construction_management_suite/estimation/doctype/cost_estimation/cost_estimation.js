@@ -1,7 +1,7 @@
 frappe.ui.form.on("Cost Estimation", {
     refresh(frm) {
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
     },
 
     project(frm) {
@@ -9,6 +9,8 @@ frappe.ui.form.on("Cost Estimation", {
     },
 
     company(frm) {
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
 

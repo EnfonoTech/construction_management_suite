@@ -1,6 +1,6 @@
 frappe.ui.form.on("Project Budget", {
     refresh(frm) {
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
         CMS.filterByCompany(frm, "wip_account", { is_group: 0 });
         frm.set_query("cost_code", "items", () => ({ filters: { company: frm.doc.company, is_group: 0 } }));
 
@@ -14,6 +14,8 @@ frappe.ui.form.on("Project Budget", {
 
     project(frm) { CMS.fillFromProject(frm, { company: "company" }); },
     company(frm) {
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
     items_remove: recalc,

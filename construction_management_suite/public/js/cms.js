@@ -134,6 +134,35 @@ CMS.filterByCompany = function (frm, fieldname, extra) {
     }));
 };
 
+/**
+ * Restrict a project link to the document's own company, and to jobs that are
+ * still running. On a multi-company site an unfiltered project list is how a
+ * certificate ends up posted against the wrong company's books.
+ */
+CMS.filterProjects = function (frm, fieldname) {
+    frm.set_query(fieldname || "project", () => ({
+        filters: {
+            company: frm.doc.company || undefined,
+            status: ["!=", "Completed"],
+        },
+    }));
+};
+
+/** Clear a project that no longer belongs to the chosen company. */
+CMS.clearForeignProject = function (frm, fieldname) {
+    const field = fieldname || "project";
+    if (!frm.doc[field] || !frm.doc.company) return;
+    frappe.db.get_value("Project", frm.doc[field], "company").then(r => {
+        if (r.message && r.message.company !== frm.doc.company) {
+            frm.set_value(field, null);
+            frappe.show_alert({
+                message: __("Project cleared — it belongs to {0}", [r.message.company]),
+                indicator: "orange",
+            });
+        }
+    });
+};
+
 /** Restrict a link field to the document's own project. */
 CMS.filterByProject = function (frm, fieldname, extra) {
     frm.set_query(fieldname, () => ({

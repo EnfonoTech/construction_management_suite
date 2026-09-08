@@ -1,7 +1,12 @@
 frappe.ui.form.on("Variation Order", {
     refresh(frm) {
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
         frm.set_query("boq_ref", () => ({ filters: { project: frm.doc.project, docstatus: 1 } }));
+    },
+
+    company(frm) {
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
     },
 
     project(frm) {

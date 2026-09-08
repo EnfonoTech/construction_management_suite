@@ -1,6 +1,6 @@
 frappe.ui.form.on("Subcontract Agreement", {
     refresh(frm) {
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
         CMS.linkButton(frm, __("Purchase Order"), "Purchase Order", frm.doc.purchase_order_ref);
 
         if (frm.doc.docstatus === 1 && frm.doc.status !== "Terminated") {
@@ -22,6 +22,8 @@ frappe.ui.form.on("Subcontract Agreement", {
     },
 
     company(frm) {
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
 

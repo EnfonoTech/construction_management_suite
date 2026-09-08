@@ -1,8 +1,13 @@
 frappe.ui.form.on("Daily Site Report", {
     refresh(frm) {
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
         if (!frm.doc.report_date) frm.set_value("report_date", frappe.datetime.get_today());
     },
+    company(frm) {
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
+    },
+
     project(frm) { CMS.fillFromProject(frm, { company: "company" }); },
     labour_remove: labour_total,
     equipment_remove: labour_total,

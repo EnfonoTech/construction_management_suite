@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate
+from construction_management_suite.utils.validations import validate_project_company
 
 
 class VariationOrder(Document):
@@ -13,6 +14,7 @@ class VariationOrder(Document):
     """
 
     def validate(self):
+        validate_project_company(self)
         self.calculate_items()
         self.calculate_totals()
         self.set_contract_position()

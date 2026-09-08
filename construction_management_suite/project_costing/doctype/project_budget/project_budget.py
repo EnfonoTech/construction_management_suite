@@ -2,10 +2,12 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
+from construction_management_suite.utils.validations import validate_project_company
 
 
 class ProjectBudget(Document):
     def validate(self):
+        validate_project_company(self)
         self.fetch_actual_costs()
         self.fetch_committed_costs()
         self.calculate_variance()

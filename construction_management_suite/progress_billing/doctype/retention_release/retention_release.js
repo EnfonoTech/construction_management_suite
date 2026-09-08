@@ -1,6 +1,6 @@
 frappe.ui.form.on("Retention Release", {
     refresh(frm) {
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
         if (!frm.doc.request_date) frm.set_value("request_date", frappe.datetime.get_today());
         CMS.linkButton(frm, __("Sales Invoice"), "Sales Invoice", frm.doc.sales_invoice_ref);
     },
@@ -11,6 +11,8 @@ frappe.ui.form.on("Retention Release", {
     },
 
     company(frm) {
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
 

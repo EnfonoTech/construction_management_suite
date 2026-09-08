@@ -1,7 +1,7 @@
 frappe.ui.form.on("Interim Payment Certificate", {
     refresh(frm) {
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
         CMS.linkButton(frm, __("Sales Invoice"), "Sales Invoice", frm.doc.sales_invoice_ref);
     },
 
@@ -15,6 +15,8 @@ frappe.ui.form.on("Interim Payment Certificate", {
     },
 
     company(frm) {
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
 

@@ -1,6 +1,6 @@
 frappe.ui.form.on("Material Forecast", {
     refresh(frm) {
-        frm.set_query("project", () => ({ filters: { status: ["!=", "Completed"] } }));
+        CMS.filterProjects(frm);
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
 
         // This endpoint existed with no way to reach it from the desk.
@@ -17,6 +17,11 @@ frappe.ui.form.on("Material Forecast", {
                 });
             }, __("Create"));
         }
+    },
+
+    company(frm) {
+        CMS.filterProjects(frm);
+        CMS.clearForeignProject(frm);
     },
 
     project(frm) { CMS.fillFromProject(frm, { company: "company" }); },

@@ -1,10 +1,12 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
+from construction_management_suite.utils.validations import validate_project_company
 
 
 class MaterialForecast(Document):
     def validate(self):
+        validate_project_company(self)
         self.recalculate()
 
     def recalculate(self):
