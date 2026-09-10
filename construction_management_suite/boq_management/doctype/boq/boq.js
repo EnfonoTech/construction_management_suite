@@ -1,6 +1,7 @@
 frappe.ui.form.on("BOQ", {
     refresh(frm) {
         CMS.uomQuery(frm, "items", "item_code");
+        if (!frm.is_new()) frm.add_custom_button(__("Rate Build-up"), () => CMS.showRateBuildUp(frm), __("View"));
         CMS.filterProjects(frm);
 
         if (frm.doc.docstatus === 1 && frm.doc.status !== "Revised") {

@@ -472,3 +472,88 @@ CMS.fetchItemRate = function (frm, cdt, cdn, opts) {
         },
     });
 };
+
+/**
+ * Show the rate build-up a line was priced from, exactly as it stood then,
+ * beside the library's current figures so any movement is obvious.
+ */
+CMS.showRateBuildUp = function (frm) {
+    const priced = (frm.doc.items || []).filter(r => r.rate_build_up || r.rate_analysis_ref);
+    if (!priced.length) {
+        frappe.msgprint(__("No line on this document was priced from a Rate Analysis."));
+        return;
+    }
+    const pick = new frappe.ui.Dialog({
+        title: __("Rate Build-up"),
+        fields: [{
+            fieldname: "idx", label: __("Line"), fieldtype: "Select", reqd: 1,
+            options: priced.map(r => `${r.idx} — ${r.item_code || r.description || ""}`),
+        }],
+        primary_action_label: __("Show"),
+        primary_action(values) {
+            pick.hide();
+            const idx = values.idx.split(" — ")[0];
+            frappe.call({
+                method: "construction_management_suite.api.boq.get_rate_build_up",
+                args: { doctype: frm.doc.doctype, docname: frm.doc.name, idx: idx },
+                freeze: true,
+                callback: (r) => render_build_up(frm, r.message),
+            });
+        },
+    });
+    pick.show();
+};
+
+function render_build_up(frm, data) {
+    if (!data) return;
+    const cur = frm.doc.currency;
+    const money = (v) => format_currency(flt(v), cur);
+
+    if (!data.frozen) {
+        frappe.msgprint({ title: __("Rate Build-up"), message: data.message, indicator: "orange" });
+        return;
+    }
+
+    const f = data.frozen;
+    const c = data.current;
+    const moved = c && Math.abs(flt(c.rate_per_unit) - flt(f.rate_per_unit)) > 0.005;
+
+    let html = `<div style="font-size:13px">
+      <p><b>${frappe.utils.escape_html(f.analysis_name || "")}</b>
+         <span class="text-muted">${f.rate_analysis}</span><br>
+         <span class="text-muted">${__("As applied on")} ${frappe.datetime.str_to_user(f.applied_on)}</span></p>
+      <table class="table table-bordered table-sm">
+        <thead><tr>
+          <th>${__("Type")}</th><th>${__("Resource")}</th><th>${__("UOM")}</th>
+          <th class="text-right">${__("Qty")}</th><th class="text-right">${__("Rate")}</th>
+          <th class="text-right">${__("Waste")}</th><th class="text-right">${__("Net")}</th>
+        </tr></thead><tbody>`;
+    (f.resources || []).forEach(r => {
+        html += `<tr><td>${r.type || ""}</td><td>${frappe.utils.escape_html(r.description || "")}</td>
+          <td>${r.uom || ""}</td><td class="text-right">${r.qty}</td>
+          <td class="text-right">${money(r.rate)}</td>
+          <td class="text-right">${r.waste_factor ? r.waste_factor + "%" : "—"}</td>
+          <td class="text-right">${money(r.net_amount)}</td></tr>`;
+    });
+    html += `</tbody><tfoot>`;
+    Object.entries(f.buckets || {}).forEach(([k, v]) => {
+        if (flt(v)) html += `<tr><td colspan="6" class="text-right text-muted">${k}</td>
+                             <td class="text-right">${money(v)}</td></tr>`;
+    });
+    html += `<tr><td colspan="6" class="text-right"><b>${__("Rate per unit")}</b>
+             ${flt(f.output_qty) !== 1 ? `<span class="text-muted">(${__("for")} ${f.output_qty})</span>` : ""}</td>
+             <td class="text-right"><b>${money(f.rate_per_unit)}</b></td></tr>`;
+    html += `</tfoot></table>`;
+
+    if (moved) {
+        html += `<div class="alert alert-warning" style="font-size:12.5px">
+          ${__("The library has changed since. This analysis now prices at <b>{0}</b>, against <b>{1}</b> when this line was set. The line keeps what it was priced at.",
+               [money(c.rate_per_unit), money(f.rate_per_unit)])}</div>`;
+    } else if (c) {
+        html += `<div class="text-muted" style="font-size:12px">${__("The library still prices this the same.")}</div>`;
+    }
+    html += `</div>`;
+
+    new frappe.ui.Dialog({ title: __("Rate Build-up"), size: "large",
+                           fields: [{ fieldtype: "HTML", options: html }] }).show();
+}

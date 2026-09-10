@@ -10,6 +10,8 @@
   "uom",
   "qty",
   "rate_analysis_ref",
+  "rate_build_up",
+  "rate_applied_on",
   "column_break_1",
   "material_cost",
   "labour_cost",
@@ -57,6 +59,21 @@
    "fieldtype": "Link",
    "label": "Rate Analysis",
    "options": "Rate Analysis"
+  },
+  {
+   "fieldname": "rate_build_up",
+   "fieldtype": "Long Text",
+   "label": "Rate Build-up (as applied)",
+   "read_only": 1,
+   "hidden": 1,
+   "print_hide": 1,
+   "description": "Frozen copy of the Rate Analysis resources at the moment this line was priced"
+  },
+  {
+   "fieldname": "rate_applied_on",
+   "fieldtype": "Datetime",
+   "label": "Rate Applied On",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_1",

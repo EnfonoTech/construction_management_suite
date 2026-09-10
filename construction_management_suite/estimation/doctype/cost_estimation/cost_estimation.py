@@ -31,6 +31,13 @@ class CostEstimation(Document):
                 item.subcontract_cost = flt(ra.total_subcontract_cost) / output
                 item.overhead_cost = flt(ra.total_overhead_cost) / output
                 item.unit_cost = flt(ra.rate_per_unit)
+                if not item.rate_build_up:
+                    # Freeze the reasoning the first time only; re-saving an
+                    # estimate must not quietly restate history.
+                    from construction_management_suite.api.boq import snapshot_rate_analysis
+
+                    item.rate_build_up = snapshot_rate_analysis(ra)
+                    item.rate_applied_on = frappe.utils.now()
             else:
                 item.unit_cost = (
                     flt(item.material_cost) + flt(item.labour_cost) + flt(item.equipment_cost)

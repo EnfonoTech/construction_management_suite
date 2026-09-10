@@ -3,6 +3,8 @@ BOQ public API endpoints — called from JS / mobile / external integrations.
 All methods are whitelisted for Frappe REST exposure.
 """
 
+import json
+
 import frappe
 from frappe import _
 from frappe.utils import flt
@@ -43,6 +45,8 @@ def apply_rate_analysis_to_boq(rate_analysis, boq, item_code):
             item.subcontract_rate = flt(ra.total_subcontract_cost) / output
             item.overhead_rate = flt(ra.total_overhead_cost) / output
             item.rate_analysis_ref = rate_analysis
+            item.rate_applied_on = frappe.utils.now()
+            item.rate_build_up = snapshot_rate_analysis(ra)
             updated += 1
     boq_doc.calculate_item_amounts()
     boq_doc.calculate_totals()
@@ -406,6 +410,7 @@ def price_boq_from_library(boq, overwrite=0):
             row.set(field, value)
         row.rate_analysis_ref = analysis
         row.rate_applied_on = frappe.utils.now()
+        row.rate_build_up = snapshot_rate_analysis(analysis)
         priced.append(row.item_code)
 
     if priced:
@@ -477,3 +482,68 @@ def get_item_valuation_rate(item_code, warehouse=None):
         if flt(rate)
         else {"rate": 0, "source": None}
     )
+
+
+# ─────────────────── Freezing the build-up behind a priced line ───────────────
+
+def snapshot_rate_analysis(ra):
+    """A frozen, readable copy of an analysis at the moment it is applied.
+
+    A BOQ line already keeps the five bucket rates, so a later edit to the
+    library cannot move a signed bill. What it did not keep was the reasoning —
+    seven cement bags at 2.100, 0.6 mason-days at 12.000 — and that is exactly
+    what you have to produce when a rate is challenged two years into a job.
+    Versions record the edit, but as raw diffs; this records the answer.
+    """
+    if isinstance(ra, str):
+        ra = frappe.get_cached_doc("Rate Analysis", ra)
+    return json.dumps(
+        {
+            "rate_analysis": ra.name,
+            "analysis_name": ra.analysis_name,
+            "applied_on": frappe.utils.now(),
+            "output_qty": flt(ra.output_qty) or 1,
+            "rate_per_unit": flt(ra.rate_per_unit),
+            "buckets": {
+                "Material": flt(ra.total_material_cost),
+                "Labour": flt(ra.total_labour_cost),
+                "Equipment": flt(ra.total_equipment_cost),
+                "Subcontract": flt(ra.total_subcontract_cost),
+                "Overhead": flt(ra.total_overhead_cost),
+            },
+            "resources": [
+                {
+                    "type": r.resource_type,
+                    "description": r.description or r.resource_item,
+                    "uom": r.uom,
+                    "qty": flt(r.qty),
+                    "rate": flt(r.rate),
+                    "waste_factor": flt(r.waste_factor),
+                    "net_amount": flt(r.net_amount),
+                }
+                for r in ra.resources
+            ],
+        },
+        default=str,
+    )
+
+
+@frappe.whitelist()
+def get_rate_build_up(doctype, docname, idx):
+    """The frozen build-up for one line, plus how the library has moved since."""
+    doc = frappe.get_doc(doctype, docname)
+    row = next((r for r in doc.items if str(r.idx) == str(idx)), None)
+    if not row:
+        frappe.throw(_("Row {0} not found").format(idx))
+    if not row.get("rate_build_up"):
+        return {
+            "frozen": None,
+            "rate_analysis": row.get("rate_analysis_ref"),
+            "message": _("This line was priced before build-ups were recorded, or the rate was typed by hand."),
+        }
+
+    frozen = json.loads(row.rate_build_up)
+    current = None
+    if row.get("rate_analysis_ref") and frappe.db.exists("Rate Analysis", row.rate_analysis_ref):
+        current = json.loads(snapshot_rate_analysis(row.rate_analysis_ref))
+    return {"frozen": frozen, "current": current}
