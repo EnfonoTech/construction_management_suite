@@ -536,10 +536,29 @@ def get_rate_build_up(doctype, docname, idx):
     if not row:
         frappe.throw(_("Row {0} not found").format(idx))
     if not row.get("rate_build_up"):
+        if not row.get("rate_analysis_ref"):
+            return {
+                "frozen": None,
+                "message": _("This rate was typed by hand — there is no analysis behind it. "
+                             "Pick a Rate Analysis on the line to record one."),
+            }
+        if not frappe.db.exists("Rate Analysis", row.rate_analysis_ref):
+            return {
+                "frozen": None,
+                "message": _("Rate Analysis {0} no longer exists, and no copy of it was kept "
+                             "on this line.").format(row.rate_analysis_ref),
+            }
+        # Named an analysis but has no frozen copy: priced before build-ups were
+        # recorded, or the two have drifted apart since. Show today's figures,
+        # clearly labelled as today's — never as what this line was priced at.
         return {
             "frozen": None,
-            "rate_analysis": row.get("rate_analysis_ref"),
-            "message": _("This line was priced before build-ups were recorded, or the rate was typed by hand."),
+            "current": json.loads(snapshot_rate_analysis(row.rate_analysis_ref)),
+            "rate_analysis": row.rate_analysis_ref,
+            "line_cost_rate": flt(row.get("cost_rate")),
+            "message": _("No build-up was recorded when this line was priced, so what follows is "
+                         "{0} as it stands today — not necessarily what this rate came from.").format(
+                             row.rate_analysis_ref),
         }
 
     frozen = json.loads(row.rate_build_up)

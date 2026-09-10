@@ -14,6 +14,7 @@ class BOQ(Document):
         self.calculate_item_amounts()
         self.calculate_totals()
         self.validate_items()
+        self.capture_rate_build_ups()
 
     def before_submit(self):
         self.status = "Submitted"
@@ -81,6 +82,32 @@ class BOQ(Document):
                 frappe.throw(_("Row {0}: Quantity must be greater than zero").format(row.idx))
             if flt(row.rate) < 0:
                 frappe.throw(_("Row {0}: Rate cannot be negative").format(row.idx))
+
+    def capture_rate_build_ups(self):
+        """Freeze the analysis behind any line that names one and has no copy yet.
+
+        Doing it here rather than in the buttons means every route in — picking
+        an analysis on the row, the two Actions, the REST API, a data import —
+        ends up with the same record.
+
+        A line is only frozen when its cost still matches what the analysis says
+        today. If they have already drifted apart, the build-up on file would
+        not be the one this rate came from, and a build-up that misrepresents
+        its own line is worse than none at all.
+        """
+        from construction_management_suite.api.boq import snapshot_rate_analysis
+
+        for item in self.items:
+            if not item.rate_analysis_ref or item.rate_build_up:
+                continue
+            if not frappe.db.exists("Rate Analysis", item.rate_analysis_ref):
+                continue
+            ra = frappe.get_cached_doc("Rate Analysis", item.rate_analysis_ref)
+            if abs(flt(ra.rate_per_unit) - flt(item.cost_rate)) > 0.005:
+                continue
+            item.rate_build_up = snapshot_rate_analysis(ra)
+            if not item.rate_applied_on:
+                item.rate_applied_on = frappe.utils.now()
 
     # ----- Revision Workflow -----
 

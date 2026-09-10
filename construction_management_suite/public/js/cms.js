@@ -509,19 +509,28 @@ function render_build_up(frm, data) {
     const cur = frm.doc.currency;
     const money = (v) => format_currency(flt(v), cur);
 
-    if (!data.frozen) {
+    if (!data.frozen && !data.current) {
         frappe.msgprint({ title: __("Rate Build-up"), message: data.message, indicator: "orange" });
         return;
     }
 
-    const f = data.frozen;
+    // No frozen copy, but the analysis still exists — show it as today's, with
+    // the warning first so nobody reads it as the original.
+    const f = data.frozen || data.current;
+    const asOfToday = !data.frozen;
     const c = data.current;
     const moved = c && Math.abs(flt(c.rate_per_unit) - flt(f.rate_per_unit)) > 0.005;
 
-    let html = `<div style="font-size:13px">
+    let html = `<div style="font-size:13px">`;
+    if (asOfToday) {
+        html += `<div class="alert alert-warning" style="font-size:12.5px">${data.message}</div>`;
+    }
+    html += `
       <p><b>${frappe.utils.escape_html(f.analysis_name || "")}</b>
          <span class="text-muted">${f.rate_analysis}</span><br>
-         <span class="text-muted">${__("As applied on")} ${frappe.datetime.str_to_user(f.applied_on)}</span></p>
+         <span class="text-muted">${asOfToday
+             ? __("As it stands today")
+             : __("As applied on") + " " + frappe.datetime.str_to_user(f.applied_on)}</span></p>
       <table class="table table-bordered table-sm">
         <thead><tr>
           <th>${__("Type")}</th><th>${__("Resource")}</th><th>${__("UOM")}</th>
@@ -545,7 +554,10 @@ function render_build_up(frm, data) {
              <td class="text-right"><b>${money(f.rate_per_unit)}</b></td></tr>`;
     html += `</tfoot></table>`;
 
-    if (moved) {
+    if (asOfToday && flt(data.line_cost_rate)) {
+        html += `<div class="text-muted" style="font-size:12px">${
+            __("This line's cost rate is {0}.", [money(data.line_cost_rate)])}</div>`;
+    } else if (moved) {
         html += `<div class="alert alert-warning" style="font-size:12.5px">
           ${__("The library has changed since. This analysis now prices at <b>{0}</b>, against <b>{1}</b> when this line was set. The line keeps what it was priced at.",
                [money(c.rate_per_unit), money(f.rate_per_unit)])}</div>`;
