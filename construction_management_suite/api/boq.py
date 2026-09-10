@@ -427,17 +427,58 @@ def price_boq_from_library(boq, overwrite=0):
 
 # ──────────────────────────── Where a rate comes from ─────────────────────────
 
+def _rate_from_basis(item_code, basis, price_list=None):
+    """Resolve exactly one source. No fallback — see get_item_rate."""
+    if basis == "Manual":
+        return {"rate": 0, "source": None}
+
+    if basis in ("Valuation Rate", "Last Purchase Rate"):
+        field = "valuation_rate" if basis == "Valuation Rate" else "last_purchase_rate"
+        rate = flt(frappe.db.get_value("Item", item_code, field))
+        return {"rate": rate, "source": _(basis)} if rate else {"rate": 0, "source": None}
+
+    if basis == "Price List":
+        price_list = price_list or frappe.db.get_single_value(
+            "Buying Settings", "buying_price_list"
+        )
+        if not price_list:
+            return {"rate": 0, "source": None}
+        rate = frappe.db.get_value(
+            "Item Price",
+            {"item_code": item_code, "price_list": price_list, "buying": 1},
+            "price_list_rate",
+            order_by="valid_from desc, modified desc",
+        )
+        return (
+            {"rate": flt(rate), "source": _("Price List: {0}").format(price_list)}
+            if flt(rate)
+            else {"rate": 0, "source": None}
+        )
+
+    # A typo'd basis silently falling through to the waterfall would quietly
+    # write a price-list rate where a valuation was asked for.
+    frappe.throw(_("Unknown rate basis {0}").format(basis))
+
+
 @frappe.whitelist()
-def get_item_rate(item_code, company=None):
+def get_item_rate(item_code, company=None, basis=None, price_list=None):
     """A sensible buying rate for an item, and where it came from.
 
-    Preference runs newest-price-first: an Item Price on the buying list is a
-    deliberate current price, the last purchase rate is what you actually paid,
-    and valuation is the fallback. Returning the source matters — an estimator
-    should know whether a rate is quoted, historic or a book value.
+    With no `basis`, preference runs newest-price-first: an Item Price on the
+    buying list is a deliberate current price, the last purchase rate is what
+    you actually paid, and valuation is the fallback. Returning the source
+    matters — an estimator should know whether a rate is quoted, historic or a
+    book value.
+
+    With an explicit `basis` only that source is consulted, and a miss returns
+    zero rather than falling back, so the caller can report it instead of
+    writing a worse number over a good one.
     """
     if not item_code:
         return {"rate": 0, "source": None}
+
+    if basis:
+        return _rate_from_basis(item_code, basis, price_list)
 
     price_list = frappe.db.get_single_value("Buying Settings", "buying_price_list")
     if price_list:

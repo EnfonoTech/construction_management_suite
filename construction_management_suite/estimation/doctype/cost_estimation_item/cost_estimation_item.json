@@ -58,7 +58,8 @@
    "fieldname": "rate_analysis_ref",
    "fieldtype": "Link",
    "label": "Rate Analysis",
-   "options": "Rate Analysis"
+   "options": "Rate Analysis",
+   "search_index": 1
   },
   {
    "fieldname": "rate_build_up",

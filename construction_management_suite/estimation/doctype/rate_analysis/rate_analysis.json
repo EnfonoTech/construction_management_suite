@@ -14,7 +14,11 @@
   "company",
   "currency",
   "date",
+  "previous_version",
   "status",
+  "rate_basis",
+  "buying_price_list",
+  "last_cost_update",
   "section_resources",
   "resources",
   "section_totals",
@@ -87,11 +91,42 @@
    "default": "Today"
   },
   {
+   "fieldname": "previous_version",
+   "fieldtype": "Link",
+   "label": "Previous Version",
+   "options": "Rate Analysis",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
    "options": "Draft\nApproved\nObsolete",
    "default": "Draft"
+  },
+  {
+   "fieldname": "rate_basis",
+   "fieldtype": "Select",
+   "label": "Rate Basis",
+   "options": "Manual\nValuation Rate\nLast Purchase Rate\nPrice List",
+   "default": "Manual",
+   "description": "Where Update Cost reads resource rates from. Manual means they are typed by hand."
+  },
+  {
+   "fieldname": "buying_price_list",
+   "fieldtype": "Link",
+   "label": "Price List",
+   "options": "Price List",
+   "depends_on": "eval:doc.rate_basis=='Price List'",
+   "mandatory_depends_on": "eval:doc.rate_basis=='Price List'"
+  },
+  {
+   "fieldname": "last_cost_update",
+   "fieldtype": "Datetime",
+   "label": "Last Cost Update",
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "section_resources",

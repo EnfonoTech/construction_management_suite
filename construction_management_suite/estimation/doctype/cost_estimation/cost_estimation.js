@@ -1,6 +1,7 @@
 frappe.ui.form.on("Cost Estimation", {
     refresh(frm) {
         CMS.uomQuery(frm, "items", "item_code");
+        CMS.rateAnalysisQuery(frm, "items");
         if (!frm.is_new()) frm.add_custom_button(__("Rate Build-up"), () => CMS.showRateBuildUp(frm), __("View"));
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
         CMS.filterProjects(frm);

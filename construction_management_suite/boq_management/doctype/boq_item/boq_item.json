@@ -228,7 +228,8 @@
    "label": "Rate Analysis Ref",
    "options": "Rate Analysis",
    "in_list_view": 1,
-   "columns": 1
+   "columns": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_4",

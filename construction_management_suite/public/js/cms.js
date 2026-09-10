@@ -209,6 +209,22 @@ CMS.clearForeignProject = function (frm, fieldname) {
     });
 };
 
+/**
+ * Restrict a line's Rate Analysis picker to analyses for that line's item.
+ * Obsolete ones are excluded rather than restricting to Approved, because a
+ * Draft analysis is a legitimate pick while a tender is still being priced.
+ */
+CMS.rateAnalysisQuery = function (frm, tablefield) {
+    frm.set_query("rate_analysis_ref", tablefield || "items", (doc, cdt, cdn) => {
+        const row = locals[cdt][cdn];
+        const filters = { status: ["!=", "Obsolete"] };
+        // With no item chosen, filtering on an empty item_code would match only
+        // analyses that have none — which reads as a broken picker.
+        if (row.item_code) filters.item_code = row.item_code;
+        return { filters };
+    });
+};
+
 /** Restrict a link field to the document's own project. */
 CMS.filterByProject = function (frm, fieldname, extra) {
     frm.set_query(fieldname, () => ({
@@ -456,7 +472,14 @@ CMS.fetchItemRate = function (frm, cdt, cdn, opts) {
             : "construction_management_suite.api.boq.get_item_rate",
         args: opts.valuation
             ? { item_code: item, warehouse: opts.warehouse ? frm.doc[opts.warehouse] : null }
-            : { item_code: item, company: frm.doc.company },
+            : {
+                  item_code: item,
+                  company: frm.doc.company,
+                  // Only sent when the caller has a basis; absent means the
+                  // existing preference chain, exactly as before.
+                  basis: opts.basis && opts.basis !== "Manual" ? opts.basis : undefined,
+                  price_list: opts.priceList || undefined,
+              },
         callback: (r) => {
             if (!r.message || !flt(r.message.rate)) return;
             frappe.model.set_value(cdt, cdn, opts.target, r.message.rate);
