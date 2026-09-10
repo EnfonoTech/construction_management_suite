@@ -16,3 +16,9 @@ frappe.ui.form.on("BOQ Template Item", {
     qty: (frm, cdt, cdn) => CMS.rowAmount(cdt, cdn, "qty", "rate", "amount"),
     rate: (frm, cdt, cdn) => CMS.rowAmount(cdt, cdn, "qty", "rate", "amount"),
 });
+
+frappe.ui.form.on("BOQ Template Item", {
+    item_code(frm, cdt, cdn) {
+        CMS.fetchItemRate(frm, cdt, cdn, { itemfield: "item_code", target: "rate" });
+    },
+});

@@ -440,3 +440,35 @@ CMS.uomQuery = function (frm, tablefield, itemfield) {
         };
     });
 };
+
+/**
+ * Fill a row's rate from the item, when it is still blank.
+ * Tells the user where the number came from — a rate off a price list and one
+ * off a book valuation deserve different amounts of trust.
+ */
+CMS.fetchItemRate = function (frm, cdt, cdn, opts) {
+    const row = locals[cdt][cdn];
+    const item = row[opts.itemfield || "item_code"];
+    if (!item || flt(row[opts.target])) return;
+    frappe.call({
+        method: opts.valuation
+            ? "construction_management_suite.api.boq.get_item_valuation_rate"
+            : "construction_management_suite.api.boq.get_item_rate",
+        args: opts.valuation
+            ? { item_code: item, warehouse: opts.warehouse ? frm.doc[opts.warehouse] : null }
+            : { item_code: item, company: frm.doc.company },
+        callback: (r) => {
+            if (!r.message || !flt(r.message.rate)) return;
+            frappe.model.set_value(cdt, cdn, opts.target, r.message.rate);
+            CMS.recalc(frm);
+            frappe.show_alert({
+                message: __("{0} rate {1} — {2}", [
+                    item,
+                    format_currency(r.message.rate, frm.doc.currency),
+                    r.message.source,
+                ]),
+                indicator: "blue",
+            }, 4);
+        },
+    });
+};

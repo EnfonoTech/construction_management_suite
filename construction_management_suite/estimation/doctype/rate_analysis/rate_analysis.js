@@ -69,3 +69,9 @@ function apply_to_boq(frm) {
 }
 
 CMS.liveRows("Rate Analysis Resource", ["resource_type", "qty", "rate", "waste_factor"]);
+
+frappe.ui.form.on("Rate Analysis Resource", {
+    resource_item(frm, cdt, cdn) {
+        CMS.fetchItemRate(frm, cdt, cdn, { itemfield: "resource_item", target: "rate" });
+    },
+});

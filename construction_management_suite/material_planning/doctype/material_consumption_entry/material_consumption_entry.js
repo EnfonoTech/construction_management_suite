@@ -18,3 +18,9 @@ frappe.ui.form.on("Material Consumption Entry", {
 });
 
 CMS.liveRows("Material Consumption Item", ["qty", "valuation_rate"]);
+
+frappe.ui.form.on("Material Consumption Item", {
+    item_code(frm, cdt, cdn) {
+        CMS.fetchItemRate(frm, cdt, cdn, { itemfield: "item_code", target: "valuation_rate", valuation: true, warehouse: "warehouse" });
+    },
+});

@@ -38,3 +38,9 @@ frappe.ui.form.on("Subcontract Agreement", {
 /** Offer the line total as the contract value while the agreement is still a draft. */
 
 CMS.liveRows("Subcontract Item", ["qty", "rate"]);
+
+frappe.ui.form.on("Subcontract Item", {
+    item_code(frm, cdt, cdn) {
+        CMS.fetchItemRate(frm, cdt, cdn, { itemfield: "item_code", target: "rate" });
+    },
+});

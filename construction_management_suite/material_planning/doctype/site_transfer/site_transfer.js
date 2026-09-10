@@ -25,3 +25,9 @@ frappe.ui.form.on("Site Transfer", {
         }
     },
 });
+
+frappe.ui.form.on("Site Transfer Item", {
+    item_code(frm, cdt, cdn) {
+        CMS.fetchItemRate(frm, cdt, cdn, { itemfield: "item_code", target: "valuation_rate", valuation: true, warehouse: "from_warehouse" });
+    },
+});

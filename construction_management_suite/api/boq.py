@@ -416,3 +416,64 @@ def price_boq_from_library(boq, overwrite=0):
         "skipped": skipped,
         "unmatched": sorted(set(unmatched)),
     }
+
+
+# ──────────────────────────── Where a rate comes from ─────────────────────────
+
+@frappe.whitelist()
+def get_item_rate(item_code, company=None):
+    """A sensible buying rate for an item, and where it came from.
+
+    Preference runs newest-price-first: an Item Price on the buying list is a
+    deliberate current price, the last purchase rate is what you actually paid,
+    and valuation is the fallback. Returning the source matters — an estimator
+    should know whether a rate is quoted, historic or a book value.
+    """
+    if not item_code:
+        return {"rate": 0, "source": None}
+
+    price_list = frappe.db.get_single_value("Buying Settings", "buying_price_list")
+    if price_list:
+        price = frappe.db.get_value(
+            "Item Price",
+            {
+                "item_code": item_code,
+                "price_list": price_list,
+                "buying": 1,
+            },
+            ["price_list_rate"],
+            order_by="valid_from desc, modified desc",
+        )
+        if price:
+            return {"rate": flt(price), "source": _("Price List: {0}").format(price_list)}
+
+    item = frappe.db.get_value(
+        "Item", item_code, ["last_purchase_rate", "valuation_rate"], as_dict=True
+    ) or {}
+    if flt(item.get("last_purchase_rate")):
+        return {"rate": flt(item["last_purchase_rate"]), "source": _("Last Purchase Rate")}
+    if flt(item.get("valuation_rate")):
+        return {"rate": flt(item["valuation_rate"]), "source": _("Valuation Rate")}
+    return {"rate": 0, "source": None}
+
+
+@frappe.whitelist()
+def get_item_valuation_rate(item_code, warehouse=None):
+    """What the stock on hand is actually worth, not what it would cost to buy.
+
+    Used where the figure values a movement rather than prices a purchase.
+    """
+    if not item_code:
+        return {"rate": 0, "source": None}
+    if warehouse:
+        rate = frappe.db.get_value(
+            "Bin", {"item_code": item_code, "warehouse": warehouse}, "valuation_rate"
+        )
+        if flt(rate):
+            return {"rate": flt(rate), "source": _("Valuation in {0}").format(warehouse)}
+    rate = frappe.db.get_value("Item", item_code, "valuation_rate")
+    return (
+        {"rate": flt(rate), "source": _("Item Valuation Rate")}
+        if flt(rate)
+        else {"rate": 0, "source": None}
+    )

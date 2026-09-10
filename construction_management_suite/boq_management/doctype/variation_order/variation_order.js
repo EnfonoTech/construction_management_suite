@@ -25,3 +25,9 @@ frappe.ui.form.on("Variation Order", {
 });
 
 CMS.liveRows("Variation Order Item", ["nature", "qty", "rate"]);
+
+frappe.ui.form.on("Variation Order Item", {
+    item_code(frm, cdt, cdn) {
+        CMS.fetchItemRate(frm, cdt, cdn, { itemfield: "item_code", target: "rate" });
+    },
+});
