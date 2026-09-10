@@ -387,15 +387,17 @@ def price_boq_from_library(boq, overwrite=0):
     if doc.docstatus != 0:
         frappe.throw(_("Only a draft BOQ can be priced from the library"))
 
-    library = {
-        r.item_code: r.name
-        for r in frappe.get_all(
-            "Rate Analysis",
-            filters={"status": "Approved", "item_code": ["is", "set"]},
-            fields=["name", "item_code"],
-            order_by="modified desc",
-        )
-    }
+    # setdefault, not a dict comprehension: iterating newest-first and assigning
+    # every time leaves the OLDEST analysis in the map, which is the opposite of
+    # what get_rate_analysis_for_item picks. The two must agree.
+    library = {}
+    for r in frappe.get_all(
+        "Rate Analysis",
+        filters={"status": "Approved", "item_code": ["is", "set"]},
+        fields=["name", "item_code"],
+        order_by="modified desc",
+    ):
+        library.setdefault(r.item_code, r.name)
 
     priced, skipped, unmatched = [], [], []
     for row in doc.items:
@@ -514,6 +516,14 @@ def snapshot_rate_analysis(ra):
             "resources": [
                 {
                     "type": r.resource_type,
+                    # Keep the real Item alongside the text: a take-off report has
+                    # to group by item and item group, and a description cannot.
+                    "resource_item": r.resource_item or None,
+                    "item_group": (
+                        frappe.db.get_value("Item", r.resource_item, "item_group")
+                        if r.resource_item
+                        else None
+                    ),
                     "description": r.description or r.resource_item,
                     "uom": r.uom,
                     "qty": flt(r.qty),
