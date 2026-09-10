@@ -15,18 +15,18 @@ frappe.ui.form.on("BOQ", {
         }
 
         if (frm.doc.docstatus === 1) {
+            // Both carry the BOQ's lines across — see api.boq.make_*
             frm.add_custom_button(__("Cost Estimation"), () => {
-                frappe.new_doc("Cost Estimation", {
-                    project: frm.doc.project, boq_ref: frm.doc.name,
-                    company: frm.doc.company, currency: frm.doc.currency,
+                frappe.model.open_mapped_doc({
+                    method: "construction_management_suite.api.boq.make_cost_estimation",
+                    frm: frm,
                 });
             }, __("Create"));
 
             frm.add_custom_button(__("Interim Payment Certificate"), () => {
-                frappe.new_doc("Interim Payment Certificate", {
-                    project: frm.doc.project, boq_ref: frm.doc.name,
-                    company: frm.doc.company, currency: frm.doc.currency,
-                    client: frm.doc.client, contract_value: frm.doc.grand_total,
+                frappe.model.open_mapped_doc({
+                    method: "construction_management_suite.api.boq.make_interim_payment_certificate",
+                    frm: frm,
                 });
             }, __("Create"));
 
@@ -42,6 +42,8 @@ frappe.ui.form.on("BOQ", {
         }
 
         if (frm.doc.docstatus === 0) {
+            frm.add_custom_button(__("Price from Rate Library"), () => price_from_library(frm), __("Actions"));
+
             frm.add_custom_button(__("Import from Template"), () => {
                 frappe.prompt(
                     [{ fieldname: "template", label: __("BOQ Template"), fieldtype: "Link", options: "BOQ Template", reqd: 1 }],
@@ -104,4 +106,45 @@ function render_cost_breakdown(frm) {
     );
 }
 
-CMS.liveRows("BOQ Item", ["qty", "rate", "material_rate", "labour_rate", "equipment_rate", "overhead_rate", "actual_qty"]);
+CMS.liveRows("BOQ Item", ["qty", "rate", "material_rate", "labour_rate", "equipment_rate",
+                          "subcontract_rate", "overhead_rate", "actual_qty"]);
+
+// Picking an analysis on a row pulls its rates straight in.
+frappe.ui.form.on("BOQ Item", {
+    rate_analysis_ref(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        if (!row.rate_analysis_ref) return;
+        frappe.call({
+            method: "construction_management_suite.api.boq.get_rate_analysis_rates",
+            args: { rate_analysis: row.rate_analysis_ref },
+            callback: (r) => {
+                if (!r.message) return;
+                Object.entries(r.message).forEach(([f, v]) => frappe.model.set_value(cdt, cdn, f, v));
+                CMS.recalc(frm);
+            },
+        });
+    },
+});
+
+function price_from_library(frm) {
+    frappe.confirm(
+        __("Price every line that has an approved Rate Analysis for its item?<br><small>Lines that already carry a rate are left alone.</small>"),
+        () => {
+            frappe.call({
+                method: "construction_management_suite.api.boq.price_boq_from_library",
+                args: { boq: frm.doc.name },
+                freeze: true,
+                freeze_message: __("Pricing from the rate library…"),
+                callback: (r) => {
+                    if (!r.message) return;
+                    const m = r.message;
+                    let msg = __("{0} line(s) priced.", [m.priced.length]);
+                    if (m.skipped.length) msg += "<br>" + __("{0} already had a rate and were left alone.", [m.skipped.length]);
+                    if (m.unmatched.length) msg += "<br>" + __("No approved analysis for: {0}", [m.unmatched.join(", ")]);
+                    frappe.msgprint({ title: __("Priced from Library"), message: msg, indicator: m.priced.length ? "green" : "orange" });
+                    frm.reload_doc();
+                },
+            });
+        }
+    );
+}

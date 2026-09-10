@@ -284,24 +284,26 @@ CMS.calc["Rate Analysis"] = function (doc) {
 };
 
 CMS.calc["Cost Estimation"] = function (doc) {
-    let m = 0, l = 0, e = 0, o = 0, sub = 0;
+    let m = 0, l = 0, e = 0, sc = 0, o = 0, sub = 0;
     (doc.items || []).forEach(r => {
         // Rows linked to a Rate Analysis are priced by the server from that
         // analysis; leave their unit cost alone.
         if (!r.rate_analysis_ref) {
-            r.unit_cost = flt(r.material_cost) + flt(r.labour_cost)
-                + flt(r.equipment_cost) + flt(r.overhead_cost);
+            r.unit_cost = flt(r.material_cost) + flt(r.labour_cost) + flt(r.equipment_cost)
+                + flt(r.subcontract_cost) + flt(r.overhead_cost);
         }
         r.total_cost = flt(r.qty) * flt(r.unit_cost);
         m += flt(r.material_cost) * flt(r.qty);
         l += flt(r.labour_cost) * flt(r.qty);
         e += flt(r.equipment_cost) * flt(r.qty);
+        sc += flt(r.subcontract_cost) * flt(r.qty);
         o += flt(r.overhead_cost) * flt(r.qty);
         sub += flt(r.total_cost);
     });
     doc.estimated_material_cost = m;
     doc.estimated_labour_cost = l;
     doc.estimated_equipment_cost = e;
+    doc.estimated_subcontract_cost = sc;
     doc.estimated_overhead_cost = o;
     doc.contingency_amount = flt(sub) * flt(doc.contingency_percent) / 100;
     doc.total_estimated_cost = sub + flt(doc.contingency_amount);

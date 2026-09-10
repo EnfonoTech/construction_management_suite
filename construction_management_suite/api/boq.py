@@ -193,3 +193,186 @@ def get_previous_ipc_position(project):
         "certificates": row.certificates or 0,
         "next_ipc_number": (row.last_ipc_number or 0) + 1,
     }
+
+
+# ──────────────────────────── Carrying lines forward ────────────────────────────
+
+@frappe.whitelist()
+def make_cost_estimation(source_name, target_doc=None):
+    """Open a Cost Estimation already carrying the BOQ's lines.
+
+    The BOQ's component rates are costs, so they map onto the estimate's cost
+    columns; the BOQ's `rate` is the selling rate and is deliberately not copied.
+    """
+    from frappe.model.mapper import get_mapped_doc
+
+    def postprocess(source, target):
+        target.estimation_title = _("Estimate for {0}").format(source.boq_title)
+        target.boq_ref = source.name
+        target.selling_price = flt(source.grand_total)
+
+    return get_mapped_doc(
+        "BOQ",
+        source_name,
+        {
+            "BOQ": {
+                "doctype": "Cost Estimation",
+                "field_map": {"project": "project", "company": "company", "currency": "currency"},
+                "validation": {"docstatus": ["=", 1]},
+            },
+            "BOQ Item": {
+                "doctype": "Cost Estimation Item",
+                "field_map": {
+                    "item_code": "item_code",
+                    "description": "description",
+                    "uom": "uom",
+                    "qty": "qty",
+                    "material_rate": "material_cost",
+                    "labour_rate": "labour_cost",
+                    "equipment_rate": "equipment_cost",
+                    "subcontract_rate": "subcontract_cost",
+                    "overhead_rate": "overhead_cost",
+                    "rate_analysis_ref": "rate_analysis_ref",
+                },
+            },
+        },
+        target_doc,
+        postprocess,
+    )
+
+
+@frappe.whitelist()
+def make_interim_payment_certificate(source_name, target_doc=None):
+    """Open a certificate carrying the BOQ's lines, with each line's previously
+    claimed quantity already filled in from earlier submitted certificates.
+
+    Re-typing that figure by hand is how a client gets billed twice for the
+    same work, so it is looked up rather than left blank.
+    """
+    from frappe.model.mapper import get_mapped_doc
+
+    def postprocess(source, target):
+        target.ipc_title = _("Payment Certificate — {0}").format(source.boq_title)
+        target.boq_ref = source.name
+        target.contract_value = flt(source.grand_total)
+
+        position = get_previous_ipc_position(source.project)
+        target.ipc_number = position["next_ipc_number"]
+        target.previous_cumulative_amount = position["cumulative_amount"]
+        if not target.retention_percent:
+            target.retention_percent = flt(
+                frappe.db.get_value("Project", source.project, "cms_retention_percent")
+            )
+
+        claimed = _previously_claimed_by_line(source.project)
+        for row in target.items:
+            row.previous_qty_claimed = flt(claimed.get(row.boq_item_ref))
+
+    return get_mapped_doc(
+        "BOQ",
+        source_name,
+        {
+            "BOQ": {
+                "doctype": "Interim Payment Certificate",
+                "field_map": {
+                    "project": "project",
+                    "company": "company",
+                    "currency": "currency",
+                    "client": "client",
+                },
+                "validation": {"docstatus": ["=", 1]},
+            },
+            "BOQ Item": {
+                "doctype": "IPC Item",
+                "field_map": {
+                    "item_code": "boq_item_ref",
+                    "description": "description",
+                    "uom": "uom",
+                    "qty": "contract_qty",
+                    "rate": "contract_rate",
+                },
+            },
+        },
+        target_doc,
+        postprocess,
+    )
+
+
+def _previously_claimed_by_line(project):
+    """Quantity already certified per BOQ line reference on this project."""
+    rows = frappe.db.sql(
+        """
+        SELECT i.boq_item_ref AS ref, SUM(i.qty_this_period) AS qty
+        FROM `tabIPC Item` i
+        JOIN `tabInterim Payment Certificate` p ON p.name = i.parent
+        WHERE p.project = %s AND p.docstatus = 1 AND i.boq_item_ref IS NOT NULL
+        GROUP BY i.boq_item_ref
+        """,
+        project,
+        as_dict=True,
+    )
+    return {r.ref: flt(r.qty) for r in rows}
+
+
+# ──────────────────────────── Pricing from the rate library ────────────────────
+
+@frappe.whitelist()
+def get_rate_analysis_rates(rate_analysis):
+    """The five per-unit component rates behind an analysis, plus the total."""
+    ra = frappe.get_cached_doc("Rate Analysis", rate_analysis)
+    output = flt(ra.output_qty) or 1
+    return {
+        "rate": flt(ra.rate_per_unit),
+        "material_rate": flt(ra.total_material_cost) / output,
+        "labour_rate": flt(ra.total_labour_cost) / output,
+        "equipment_rate": flt(ra.total_equipment_cost) / output,
+        "subcontract_rate": flt(ra.total_subcontract_cost) / output,
+        "overhead_rate": flt(ra.total_overhead_cost) / output,
+    }
+
+
+@frappe.whitelist()
+def price_boq_from_library(boq, overwrite=0):
+    """Price every BOQ line that has an approved Rate Analysis for its item.
+
+    Beats the old one-item-at-a-time prompt: a fifty-line bill is priced in a
+    click, and by default lines already carrying a rate are left alone so a
+    negotiated rate is never silently overwritten.
+    """
+    overwrite = int(overwrite or 0)
+    doc = frappe.get_doc("BOQ", boq)
+    if doc.docstatus != 0:
+        frappe.throw(_("Only a draft BOQ can be priced from the library"))
+
+    library = {
+        r.item_code: r.name
+        for r in frappe.get_all(
+            "Rate Analysis",
+            filters={"status": "Approved", "item_code": ["is", "set"]},
+            fields=["name", "item_code"],
+            order_by="modified desc",
+        )
+    }
+
+    priced, skipped, unmatched = [], [], []
+    for row in doc.items:
+        analysis = library.get(row.item_code)
+        if not analysis:
+            unmatched.append(row.item_code)
+            continue
+        if flt(row.rate) and not overwrite:
+            skipped.append(row.item_code)
+            continue
+        for field, value in get_rate_analysis_rates(analysis).items():
+            row.set(field, value)
+        row.rate_analysis_ref = analysis
+        priced.append(row.item_code)
+
+    if priced:
+        doc.save(ignore_permissions=True)
+
+    return {
+        "priced": priced,
+        "skipped": skipped,
+        "unmatched": sorted(set(unmatched)),
+    }

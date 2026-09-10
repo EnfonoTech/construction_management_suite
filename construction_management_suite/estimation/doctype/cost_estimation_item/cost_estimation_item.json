@@ -14,6 +14,7 @@
   "material_cost",
   "labour_cost",
   "equipment_cost",
+  "subcontract_cost",
   "overhead_cost",
   "unit_cost",
   "total_cost"
@@ -77,6 +78,12 @@
    "fieldname": "equipment_cost",
    "fieldtype": "Currency",
    "label": "Equipment Cost"
+  },
+  {
+   "fieldname": "subcontract_cost",
+   "fieldtype": "Currency",
+   "label": "Subcontract Cost",
+   "options": "currency"
   },
   {
    "fieldname": "overhead_cost",

@@ -6,47 +6,230 @@
  "document_type": "Document",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series", "estimation_title", "project", "boq_ref",
-  "column_break_1", "company", "currency", "estimation_date", "status",
-  "section_items", "items",
-  "section_totals", "estimated_material_cost", "estimated_labour_cost",
-  "estimated_equipment_cost", "column_break_2",
-  "estimated_overhead_cost", "contingency_percent", "contingency_amount",
-  "total_estimated_cost", "selling_price", "margin_percent",
-  "section_approvals", "prepared_by", "submitted_by", "column_break_3",
-  "submission_date", "approved_by", "approval_date", "notes"
+  "naming_series",
+  "estimation_title",
+  "project",
+  "boq_ref",
+  "column_break_1",
+  "company",
+  "currency",
+  "estimation_date",
+  "status",
+  "section_items",
+  "items",
+  "section_totals",
+  "estimated_material_cost",
+  "estimated_labour_cost",
+  "estimated_equipment_cost",
+  "estimated_subcontract_cost",
+  "column_break_2",
+  "estimated_overhead_cost",
+  "contingency_percent",
+  "contingency_amount",
+  "total_estimated_cost",
+  "selling_price",
+  "margin_percent",
+  "section_approvals",
+  "prepared_by",
+  "submitted_by",
+  "column_break_3",
+  "submission_date",
+  "approved_by",
+  "approval_date",
+  "notes"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "EST-.YYYY.-.####", "reqd": 1},
-  {"fieldname": "estimation_title", "fieldtype": "Data", "label": "Estimation Title", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "boq_ref", "fieldtype": "Link", "label": "BOQ Reference", "options": "BOQ"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
-  {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency", "reqd": 1},
-  {"fieldname": "estimation_date", "fieldtype": "Date", "label": "Estimation Date", "default": "Today"},
-  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nApproved\nRejected", "default": "Draft", "in_list_view": 1},
-  {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Estimation Items"},
-  {"fieldname": "items", "fieldtype": "Table", "label": "Items", "options": "Cost Estimation Item"},
-  {"fieldname": "section_totals", "fieldtype": "Section Break", "label": "Cost Summary"},
-  {"fieldname": "estimated_material_cost", "fieldtype": "Currency", "label": "Material Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "estimated_labour_cost", "fieldtype": "Currency", "label": "Labour Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "estimated_equipment_cost", "fieldtype": "Currency", "label": "Equipment Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "column_break_2", "fieldtype": "Column Break"},
-  {"fieldname": "estimated_overhead_cost", "fieldtype": "Currency", "label": "Overhead Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "contingency_percent", "fieldtype": "Percent", "label": "Contingency %", "default": "5"},
-  {"fieldname": "contingency_amount", "fieldtype": "Currency", "label": "Contingency Amount", "options": "currency", "read_only": 1},
-  {"fieldname": "total_estimated_cost", "fieldtype": "Currency", "label": "Total Estimated Cost", "options": "currency", "read_only": 1, "bold": 1},
-  {"fieldname": "selling_price", "fieldtype": "Currency", "label": "Selling Price / Tender Price", "options": "currency"},
-  {"fieldname": "margin_percent", "fieldtype": "Percent", "label": "Margin %", "read_only": 1},
-  {"fieldname": "section_approvals", "fieldtype": "Section Break", "label": "Approvals"},
-  {"fieldname": "prepared_by", "fieldtype": "Link", "label": "Prepared By", "options": "User"},
-  {"fieldname": "submitted_by", "fieldtype": "Link", "label": "Submitted By", "options": "User"},
-  {"fieldname": "column_break_3", "fieldtype": "Column Break"},
-  {"fieldname": "submission_date", "fieldtype": "Date", "label": "Submission Date"},
-  {"fieldname": "approved_by", "fieldtype": "Link", "label": "Approved By", "options": "User"},
-  {"fieldname": "approval_date", "fieldtype": "Date", "label": "Approval Date"},
-  {"fieldname": "notes", "fieldtype": "Text Editor", "label": "Notes"}
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "EST-.YYYY.-.####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "estimation_title",
+   "fieldtype": "Data",
+   "label": "Estimation Title",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "boq_ref",
+   "fieldtype": "Link",
+   "label": "BOQ Reference",
+   "options": "BOQ"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "remember_last_selected_value": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "estimation_date",
+   "fieldtype": "Date",
+   "label": "Estimation Date",
+   "default": "Today"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nSubmitted\nApproved\nRejected",
+   "default": "Draft",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "section_items",
+   "fieldtype": "Section Break",
+   "label": "Estimation Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Cost Estimation Item"
+  },
+  {
+   "fieldname": "section_totals",
+   "fieldtype": "Section Break",
+   "label": "Cost Summary"
+  },
+  {
+   "fieldname": "estimated_material_cost",
+   "fieldtype": "Currency",
+   "label": "Material Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estimated_labour_cost",
+   "fieldtype": "Currency",
+   "label": "Labour Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estimated_equipment_cost",
+   "fieldtype": "Currency",
+   "label": "Equipment Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estimated_subcontract_cost",
+   "fieldtype": "Currency",
+   "label": "Estimated Subcontract Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "estimated_overhead_cost",
+   "fieldtype": "Currency",
+   "label": "Overhead Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contingency_percent",
+   "fieldtype": "Percent",
+   "label": "Contingency %",
+   "default": "5"
+  },
+  {
+   "fieldname": "contingency_amount",
+   "fieldtype": "Currency",
+   "label": "Contingency Amount",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_estimated_cost",
+   "fieldtype": "Currency",
+   "label": "Total Estimated Cost",
+   "options": "currency",
+   "read_only": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "selling_price",
+   "fieldtype": "Currency",
+   "label": "Selling Price / Tender Price",
+   "options": "currency"
+  },
+  {
+   "fieldname": "margin_percent",
+   "fieldtype": "Percent",
+   "label": "Margin %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_approvals",
+   "fieldtype": "Section Break",
+   "label": "Approvals"
+  },
+  {
+   "fieldname": "prepared_by",
+   "fieldtype": "Link",
+   "label": "Prepared By",
+   "options": "User"
+  },
+  {
+   "fieldname": "submitted_by",
+   "fieldtype": "Link",
+   "label": "Submitted By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "submission_date",
+   "fieldtype": "Date",
+   "label": "Submission Date"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User"
+  },
+  {
+   "fieldname": "approval_date",
+   "fieldtype": "Date",
+   "label": "Approval Date"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  }
  ],
  "is_submittable": 1,
  "links": [],
@@ -54,10 +237,39 @@
  "name": "Cost Estimation",
  "owner": "Administrator",
  "permissions": [
-  {"role": "CMS Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 1, "cancel": 1, "amend": 1, "print": 1, "report": 1},
-  {"role": "CMS Quantity Surveyor", "read": 1, "write": 1, "create": 1, "submit": 1, "print": 1, "report": 1},
-  {"role": "CMS Project Manager", "read": 1, "write": 1, "submit": 1, "print": 1},
-  {"role": "CMS Viewer", "read": 1, "print": 1}
+  {
+   "role": "CMS Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "CMS Quantity Surveyor",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "CMS Project Manager",
+   "read": 1,
+   "write": 1,
+   "submit": 1,
+   "print": 1
+  },
+  {
+   "role": "CMS Viewer",
+   "read": 1,
+   "print": 1
+  }
  ],
  "title_field": "estimation_title",
  "track_changes": 1

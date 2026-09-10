@@ -84,14 +84,16 @@
     "material_cost": 25.856,
     "labour_cost": 16.8,
     "equipment_cost": 6.25,
-    "overhead_cost": 3.5
+    "overhead_cost": 3.5,
+    "subcontract_cost": 3.0
    },
    {
     "qty": 10,
     "material_cost": 100,
     "labour_cost": 50,
     "equipment_cost": 0,
-    "overhead_cost": 7.25
+    "overhead_cost": 7.25,
+    "subcontract_cost": 0
    }
   ]
  },

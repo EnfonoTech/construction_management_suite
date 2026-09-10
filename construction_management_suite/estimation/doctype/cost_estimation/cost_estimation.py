@@ -22,19 +22,27 @@ class CostEstimation(Document):
         for item in self.items:
             if item.rate_analysis_ref:
                 ra = frappe.get_cached_doc("Rate Analysis", item.rate_analysis_ref)
-                item.material_cost = flt(ra.total_material_cost)
-                item.labour_cost = flt(ra.total_labour_cost)
-                item.equipment_cost = flt(ra.total_equipment_cost)
-                item.overhead_cost = flt(ra.total_overhead_cost)
+                # The analysis totals cover output_qty units, not one — divide, or a
+                # rate built for a 10 m³ batch reports ten times its true cost.
+                output = flt(ra.output_qty) or 1
+                item.material_cost = flt(ra.total_material_cost) / output
+                item.labour_cost = flt(ra.total_labour_cost) / output
+                item.equipment_cost = flt(ra.total_equipment_cost) / output
+                item.subcontract_cost = flt(ra.total_subcontract_cost) / output
+                item.overhead_cost = flt(ra.total_overhead_cost) / output
                 item.unit_cost = flt(ra.rate_per_unit)
             else:
-                item.unit_cost = flt(item.material_cost) + flt(item.labour_cost) + flt(item.equipment_cost) + flt(item.overhead_cost)
+                item.unit_cost = (
+                    flt(item.material_cost) + flt(item.labour_cost) + flt(item.equipment_cost)
+                    + flt(item.subcontract_cost) + flt(item.overhead_cost)
+                )
             item.total_cost = flt(item.qty) * flt(item.unit_cost)
 
     def calculate_totals(self):
         self.estimated_material_cost = sum(flt(i.material_cost) * flt(i.qty) for i in self.items)
         self.estimated_labour_cost = sum(flt(i.labour_cost) * flt(i.qty) for i in self.items)
         self.estimated_equipment_cost = sum(flt(i.equipment_cost) * flt(i.qty) for i in self.items)
+        self.estimated_subcontract_cost = sum(flt(i.subcontract_cost) * flt(i.qty) for i in self.items)
         self.estimated_overhead_cost = sum(flt(i.overhead_cost) * flt(i.qty) for i in self.items)
         subtotal = sum(flt(i.total_cost) for i in self.items)
         self.contingency_amount = flt(subtotal) * flt(self.contingency_percent) / 100

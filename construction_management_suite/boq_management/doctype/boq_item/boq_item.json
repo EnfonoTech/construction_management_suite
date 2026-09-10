@@ -187,15 +187,15 @@
    "fieldname": "work_category",
    "fieldtype": "Select",
    "label": "Work Category",
-   "options": "\nCivil\nMechanical\nElectrical\nPlumbing\nFinishes\nExternal Works\nProvisional",
-   "in_list_view": 1,
-   "columns": 1
+   "options": "\nCivil\nMechanical\nElectrical\nPlumbing\nFinishes\nExternal Works\nProvisional"
   },
   {
    "fieldname": "rate_analysis_ref",
    "fieldtype": "Link",
    "label": "Rate Analysis Ref",
-   "options": "Rate Analysis"
+   "options": "Rate Analysis",
+   "in_list_view": 1,
+   "columns": 1
   },
   {
    "fieldname": "column_break_4",
