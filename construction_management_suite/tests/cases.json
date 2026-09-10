@@ -9,7 +9,8 @@
     "labour_rate": 16.8,
     "equipment_rate": 6.25,
     "overhead_rate": 3.5,
-    "actual_qty": 112
+    "actual_qty": 112,
+    "subcontract_rate": 0
    },
    {
     "qty": 22500,
@@ -18,7 +19,8 @@
     "labour_rate": 0.08,
     "equipment_rate": 0.01,
     "overhead_rate": 0.02,
-    "actual_qty": 0
+    "actual_qty": 0,
+    "subcontract_rate": 0
    },
    {
     "qty": 1240,
@@ -27,7 +29,8 @@
     "labour_rate": 3.4,
     "equipment_rate": 0.15,
     "overhead_rate": 0.4,
-    "actual_qty": 620
+    "actual_qty": 620,
+    "subcontract_rate": 5.25
    }
   ]
  },

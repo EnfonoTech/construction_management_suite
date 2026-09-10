@@ -32,6 +32,7 @@
   "total_material_amount",
   "total_labour_amount",
   "total_equipment_amount",
+  "total_subcontract_amount",
   "total_overhead_amount",
   "column_break_3",
   "total_amount",
@@ -47,44 +48,248 @@
   "amended_from_section"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "BOQ-.YYYY.-.####", "reqd": 1},
-  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1, "search_index": 1},
-  {"fieldname": "boq_title", "fieldtype": "Data", "label": "BOQ Title", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nApproved\nRevised\nCancelled", "default": "Draft", "in_list_view": 1},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
-  {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency", "reqd": 1},
-  {"fieldname": "revision_no", "fieldtype": "Int", "label": "Revision No", "default": "0", "read_only": 1},
-  {"fieldname": "is_revised", "fieldtype": "Check", "label": "Is Revised", "read_only": 1},
-  {"fieldname": "previous_boq", "fieldtype": "Link", "label": "Revision Of", "options": "BOQ", "read_only": 1},
-  {"fieldname": "amended_from", "fieldtype": "Link", "label": "Amended From", "options": "BOQ", "read_only": 1, "print_hide": 1},
-  {"fieldname": "section_contract", "fieldtype": "Section Break", "label": "Contract Details"},
-  {"fieldname": "contract_value", "fieldtype": "Currency", "label": "Contract Value", "options": "currency"},
-  {"fieldname": "client", "fieldtype": "Link", "label": "Client", "options": "Customer"},
-  {"fieldname": "client_po", "fieldtype": "Data", "label": "Client PO / Contract No"},
-  {"fieldname": "column_break_2", "fieldtype": "Column Break"},
-  {"fieldname": "contract_date", "fieldtype": "Date", "label": "Contract Date"},
-  {"fieldname": "submission_date", "fieldtype": "Date", "label": "Submission Date"},
-  {"fieldname": "approved_date", "fieldtype": "Date", "label": "Approved Date"},
-  {"fieldname": "section_items", "fieldtype": "Section Break", "label": "BOQ Items"},
-  {"fieldname": "items", "fieldtype": "Table", "label": "BOQ Items", "options": "BOQ Item", "reqd": 1},
-  {"fieldname": "section_summary", "fieldtype": "Section Break", "label": "Cost Summary"},
-  {"fieldname": "total_material_amount", "fieldtype": "Currency", "label": "Total Material", "options": "currency", "read_only": 1},
-  {"fieldname": "total_labour_amount", "fieldtype": "Currency", "label": "Total Labour", "options": "currency", "read_only": 1},
-  {"fieldname": "total_equipment_amount", "fieldtype": "Currency", "label": "Total Equipment", "options": "currency", "read_only": 1},
-  {"fieldname": "total_overhead_amount", "fieldtype": "Currency", "label": "Total Overhead", "options": "currency", "read_only": 1},
-  {"fieldname": "column_break_3", "fieldtype": "Column Break"},
-  {"fieldname": "total_amount", "fieldtype": "Currency", "label": "Total Amount", "options": "currency", "read_only": 1, "bold": 1},
-  {"fieldname": "profit_margin_percent", "fieldtype": "Percent", "label": "Profit Margin %", "default": "0"},
-  {"fieldname": "profit_margin_amount", "fieldtype": "Currency", "label": "Profit Margin Amount", "options": "currency", "read_only": 1},
-  {"fieldname": "grand_total", "fieldtype": "Currency", "label": "Grand Total", "options": "currency", "read_only": 1, "bold": 1},
-  {"fieldname": "section_meta", "fieldtype": "Section Break", "label": "Prepared By"},
-  {"fieldname": "prepared_by", "fieldtype": "Link", "label": "Prepared By", "options": "User"},
-  {"fieldname": "checked_by", "fieldtype": "Link", "label": "Checked By", "options": "User"},
-  {"fieldname": "approved_by", "fieldtype": "Link", "label": "Approved By", "options": "User"},
-  {"fieldname": "column_break_4", "fieldtype": "Column Break"},
-  {"fieldname": "notes", "fieldtype": "Text Editor", "label": "Notes"},
-  {"fieldname": "amended_from_section", "fieldtype": "Section Break", "collapsible": 1, "label": "Amendment Info"}
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "BOQ-.YYYY.-.####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "boq_title",
+   "fieldtype": "Data",
+   "label": "BOQ Title",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nSubmitted\nApproved\nRevised\nCancelled",
+   "default": "Draft",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "remember_last_selected_value": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "revision_no",
+   "fieldtype": "Int",
+   "label": "Revision No",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "is_revised",
+   "fieldtype": "Check",
+   "label": "Is Revised",
+   "read_only": 1
+  },
+  {
+   "fieldname": "previous_boq",
+   "fieldtype": "Link",
+   "label": "Revision Of",
+   "options": "BOQ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "BOQ",
+   "read_only": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "section_contract",
+   "fieldtype": "Section Break",
+   "label": "Contract Details"
+  },
+  {
+   "fieldname": "contract_value",
+   "fieldtype": "Currency",
+   "label": "Contract Value",
+   "options": "currency"
+  },
+  {
+   "fieldname": "client",
+   "fieldtype": "Link",
+   "label": "Client",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "client_po",
+   "fieldtype": "Data",
+   "label": "Client PO / Contract No"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "contract_date",
+   "fieldtype": "Date",
+   "label": "Contract Date"
+  },
+  {
+   "fieldname": "submission_date",
+   "fieldtype": "Date",
+   "label": "Submission Date"
+  },
+  {
+   "fieldname": "approved_date",
+   "fieldtype": "Date",
+   "label": "Approved Date"
+  },
+  {
+   "fieldname": "section_items",
+   "fieldtype": "Section Break",
+   "label": "BOQ Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "BOQ Items",
+   "options": "BOQ Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_summary",
+   "fieldtype": "Section Break",
+   "label": "Cost Summary"
+  },
+  {
+   "fieldname": "total_material_amount",
+   "fieldtype": "Currency",
+   "label": "Total Material",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_labour_amount",
+   "fieldtype": "Currency",
+   "label": "Total Labour",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_equipment_amount",
+   "fieldtype": "Currency",
+   "label": "Total Equipment",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_subcontract_amount",
+   "fieldtype": "Currency",
+   "label": "Total Subcontract",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_overhead_amount",
+   "fieldtype": "Currency",
+   "label": "Total Overhead",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total Amount",
+   "options": "currency",
+   "read_only": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "profit_margin_percent",
+   "fieldtype": "Percent",
+   "label": "Profit Margin %",
+   "default": "0"
+  },
+  {
+   "fieldname": "profit_margin_amount",
+   "fieldtype": "Currency",
+   "label": "Profit Margin Amount",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
+   "options": "currency",
+   "read_only": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "section_meta",
+   "fieldtype": "Section Break",
+   "label": "Prepared By"
+  },
+  {
+   "fieldname": "prepared_by",
+   "fieldtype": "Link",
+   "label": "Prepared By",
+   "options": "User"
+  },
+  {
+   "fieldname": "checked_by",
+   "fieldtype": "Link",
+   "label": "Checked By",
+   "options": "User"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from_section",
+   "fieldtype": "Section Break",
+   "collapsible": 1,
+   "label": "Amendment Info"
+  }
  ],
  "is_submittable": 1,
  "links": [],
@@ -95,20 +300,69 @@
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
-  {"role": "CMS Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 1, "cancel": 1, "amend": 1, "print": 1, "report": 1, "export": 1, "share": 1},
-  {"role": "CMS Quantity Surveyor", "read": 1, "write": 1, "create": 1, "submit": 1, "print": 1, "report": 1, "export": 1},
-  {"role": "CMS Project Manager", "read": 1, "write": 1, "submit": 1, "print": 1, "report": 1},
-  {"role": "CMS Viewer", "read": 1, "report": 1, "print": 1}
+  {
+   "role": "CMS Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  },
+  {
+   "role": "CMS Quantity Surveyor",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "CMS Project Manager",
+   "read": 1,
+   "write": 1,
+   "submit": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "CMS Viewer",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  }
  ],
  "search_fields": "project,boq_title,client",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [
-  {"color": "Yellow", "title": "Draft"},
-  {"color": "Blue", "title": "Submitted"},
-  {"color": "Green", "title": "Approved"},
-  {"color": "Orange", "title": "Revised"},
-  {"color": "Red", "title": "Cancelled"}
+  {
+   "color": "Yellow",
+   "title": "Draft"
+  },
+  {
+   "color": "Blue",
+   "title": "Submitted"
+  },
+  {
+   "color": "Green",
+   "title": "Approved"
+  },
+  {
+   "color": "Orange",
+   "title": "Revised"
+  },
+  {
+   "color": "Red",
+   "title": "Cancelled"
+  }
  ],
  "title_field": "boq_title",
  "track_changes": 1,

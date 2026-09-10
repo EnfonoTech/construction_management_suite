@@ -33,10 +33,15 @@ def apply_rate_analysis_to_boq(rate_analysis, boq, item_code):
     updated = 0
     for item in boq_doc.items:
         if item.item_code == item_code:
+            output = flt(ra.output_qty) or 1
             item.rate = flt(ra.rate_per_unit)
-            item.material_rate = flt(ra.total_material_cost) / (flt(ra.output_qty) or 1)
-            item.labour_rate = flt(ra.total_labour_cost) / (flt(ra.output_qty) or 1)
-            item.equipment_rate = flt(ra.total_equipment_cost) / (flt(ra.output_qty) or 1)
+            # Every bucket, or the component rates will not add back up to the
+            # headline rate and the BOQ's cost breakdown misreports.
+            item.material_rate = flt(ra.total_material_cost) / output
+            item.labour_rate = flt(ra.total_labour_cost) / output
+            item.equipment_rate = flt(ra.total_equipment_cost) / output
+            item.subcontract_rate = flt(ra.total_subcontract_cost) / output
+            item.overhead_rate = flt(ra.total_overhead_cost) / output
             item.rate_analysis_ref = rate_analysis
             updated += 1
     boq_doc.calculate_item_amounts()

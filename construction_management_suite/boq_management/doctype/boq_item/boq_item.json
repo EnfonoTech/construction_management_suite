@@ -21,6 +21,8 @@
   "labour_amount",
   "equipment_rate",
   "equipment_amount",
+  "subcontract_rate",
+  "subcontract_amount",
   "column_break_3",
   "overhead_rate",
   "overhead_amount",
@@ -140,6 +142,19 @@
    "fieldname": "equipment_amount",
    "fieldtype": "Currency",
    "label": "Equipment Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "subcontract_rate",
+   "fieldtype": "Currency",
+   "label": "Subcontract Rate",
+   "options": "currency"
+  },
+  {
+   "fieldname": "subcontract_amount",
+   "fieldtype": "Currency",
+   "label": "Subcontract Amount",
+   "options": "currency",
    "read_only": 1
   },
   {

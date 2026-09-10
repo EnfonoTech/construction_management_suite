@@ -243,21 +243,24 @@ CMS.linkButton = function (frm, label, doctype, name) {
 CMS.calc = {};
 
 CMS.calc["BOQ"] = function (doc) {
-    let mat = 0, lab = 0, eqp = 0, ovh = 0, tot = 0;
+    let mat = 0, lab = 0, eqp = 0, sub = 0, ovh = 0, tot = 0;
     (doc.items || []).forEach(r => {
         r.amount = flt(r.qty) * flt(r.rate);
         r.material_amount = flt(r.qty) * flt(r.material_rate);
         r.labour_amount = flt(r.qty) * flt(r.labour_rate);
         r.equipment_amount = flt(r.qty) * flt(r.equipment_rate);
+        r.subcontract_amount = flt(r.qty) * flt(r.subcontract_rate);
         r.overhead_amount = flt(r.qty) * flt(r.overhead_rate);
         r.variance_qty = flt(r.actual_qty) - flt(r.qty);
         r.variance_amount = flt(r.variance_qty) * flt(r.rate);
         mat += r.material_amount; lab += r.labour_amount;
-        eqp += r.equipment_amount; ovh += r.overhead_amount; tot += r.amount;
+        eqp += r.equipment_amount; sub += r.subcontract_amount;
+        ovh += r.overhead_amount; tot += r.amount;
     });
     doc.total_material_amount = mat;
     doc.total_labour_amount = lab;
     doc.total_equipment_amount = eqp;
+    doc.total_subcontract_amount = sub;
     doc.total_overhead_amount = ovh;
     doc.total_amount = tot;
     doc.profit_margin_amount = flt(doc.total_amount) * flt(doc.profit_margin_percent) / 100;

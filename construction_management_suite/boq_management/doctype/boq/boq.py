@@ -46,6 +46,7 @@ class BOQ(Document):
             item.material_amount = flt(item.qty) * flt(item.material_rate)
             item.labour_amount = flt(item.qty) * flt(item.labour_rate)
             item.equipment_amount = flt(item.qty) * flt(item.equipment_rate)
+            item.subcontract_amount = flt(item.qty) * flt(item.subcontract_rate)
             item.overhead_amount = flt(item.qty) * flt(item.overhead_rate)
             item.variance_qty = flt(item.actual_qty) - flt(item.qty)
             item.variance_amount = flt(item.variance_qty) * flt(item.rate)
@@ -54,6 +55,7 @@ class BOQ(Document):
         self.total_material_amount = sum(flt(i.material_amount) for i in self.items)
         self.total_labour_amount = sum(flt(i.labour_amount) for i in self.items)
         self.total_equipment_amount = sum(flt(i.equipment_amount) for i in self.items)
+        self.total_subcontract_amount = sum(flt(i.subcontract_amount) for i in self.items)
         self.total_overhead_amount = sum(flt(i.overhead_amount) for i in self.items)
         self.total_amount = sum(flt(i.amount) for i in self.items)
         self.profit_margin_amount = flt(self.total_amount) * flt(self.profit_margin_percent) / 100
