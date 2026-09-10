@@ -1,5 +1,6 @@
 frappe.ui.form.on("Site Transfer", {
     refresh(frm) {
+        CMS.uomQuery(frm, "items", "item_code");
         CMS.filterByCompany(frm, "from_warehouse", { is_group: 0 });
         CMS.filterByCompany(frm, "to_warehouse", { is_group: 0 });
         CMS.filterProjects(frm, "from_project");

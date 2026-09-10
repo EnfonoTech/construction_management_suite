@@ -317,6 +317,45 @@ def _previously_claimed_by_line(project):
 # ──────────────────────────── Pricing from the rate library ────────────────────
 
 @frappe.whitelist()
+def check_rate_drift(boq):
+    """Lines whose rate no longer matches the analysis they were priced from.
+
+    A BOQ keeps its own copy of the rates, so editing an analysis afterwards
+    never silently rewrites a signed bill — but it does mean the bill can fall
+    out of step with the library without anyone noticing.
+    """
+    doc = frappe.get_doc("BOQ", boq)
+    drifted = []
+    for row in doc.items:
+        if not row.rate_analysis_ref:
+            continue
+        current = flt(get_rate_analysis_rates(row.rate_analysis_ref)["rate"])
+        if abs(current - flt(row.cost_rate)) > 0.005:
+            drifted.append({
+                "idx": row.idx,
+                "item_code": row.item_code,
+                "rate_analysis": row.rate_analysis_ref,
+                "applied": flt(row.cost_rate),
+                "current": current,
+                "applied_on": row.rate_applied_on,
+            })
+    return drifted
+
+
+@frappe.whitelist()
+def get_rate_analysis_for_item(item_code):
+    """The most recently updated approved analysis for an item, if there is one."""
+    if not item_code:
+        return None
+    return frappe.db.get_value(
+        "Rate Analysis",
+        {"item_code": item_code, "status": "Approved"},
+        "name",
+        order_by="modified desc",
+    )
+
+
+@frappe.whitelist()
 def get_rate_analysis_rates(rate_analysis):
     """The five per-unit component rates behind an analysis, plus the total."""
     ra = frappe.get_cached_doc("Rate Analysis", rate_analysis)
@@ -366,6 +405,7 @@ def price_boq_from_library(boq, overwrite=0):
         for field, value in get_rate_analysis_rates(analysis).items():
             row.set(field, value)
         row.rate_analysis_ref = analysis
+        row.rate_applied_on = frappe.utils.now()
         priced.append(row.item_code)
 
     if priced:

@@ -36,6 +36,8 @@
   "total_overhead_amount",
   "column_break_3",
   "total_amount",
+  "total_cost_amount",
+  "effective_margin_percent",
   "profit_margin_percent",
   "profit_margin_amount",
   "grand_total",
@@ -230,6 +232,20 @@
    "options": "currency",
    "read_only": 1,
    "bold": 1
+  },
+  {
+   "fieldname": "total_cost_amount",
+   "fieldtype": "Currency",
+   "label": "Total Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "effective_margin_percent",
+   "fieldtype": "Percent",
+   "label": "Effective Margin %",
+   "read_only": 1,
+   "description": "Blended margin across the priced lines, before any additional margin below"
   },
   {
    "fieldname": "profit_margin_percent",

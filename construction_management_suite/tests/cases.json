@@ -10,7 +10,8 @@
     "equipment_rate": 6.25,
     "overhead_rate": 3.5,
     "actual_qty": 112,
-    "subcontract_rate": 0
+    "subcontract_rate": 0,
+    "margin_percent": 18
    },
    {
     "qty": 22500,
@@ -20,7 +21,8 @@
     "equipment_rate": 0.01,
     "overhead_rate": 0.02,
     "actual_qty": 0,
-    "subcontract_rate": 0
+    "subcontract_rate": 0,
+    "margin_percent": 0
    },
    {
     "qty": 1240,
@@ -30,7 +32,8 @@
     "equipment_rate": 0.15,
     "overhead_rate": 0.4,
     "actual_qty": 620,
-    "subcontract_rate": 5.25
+    "subcontract_rate": 5.25,
+    "margin_percent": 0
    }
   ]
  },

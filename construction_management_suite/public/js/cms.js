@@ -245,6 +245,11 @@ CMS.calc = {};
 CMS.calc["BOQ"] = function (doc) {
     let mat = 0, lab = 0, eqp = 0, sub = 0, ovh = 0, tot = 0;
     (doc.items || []).forEach(r => {
+        r.cost_rate = flt(r.material_rate) + flt(r.labour_rate) + flt(r.equipment_rate)
+            + flt(r.subcontract_rate) + flt(r.overhead_rate);
+        if (flt(r.margin_percent) && flt(r.cost_rate)) {
+            r.rate = flt(r.cost_rate) * (1 + flt(r.margin_percent) / 100);
+        }
         r.amount = flt(r.qty) * flt(r.rate);
         r.material_amount = flt(r.qty) * flt(r.material_rate);
         r.labour_amount = flt(r.qty) * flt(r.labour_rate);
@@ -263,6 +268,9 @@ CMS.calc["BOQ"] = function (doc) {
     doc.total_subcontract_amount = sub;
     doc.total_overhead_amount = ovh;
     doc.total_amount = tot;
+    doc.total_cost_amount = (doc.items || []).reduce((t, r) => t + flt(r.qty) * flt(r.cost_rate), 0);
+    doc.effective_margin_percent = flt(doc.total_cost_amount)
+        ? (flt(doc.total_amount) - flt(doc.total_cost_amount)) / flt(doc.total_cost_amount) * 100 : 0;
     doc.profit_margin_amount = flt(doc.total_amount) * flt(doc.profit_margin_percent) / 100;
     doc.grand_total = flt(doc.total_amount) + flt(doc.profit_margin_amount);
 };
@@ -416,4 +424,19 @@ CMS.liveRows = function (childDoctype, fields) {
     const handlers = {};
     fields.forEach(f => { handlers[f] = (frm) => CMS.recalc(frm); });
     frappe.ui.form.on(childDoctype, handlers);
+};
+
+/**
+ * Restrict a child row's UOM to the ones defined on its Item, when Stock
+ * Settings says so. ERPNext applies this to its own transactions via the same
+ * query; without wiring it, our UOM fields ignore the setting entirely.
+ */
+CMS.uomQuery = function (frm, tablefield, itemfield) {
+    frm.set_query("uom", tablefield, (doc, cdt, cdn) => {
+        const row = locals[cdt][cdn];
+        return {
+            query: "erpnext.controllers.queries.get_item_uom_query",
+            filters: { item_code: row[itemfield || "item_code"] },
+        };
+    });
 };

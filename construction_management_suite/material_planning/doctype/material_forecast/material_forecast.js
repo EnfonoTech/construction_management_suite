@@ -1,5 +1,6 @@
 frappe.ui.form.on("Material Forecast", {
     refresh(frm) {
+        CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
 

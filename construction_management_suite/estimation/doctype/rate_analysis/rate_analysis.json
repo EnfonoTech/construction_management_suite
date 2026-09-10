@@ -6,38 +6,180 @@
  "document_type": "Document",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series", "analysis_name", "item_code", "uom", "column_break_1",
-  "company", "currency", "date", "status",
-  "section_resources", "resources",
-  "section_totals", "total_material_cost", "total_labour_cost", "total_equipment_cost",
-  "column_break_2", "total_subcontract_cost", "total_overhead_cost", "total_cost",
-  "output_qty", "rate_per_unit",
-  "section_notes", "notes"
+  "naming_series",
+  "analysis_name",
+  "item_code",
+  "uom",
+  "column_break_1",
+  "company",
+  "currency",
+  "date",
+  "status",
+  "section_resources",
+  "resources",
+  "section_totals",
+  "total_material_cost",
+  "total_labour_cost",
+  "total_equipment_cost",
+  "column_break_2",
+  "total_subcontract_cost",
+  "total_overhead_cost",
+  "total_cost",
+  "output_qty",
+  "rate_per_unit",
+  "section_notes",
+  "notes"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "RA-.YYYY.-.####", "reqd": 1},
-  {"fieldname": "analysis_name", "fieldtype": "Data", "label": "Analysis Name", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "item_code", "fieldtype": "Link", "label": "Work Item / Item Code", "options": "Item", "in_list_view": 1},
-  {"fieldname": "uom", "fieldtype": "Link", "label": "Unit of Measure", "options": "UOM", "reqd": 1},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
-  {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency", "reqd": 1},
-  {"fieldname": "date", "fieldtype": "Date", "label": "Analysis Date", "default": "Today"},
-  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nApproved\nObsolete", "default": "Draft"},
-  {"fieldname": "section_resources", "fieldtype": "Section Break", "label": "Resources"},
-  {"fieldname": "resources", "fieldtype": "Table", "label": "Resources", "options": "Rate Analysis Resource"},
-  {"fieldname": "section_totals", "fieldtype": "Section Break", "label": "Cost Summary"},
-  {"fieldname": "total_material_cost", "fieldtype": "Currency", "label": "Total Material Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "total_labour_cost", "fieldtype": "Currency", "label": "Total Labour Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "total_equipment_cost", "fieldtype": "Currency", "label": "Total Equipment Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "column_break_2", "fieldtype": "Column Break"},
-  {"fieldname": "total_subcontract_cost", "fieldtype": "Currency", "label": "Total Subcontract Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "total_overhead_cost", "fieldtype": "Currency", "label": "Total Overhead Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "total_cost", "fieldtype": "Currency", "label": "Total Cost", "options": "currency", "read_only": 1, "bold": 1},
-  {"fieldname": "output_qty", "fieldtype": "Float", "label": "Output Qty (per cycle)", "default": "1"},
-  {"fieldname": "rate_per_unit", "fieldtype": "Currency", "label": "Rate Per Unit", "options": "currency", "read_only": 1, "bold": 1},
-  {"fieldname": "section_notes", "fieldtype": "Section Break", "label": "Notes"},
-  {"fieldname": "notes", "fieldtype": "Text Editor", "label": "Notes / Assumptions"}
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "RA-.YYYY.-.####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "analysis_name",
+   "fieldtype": "Data",
+   "label": "Analysis Name",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Work Item / Item Code",
+   "options": "Item",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "Unit of Measure",
+   "options": "UOM",
+   "reqd": 1,
+   "fetch_from": "item_code.stock_uom",
+   "fetch_if_empty": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "remember_last_selected_value": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Analysis Date",
+   "default": "Today"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nApproved\nObsolete",
+   "default": "Draft"
+  },
+  {
+   "fieldname": "section_resources",
+   "fieldtype": "Section Break",
+   "label": "Resources"
+  },
+  {
+   "fieldname": "resources",
+   "fieldtype": "Table",
+   "label": "Resources",
+   "options": "Rate Analysis Resource"
+  },
+  {
+   "fieldname": "section_totals",
+   "fieldtype": "Section Break",
+   "label": "Cost Summary"
+  },
+  {
+   "fieldname": "total_material_cost",
+   "fieldtype": "Currency",
+   "label": "Total Material Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_labour_cost",
+   "fieldtype": "Currency",
+   "label": "Total Labour Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_equipment_cost",
+   "fieldtype": "Currency",
+   "label": "Total Equipment Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_subcontract_cost",
+   "fieldtype": "Currency",
+   "label": "Total Subcontract Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_overhead_cost",
+   "fieldtype": "Currency",
+   "label": "Total Overhead Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_cost",
+   "fieldtype": "Currency",
+   "label": "Total Cost",
+   "options": "currency",
+   "read_only": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "output_qty",
+   "fieldtype": "Float",
+   "label": "Output Qty (per cycle)",
+   "default": "1"
+  },
+  {
+   "fieldname": "rate_per_unit",
+   "fieldtype": "Currency",
+   "label": "Rate Per Unit",
+   "options": "currency",
+   "read_only": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "section_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes / Assumptions"
+  }
  ],
  "is_submittable": 0,
  "links": [],
@@ -45,9 +187,28 @@
  "name": "Rate Analysis",
  "owner": "Administrator",
  "permissions": [
-  {"role": "CMS Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "report": 1},
-  {"role": "CMS Quantity Surveyor", "read": 1, "write": 1, "create": 1, "print": 1, "report": 1},
-  {"role": "CMS Viewer", "read": 1, "report": 1}
+  {
+   "role": "CMS Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "CMS Quantity Surveyor",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "CMS Viewer",
+   "read": 1,
+   "report": 1
+  }
  ],
  "title_field": "analysis_name",
  "track_changes": 1

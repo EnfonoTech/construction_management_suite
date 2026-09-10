@@ -42,6 +42,15 @@ class BOQ(Document):
 
     def calculate_item_amounts(self):
         for item in self.items:
+            item.cost_rate = (
+                flt(item.material_rate) + flt(item.labour_rate) + flt(item.equipment_rate)
+                + flt(item.subcontract_rate) + flt(item.overhead_rate)
+            )
+            # A line that carries its own margin is priced from its cost. Contractors
+            # front-load deliberately — high margin on early work, thin on the tail —
+            # so this has to be per line, not one figure for the whole bill.
+            if flt(item.margin_percent) and flt(item.cost_rate):
+                item.rate = flt(item.cost_rate) * (1 + flt(item.margin_percent) / 100)
             item.amount = flt(item.qty) * flt(item.rate)
             item.material_amount = flt(item.qty) * flt(item.material_rate)
             item.labour_amount = flt(item.qty) * flt(item.labour_rate)
@@ -58,6 +67,11 @@ class BOQ(Document):
         self.total_subcontract_amount = sum(flt(i.subcontract_amount) for i in self.items)
         self.total_overhead_amount = sum(flt(i.overhead_amount) for i in self.items)
         self.total_amount = sum(flt(i.amount) for i in self.items)
+        self.total_cost_amount = sum(flt(i.qty) * flt(i.cost_rate) for i in self.items)
+        self.effective_margin_percent = (
+            (flt(self.total_amount) - flt(self.total_cost_amount)) / flt(self.total_cost_amount) * 100
+            if flt(self.total_cost_amount) else 0
+        )
         self.profit_margin_amount = flt(self.total_amount) * flt(self.profit_margin_percent) / 100
         self.grand_total = flt(self.total_amount) + flt(self.profit_margin_amount)
 

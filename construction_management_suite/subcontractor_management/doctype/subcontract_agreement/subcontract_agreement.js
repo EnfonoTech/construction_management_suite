@@ -1,5 +1,6 @@
 frappe.ui.form.on("Subcontract Agreement", {
     refresh(frm) {
+        CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
         CMS.linkButton(frm, __("Purchase Order"), "Purchase Order", frm.doc.purchase_order_ref);
 

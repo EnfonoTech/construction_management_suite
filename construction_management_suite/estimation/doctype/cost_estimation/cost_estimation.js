@@ -1,5 +1,6 @@
 frappe.ui.form.on("Cost Estimation", {
     refresh(frm) {
+        CMS.uomQuery(frm, "items", "item_code");
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
         CMS.filterProjects(frm);
 

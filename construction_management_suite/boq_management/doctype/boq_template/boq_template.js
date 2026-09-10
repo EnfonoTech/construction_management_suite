@@ -1,5 +1,6 @@
 frappe.ui.form.on("BOQ Template", {
     refresh(frm) {
+        CMS.uomQuery(frm, "items", "item_code");
         if (!frm.is_new()) {
             frm.add_custom_button(__("BOQ from this Template"), () => {
                 frappe.new_doc("BOQ", {}, (doc) => {

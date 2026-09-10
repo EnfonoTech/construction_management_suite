@@ -37,7 +37,9 @@
    "label": "UOM",
    "options": "UOM",
    "in_list_view": 1,
-   "columns": 1
+   "columns": 1,
+   "fetch_from": "item_code.stock_uom",
+   "fetch_if_empty": 1
   },
   {
    "fieldname": "column_break_1",

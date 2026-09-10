@@ -26,6 +26,9 @@
   "column_break_3",
   "overhead_rate",
   "overhead_amount",
+  "cost_rate",
+  "margin_percent",
+  "rate_applied_on",
   "section_meta",
   "boq_section",
   "work_category",
@@ -170,6 +173,26 @@
    "fieldname": "overhead_amount",
    "fieldtype": "Currency",
    "label": "Overhead Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_rate",
+   "fieldtype": "Currency",
+   "label": "Cost Rate",
+   "options": "currency",
+   "read_only": 1,
+   "description": "Sum of the material, labour, equipment, subcontract and overhead rates"
+  },
+  {
+   "fieldname": "margin_percent",
+   "fieldtype": "Percent",
+   "label": "Margin %",
+   "description": "Set to price this line at cost plus this margin. Leave blank to type the rate yourself."
+  },
+  {
+   "fieldname": "rate_applied_on",
+   "fieldtype": "Datetime",
+   "label": "Rate Applied On",
    "read_only": 1
   },
   {

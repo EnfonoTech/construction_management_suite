@@ -1,5 +1,6 @@
 frappe.ui.form.on("Rate Analysis", {
     refresh(frm) {
+        CMS.uomQuery(frm, "resources", "resource_item");
         if (!frm.is_new() && frm.doc.status === "Approved") {
             frm.add_custom_button(__("Apply to BOQ Items"), () => apply_to_boq(frm), __("Actions"));
         }
@@ -38,19 +39,32 @@ function calc_totals(frm) {
 }
 
 function apply_to_boq(frm) {
+    if (!frm.doc.item_code) {
+        frappe.msgprint({
+            title: __("Set an Item first"),
+            message: __("This analysis has no Item, so there is no way to tell which BOQ lines it prices. Set <b>Item</b> on this Rate Analysis and save."),
+            indicator: "orange",
+        });
+        return;
+    }
+    // The item comes from the analysis itself — asking the user to retype it was
+    // the old behaviour and just invited typos.
     frappe.prompt(
-        [
-            { fieldname: "boq", label: __("BOQ"), fieldtype: "Link", options: "BOQ", reqd: 1 },
-            { fieldname: "item_code", label: __("BOQ Item Code"), fieldtype: "Link", options: "Item", reqd: 1 },
-        ],
+        [{
+            fieldname: "boq", label: __("BOQ"), fieldtype: "Link", options: "BOQ", reqd: 1,
+            get_query: () => ({ filters: { docstatus: 0 } }),
+            description: __("Draft BOQs only. Every line for {0} will be priced.", [frm.doc.item_code]),
+        }],
         (vals) => {
             frappe.call({
                 method: "construction_management_suite.api.boq.apply_rate_analysis_to_boq",
-                args: { rate_analysis: frm.doc.name, boq: vals.boq, item_code: vals.item_code },
+                args: { rate_analysis: frm.doc.name, boq: vals.boq, item_code: frm.doc.item_code },
+                freeze: true,
                 callback: r => frappe.msgprint(r.message),
             });
         },
-        __("Apply Rate Analysis to BOQ")
+        __("Apply to BOQ"),
+        __("Apply")
     );
 }
 

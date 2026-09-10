@@ -1,5 +1,6 @@
 frappe.ui.form.on("Site Material Request", {
     refresh(frm) {
+        CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
         CMS.filterByCompany(frm, "warehouse", { is_group: 0 });
         if (!frm.doc.request_date) frm.set_value("request_date", frappe.datetime.get_today());

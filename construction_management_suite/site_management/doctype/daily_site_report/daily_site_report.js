@@ -1,5 +1,6 @@
 frappe.ui.form.on("Daily Site Report", {
     refresh(frm) {
+        CMS.uomQuery(frm, "materials_used", "item_code");
         CMS.filterProjects(frm);
         if (!frm.doc.report_date) frm.set_value("report_date", frappe.datetime.get_today());
 

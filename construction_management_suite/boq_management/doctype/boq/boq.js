@@ -1,5 +1,6 @@
 frappe.ui.form.on("BOQ", {
     refresh(frm) {
+        CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
 
         if (frm.doc.docstatus === 1 && frm.doc.status !== "Revised") {
@@ -43,6 +44,7 @@ frappe.ui.form.on("BOQ", {
 
         if (frm.doc.docstatus === 0) {
             frm.add_custom_button(__("Price from Rate Library"), () => price_from_library(frm), __("Actions"));
+            show_rate_drift(frm);
 
             frm.add_custom_button(__("Import from Template"), () => {
                 frappe.prompt(
@@ -109,8 +111,20 @@ function render_cost_breakdown(frm) {
 CMS.liveRows("BOQ Item", ["qty", "rate", "material_rate", "labour_rate", "equipment_rate",
                           "subcontract_rate", "overhead_rate", "actual_qty"]);
 
-// Picking an analysis on a row pulls its rates straight in.
+// Picking an item offers the library rate; picking an analysis pulls it in.
 frappe.ui.form.on("BOQ Item", {
+    item_code(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        if (!row.item_code || row.rate_analysis_ref) return;
+        frappe.call({
+            method: "construction_management_suite.api.boq.get_rate_analysis_for_item",
+            args: { item_code: row.item_code },
+            callback: (r) => {
+                if (r.message) frappe.model.set_value(cdt, cdn, "rate_analysis_ref", r.message);
+            },
+        });
+    },
+
     rate_analysis_ref(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
         if (!row.rate_analysis_ref) return;
@@ -147,4 +161,23 @@ function price_from_library(frm) {
             });
         }
     );
+}
+
+/** Warn when the rate library has moved on since this bill was priced. */
+function show_rate_drift(frm) {
+    if (frm.is_new()) return;
+    frappe.call({
+        method: "construction_management_suite.api.boq.check_rate_drift",
+        args: { boq: frm.doc.name },
+        callback: (r) => {
+            const rows = r.message || [];
+            if (!rows.length) return;
+            const cur = frm.doc.currency;
+            frm.dashboard.add_comment(
+                __("{0} line(s) were priced from a Rate Analysis that has since changed: {1}. The BOQ keeps the rate it was priced at — use <b>Price from Rate Library</b> with overwrite to take the new ones.",
+                   [rows.length, rows.map(d => `#${d.idx} ${d.item_code} (${format_currency(d.applied, cur)} → ${format_currency(d.current, cur)})`).join(", ")]),
+                "orange", true
+            );
+        },
+    });
 }
