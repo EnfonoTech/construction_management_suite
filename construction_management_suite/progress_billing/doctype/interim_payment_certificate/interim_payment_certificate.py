@@ -8,10 +8,44 @@ from construction_management_suite.utils.validations import validate_project_com
 
 
 class InterimPaymentCertificate(Document):
+    def onload(self):
+        self.set_onload("progress", self.get_progress())
+
     def validate(self):
         validate_project_company(self)
+        self.set_contract_value()
+        self.set_previous_claimed()
         self.calculate_items()
         self.calculate_deductions()
+        self.validate_over_certification()
+
+    def set_contract_value(self):
+        """Fall back to the BOQ's total when nobody has stated a contract value.
+
+        It was only ever filled by the form script, so a certificate raised any
+        other way had nothing to measure progress against. Only filled when
+        blank — an approved Variation Order moves the contract sum away from the
+        original bill, and that figure must win.
+        """
+        if flt(self.contract_value) or not self.boq_ref:
+            return
+        self.contract_value = flt(frappe.db.get_value("BOQ", self.boq_ref, "grand_total"))
+
+    def set_previous_claimed(self):
+        """Refresh each line's opening position from the certificates already signed.
+
+        Typed by hand this is how a client gets billed twice for the same work,
+        and it goes stale the moment an earlier certificate is cancelled, so it
+        is recomputed on every save rather than trusted.
+        """
+        from construction_management_suite.api.boq import _previously_claimed_by_line
+
+        if not self.project:
+            return
+        claimed = _previously_claimed_by_line(self.project, exclude_ipc=self.name)
+        for item in self.items:
+            if item.boq_item_ref:
+                item.previous_qty_claimed = flt(claimed.get(item.boq_item_ref))
 
     def calculate_items(self):
         gross = 0
@@ -20,11 +54,48 @@ class InterimPaymentCertificate(Document):
             item.cumulative_qty = flt(item.previous_qty_claimed) + flt(item.qty_this_period)
             item.amount_this_period = flt(item.qty_this_period) * flt(item.contract_rate)
             item.cumulative_amount = flt(item.cumulative_qty) * flt(item.contract_rate)
+            item.remaining_qty = flt(item.contract_qty) - flt(item.cumulative_qty)
             if flt(item.contract_amount) > 0:
                 item.percent_complete = flt(item.cumulative_amount) / flt(item.contract_amount) * 100
             gross += flt(item.amount_this_period)
         self.gross_amount_this_period = gross
         self.cumulative_amount_to_date = flt(self.previous_cumulative_amount) + gross
+
+    def validate_over_certification(self):
+        """Never certify more of a line than the contract contains.
+
+        Extra work is a Variation Order, which reprices it and extends the
+        contract sum. Letting it through here instead would bill the client for
+        work no contract covers and leave the BOQ showing more built than sold.
+        """
+        for item in self.items:
+            if flt(item.qty_this_period) < 0:
+                frappe.throw(
+                    _("Row {0}: Qty This Period cannot be negative. To reverse an "
+                      "over-certification, cancel the certificate that made it.").format(item.idx)
+                )
+            if not flt(item.contract_qty):
+                continue
+            # Quantities are re-measured on site; a hair over the contract figure
+            # is rounding, not a claim.
+            if flt(item.cumulative_qty) - flt(item.contract_qty) > 0.0001:
+                frappe.throw(
+                    _(
+                        "Row {0} ({1}): certifying {2} on top of {3} already certified "
+                        "comes to {4}, but the contract quantity is only {5}.<br><br>"
+                        "Raise a <b>Variation Order</b> for the extra work, or reduce "
+                        "this period's quantity to {6}."
+                    ).format(
+                        item.idx,
+                        item.item_code or item.description,
+                        flt(item.qty_this_period),
+                        flt(item.previous_qty_claimed),
+                        flt(item.cumulative_qty),
+                        flt(item.contract_qty),
+                        flt(item.contract_qty) - flt(item.previous_qty_claimed),
+                    ),
+                    title=_("Over-certification"),
+                )
 
     def calculate_deductions(self):
         self.retention_amount = flt(self.gross_amount_this_period) * flt(self.retention_percent) / 100
@@ -57,10 +128,83 @@ class InterimPaymentCertificate(Document):
 
     def on_submit(self):
         self._create_sales_invoice()
+        self.push_certified_qty_to_boq()
+
+    def before_cancel(self):
+        # Not on_cancel: that runs after the row is written, so the status set
+        # there is thrown away.
+        self.status = "Cancelled"
 
     def on_cancel(self):
         self._cancel_linked_invoice()
-        self.status = "Draft"
+        self.push_certified_qty_to_boq()
+
+    # ----- Feeding the bill -----
+
+    def push_certified_qty_to_boq(self):
+        """Write each BOQ line's certified-to-date quantity back onto the bill.
+
+        This is what makes BOQ variance mean anything: `actual_qty` is the work
+        signed off, so `variance_qty` reads as built-versus-billed instead of
+        the flat negative it showed while nothing ever wrote to it.
+
+        Recomputed from every submitted certificate rather than incremented, so
+        a cancellation corrects the bill instead of stranding it.
+        """
+        from construction_management_suite.api.boq import _previously_claimed_by_line
+
+        if not self.boq_ref or not self.project:
+            return
+        certified = _previously_claimed_by_line(self.project)
+        rows = frappe.get_all(
+            "BOQ Item", filters={"parent": self.boq_ref}, fields=["name", "qty", "rate", "actual_qty"]
+        )
+        for row in rows:
+            actual = flt(certified.get(row.name))
+            if flt(row.actual_qty) == actual:
+                continue
+            variance_qty = actual - flt(row.qty)
+            # db.set_value, not a doc save: the BOQ is submitted, and these three
+            # are a report of what happened on site, not a change to the contract.
+            frappe.db.set_value(
+                "BOQ Item",
+                row.name,
+                {
+                    "actual_qty": actual,
+                    "variance_qty": variance_qty,
+                    "variance_amount": variance_qty * flt(row.rate),
+                },
+                update_modified=False,
+            )
+
+    def get_progress(self):
+        """Headline position of this certificate against the contract."""
+        contract = flt(self.contract_value)
+        cumulative = flt(self.cumulative_amount_to_date)
+        return {
+            "contract_value": contract,
+            "cumulative_amount": cumulative,
+            "percent_complete": (cumulative / contract * 100) if contract else 0,
+            "balance_to_complete": contract - cumulative,
+            "retention_held": flt(self.total_retention_held),
+        }
+
+    @frappe.whitelist()
+    def get_items_from_boq(self):
+        """Append every BOQ line with work left to certify."""
+        from construction_management_suite.api.boq import get_boq_lines_for_ipc
+
+        if not self.boq_ref:
+            frappe.throw(_("Set the BOQ this certificate bills against first"))
+
+        existing = {i.boq_item_ref for i in self.items if i.boq_item_ref}
+        added = 0
+        for line in get_boq_lines_for_ipc(self.boq_ref, ipc=self.name):
+            if line["boq_item_ref"] in existing:
+                continue
+            self.append("items", line)
+            added += 1
+        return added
 
     def _create_sales_invoice(self):
         if not self.client:

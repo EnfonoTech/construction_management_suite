@@ -17,6 +17,17 @@ frappe.ui.form.on("BOQ", {
             }, __("Actions"));
         }
 
+        if (!frm.is_new() && !frm.doc.project) {
+            // Tender-stage bill: no project exists to attach it to yet.
+            frm.page.set_indicator(__("No project"), "blue");
+            frm.add_custom_button(__("Project"), () => {
+                frappe.confirm(
+                    __("Open a project for this BOQ?<br><small>Use this once the client awards the work.</small>"),
+                    () => frm.call("create_project").then(r => r.message && frm.reload_doc())
+                );
+            }, __("Create"));
+        }
+
         if (frm.doc.docstatus === 1) {
             // Both carry the BOQ's lines across — see api.boq.make_*
             frm.add_custom_button(__("Cost Estimation"), () => {
@@ -26,12 +37,14 @@ frappe.ui.form.on("BOQ", {
                 });
             }, __("Create"));
 
-            frm.add_custom_button(__("Interim Payment Certificate"), () => {
-                frappe.model.open_mapped_doc({
-                    method: "construction_management_suite.api.boq.make_interim_payment_certificate",
-                    frm: frm,
-                });
-            }, __("Create"));
+            if (frm.doc.project) {
+                frm.add_custom_button(__("Interim Payment Certificate"), () => {
+                    frappe.model.open_mapped_doc({
+                        method: "construction_management_suite.api.boq.make_interim_payment_certificate",
+                        frm: frm,
+                    });
+                }, __("Create"));
+            }
 
             frm.add_custom_button(__("Variation Order"), () => {
                 frappe.new_doc("Variation Order", {
@@ -81,7 +94,6 @@ frappe.ui.form.on("BOQ", {
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
 
-    profit_margin_percent(frm) { CMS.recalc(frm); },
     items_remove(frm) { CMS.recalc(frm); },
 
 });
@@ -175,11 +187,16 @@ function show_rate_drift(frm) {
             const rows = r.message || [];
             if (!rows.length) return;
             const cur = frm.doc.currency;
-            frm.dashboard.add_comment(
-                __("{0} line(s) were priced from a Rate Analysis that has since changed: {1}. The BOQ keeps the rate it was priced at — use <b>Price from Rate Library</b> with overwrite to take the new ones.",
-                   [rows.length, rows.map(d => `#${d.idx} ${d.item_code} (${format_currency(d.applied, cur)} → ${format_currency(d.current, cur)})`).join(", ")]),
-                "orange", true
-            );
+            frm.page.set_indicator(__("{0} rate(s) drifted", [rows.length]), "orange");
+            // The figures still matter, so they move behind a button rather
+            // than a paragraph nobody reads twice.
+            frm.add_custom_button(__("Rate Drift"), () => frappe.msgprint({
+                title: __("Priced from an analysis that has since changed"),
+                indicator: "orange",
+                message: rows.map(d =>
+                    `#${d.idx} ${d.item_code}: ${format_currency(d.applied, cur)} \u2192 `
+                    + format_currency(d.current, cur)).join("<br>"),
+            }));
         },
     });
 }

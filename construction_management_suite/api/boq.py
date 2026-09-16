@@ -255,6 +255,12 @@ def make_interim_payment_certificate(source_name, target_doc=None):
     """
     from frappe.model.mapper import get_mapped_doc
 
+    if not frappe.db.get_value("BOQ", source_name, "project"):
+        frappe.throw(
+            _("{0} has no Project. A certificate is paid against a project — "
+              "use <b>Create &gt; Project</b> on the BOQ first.").format(source_name)
+        )
+
     def postprocess(source, target):
         target.ipc_title = _("Payment Certificate — {0}").format(source.boq_title)
         target.boq_ref = source.name
@@ -271,6 +277,12 @@ def make_interim_payment_certificate(source_name, target_doc=None):
         claimed = _previously_claimed_by_line(source.project)
         for row in target.items:
             row.previous_qty_claimed = flt(claimed.get(row.boq_item_ref))
+        # Nothing left to certify on a line is not worth a row on the
+        # certificate; the engineer should see only live work.
+        target.items = [
+            r for r in target.items
+            if flt(r.contract_qty) - flt(r.previous_qty_claimed) > 0.0001
+        ] or target.items
 
     return get_mapped_doc(
         "BOQ",
@@ -289,7 +301,11 @@ def make_interim_payment_certificate(source_name, target_doc=None):
             "BOQ Item": {
                 "doctype": "IPC Item",
                 "field_map": {
-                    "item_code": "boq_item_ref",
+                    # The BOQ Item ROW name, not the item code. An item can
+                    # appear on two lines of one bill in different sections; only
+                    # the row identifies which of them is being certified.
+                    "name": "boq_item_ref",
+                    "item_code": "item_code",
                     "description": "description",
                     "uom": "uom",
                     "qty": "contract_qty",
@@ -302,20 +318,53 @@ def make_interim_payment_certificate(source_name, target_doc=None):
     )
 
 
-def _previously_claimed_by_line(project):
-    """Quantity already certified per BOQ line reference on this project."""
+def _previously_claimed_by_line(project, exclude_ipc=None):
+    """Quantity already certified per BOQ line on this project.
+
+    Submitted certificates only — a draft is a proposal, and counting it would
+    block the very certificate being drafted from claiming its own quantity.
+    """
     rows = frappe.db.sql(
         """
         SELECT i.boq_item_ref AS ref, SUM(i.qty_this_period) AS qty
         FROM `tabIPC Item` i
         JOIN `tabInterim Payment Certificate` p ON p.name = i.parent
-        WHERE p.project = %s AND p.docstatus = 1 AND i.boq_item_ref IS NOT NULL
+        WHERE p.project = %(project)s AND p.docstatus = 1
+          AND i.boq_item_ref IS NOT NULL AND i.boq_item_ref != ''
+          AND p.name != %(exclude)s
         GROUP BY i.boq_item_ref
         """,
-        project,
+        {"project": project, "exclude": exclude_ipc or ""},
         as_dict=True,
     )
     return {r.ref: flt(r.qty) for r in rows}
+
+
+@frappe.whitelist()
+def get_boq_lines_for_ipc(boq, ipc=None):
+    """BOQ lines with work still left to certify, ready to append to a certificate."""
+    doc = frappe.get_doc("BOQ", boq)
+    if doc.docstatus != 1:
+        frappe.throw(_("Only a submitted BOQ can be certified against"))
+
+    claimed = _previously_claimed_by_line(doc.project, exclude_ipc=ipc)
+    lines = []
+    for row in doc.items:
+        previous = flt(claimed.get(row.name))
+        remaining = flt(row.qty) - previous
+        if remaining <= 0.0001:
+            continue
+        lines.append({
+            "boq_item_ref": row.name,
+            "item_code": row.item_code,
+            "description": row.description or row.item_code,
+            "uom": row.uom,
+            "contract_qty": flt(row.qty),
+            "contract_rate": flt(row.rate),
+            "previous_qty_claimed": previous,
+            "qty_this_period": 0,
+        })
+    return lines
 
 
 # ──────────────────────────── Pricing from the rate library ────────────────────
@@ -348,14 +397,21 @@ def check_rate_drift(boq):
 
 @frappe.whitelist()
 def get_rate_analysis_for_item(item_code):
-    """The most recently updated approved analysis for an item, if there is one."""
+    """The analysis an item is priced from when nobody picks one by hand.
+
+    An item can legitimately carry several approved analyses — different
+    specifications, different sites, a tender version alongside the contract
+    one. `is_default` is how the estimator says which is the real one; without
+    it the choice fell to whichever happened to be saved last, which is not a
+    decision anybody made.
+    """
     if not item_code:
         return None
     return frappe.db.get_value(
         "Rate Analysis",
-        {"item_code": item_code, "status": "Approved"},
+        {"item_code": item_code, "status": "Approved", "is_active": 1},
         "name",
-        order_by="modified desc",
+        order_by="is_default desc, modified desc",
     )
 
 
@@ -387,15 +443,16 @@ def price_boq_from_library(boq, overwrite=0):
     if doc.docstatus != 0:
         frappe.throw(_("Only a draft BOQ can be priced from the library"))
 
-    # setdefault, not a dict comprehension: iterating newest-first and assigning
-    # every time leaves the OLDEST analysis in the map, which is the opposite of
-    # what get_rate_analysis_for_item picks. The two must agree.
+    # setdefault, not a dict comprehension: iterating best-first and assigning
+    # every time leaves the WORST analysis in the map, which is the opposite of
+    # what get_rate_analysis_for_item picks. The two must agree, so the filters
+    # and the ordering here are that function's, applied in bulk.
     library = {}
     for r in frappe.get_all(
         "Rate Analysis",
-        filters={"status": "Approved", "item_code": ["is", "set"]},
+        filters={"status": "Approved", "is_active": 1, "item_code": ["is", "set"]},
         fields=["name", "item_code"],
-        order_by="modified desc",
+        order_by="is_default desc, modified desc",
     ):
         library.setdefault(r.item_code, r.name)
 

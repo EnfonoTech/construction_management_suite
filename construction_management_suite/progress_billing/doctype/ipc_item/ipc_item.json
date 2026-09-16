@@ -4,15 +4,17 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
-  "boq_item_ref",
+  "item_code",
   "description",
   "uom",
+  "boq_item_ref",
   "column_break_1",
   "contract_qty",
   "contract_rate",
   "contract_amount",
   "previous_qty_claimed",
   "qty_this_period",
+  "remaining_qty",
   "cumulative_qty",
   "column_break_2",
   "amount_this_period",
@@ -21,11 +23,12 @@
  ],
  "fields": [
   {
-   "fieldname": "boq_item_ref",
-   "fieldtype": "Data",
-   "label": "BOQ Item / Description Ref",
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
    "in_list_view": 1,
-   "columns": 1
+   "columns": 2
   },
   {
    "fieldname": "description",
@@ -42,6 +45,16 @@
    "options": "UOM"
   },
   {
+   "fieldname": "boq_item_ref",
+   "fieldtype": "Data",
+   "label": "BOQ Line",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1
+},
+  {
    "fieldname": "column_break_1",
    "fieldtype": "Column Break"
   },
@@ -56,21 +69,23 @@
    "fieldname": "contract_rate",
    "fieldtype": "Currency",
    "label": "Contract Rate",
-   "in_list_view": 1,
-   "columns": 1
+   "options": "currency"
   },
   {
    "fieldname": "contract_amount",
    "fieldtype": "Currency",
    "label": "Contract Amount",
+   "options": "currency",
    "read_only": 1
   },
   {
    "fieldname": "previous_qty_claimed",
    "fieldtype": "Float",
    "label": "Prev Qty Claimed",
+   "read_only": 1,
    "in_list_view": 1,
-   "columns": 1
+   "columns": 1,
+   "description": "From earlier certificates"
   },
   {
    "fieldname": "qty_this_period",
@@ -79,6 +94,15 @@
    "reqd": 1,
    "in_list_view": 1,
    "columns": 1
+  },
+  {
+   "fieldname": "remaining_qty",
+   "fieldtype": "Float",
+   "label": "Remaining",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "Contract Qty - Cumulative Qty"
   },
   {
    "fieldname": "cumulative_qty",
@@ -94,6 +118,7 @@
    "fieldname": "amount_this_period",
    "fieldtype": "Currency",
    "label": "Amount This Period",
+   "options": "currency",
    "read_only": 1,
    "in_list_view": 1,
    "columns": 2
@@ -102,15 +127,14 @@
    "fieldname": "cumulative_amount",
    "fieldtype": "Currency",
    "label": "Cumulative Amount",
+   "options": "currency",
    "read_only": 1
   },
   {
    "fieldname": "percent_complete",
    "fieldtype": "Percent",
    "label": "% Complete",
-   "read_only": 1,
-   "in_list_view": 1,
-   "columns": 1
+   "read_only": 1
   }
  ],
  "istable": 1,

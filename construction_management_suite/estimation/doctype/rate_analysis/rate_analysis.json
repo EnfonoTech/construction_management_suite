@@ -15,7 +15,10 @@
   "currency",
   "date",
   "previous_version",
+  "column_break_1b",
   "status",
+  "is_active",
+  "is_default",
   "rate_basis",
   "buying_price_list",
   "last_cost_update",
@@ -70,6 +73,10 @@
    "fieldtype": "Column Break"
   },
   {
+   "fieldname": "column_break_1b",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
@@ -103,7 +110,22 @@
    "fieldtype": "Select",
    "label": "Status",
    "options": "Draft\nApproved\nObsolete",
-   "default": "Draft"
+   "default": "Draft",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": "1",
+   "description": "Off = retired and hidden from pickers"
+  },
+  {
+   "fieldname": "is_default",
+   "fieldtype": "Check",
+   "label": "Is Default",
+   "default": "0",
+   "description": "Auto-picked for this item. One per item."
   },
   {
    "fieldname": "rate_basis",
@@ -111,7 +133,7 @@
    "label": "Rate Basis",
    "options": "Manual\nValuation Rate\nLast Purchase Rate\nPrice List",
    "default": "Manual",
-   "description": "Where Update Cost reads resource rates from. Manual means they are typed by hand."
+   "description": "What Update Cost reads rates from"
   },
   {
    "fieldname": "buying_price_list",

@@ -42,7 +42,7 @@
   {"fieldname": "column_break_2", "fieldtype": "Column Break"},
   {"fieldname": "date_raised", "fieldtype": "Date", "label": "Date Raised", "default": "Today"},
   {"fieldname": "client_reference", "fieldtype": "Data", "label": "Client Instruction Ref"},
-  {"fieldname": "time_extension_days", "fieldtype": "Int", "label": "Extension of Time (days)", "description": "Additional days granted to the contract programme"},
+  {"fieldname": "time_extension_days", "fieldtype": "Int", "label": "Extension of Time (days)", "description": "Days added to the programme"},
 
   {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Varied Work"},
   {"fieldname": "items", "fieldtype": "Table", "label": "Items", "options": "Variation Order Item", "reqd": 1},

@@ -38,8 +38,6 @@
   "total_amount",
   "total_cost_amount",
   "effective_margin_percent",
-  "profit_margin_percent",
-  "profit_margin_amount",
   "grand_total",
   "section_meta",
   "prepared_by",
@@ -62,9 +60,9 @@
    "fieldtype": "Link",
    "label": "Project",
    "options": "Project",
-   "reqd": 1,
    "in_list_view": 1,
-   "search_index": 1
+   "search_index": 1,
+   "description": "Blank until the job is won"
   },
   {
    "fieldname": "boq_title",
@@ -191,35 +189,40 @@
    "fieldtype": "Currency",
    "label": "Total Material",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "total_labour_amount",
    "fieldtype": "Currency",
    "label": "Total Labour",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "total_equipment_amount",
    "fieldtype": "Currency",
    "label": "Total Equipment",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "total_subcontract_amount",
    "fieldtype": "Currency",
    "label": "Total Subcontract",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "total_overhead_amount",
    "fieldtype": "Currency",
    "label": "Total Overhead",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "column_break_3",
@@ -238,27 +241,16 @@
    "fieldtype": "Currency",
    "label": "Total Cost",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "effective_margin_percent",
    "fieldtype": "Percent",
    "label": "Effective Margin %",
    "read_only": 1,
-   "description": "Blended margin across the priced lines, before any additional margin below"
-  },
-  {
-   "fieldname": "profit_margin_percent",
-   "fieldtype": "Percent",
-   "label": "Profit Margin %",
-   "default": "0"
-  },
-  {
-   "fieldname": "profit_margin_amount",
-   "fieldtype": "Currency",
-   "label": "Profit Margin Amount",
-   "options": "currency",
-   "read_only": 1
+   "description": "(Total Amount - Total Cost) / Total Cost",
+   "print_hide": 1
   },
   {
    "fieldname": "grand_total",

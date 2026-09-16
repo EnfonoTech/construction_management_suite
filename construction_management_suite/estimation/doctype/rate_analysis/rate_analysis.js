@@ -1,4 +1,9 @@
 frappe.ui.form.on("Rate Analysis", {
+    setup(frm) {
+        // A selling price list here would price the work at what it sells for.
+        frm.set_query("buying_price_list", () => ({ filters: { buying: 1, enabled: 1 } }));
+    },
+
     refresh(frm) {
         CMS.uomQuery(frm, "resources", "resource_item");
         const lock = (frm.doc.__onload && frm.doc.__onload.lock_state) || {};
@@ -23,6 +28,14 @@ frappe.ui.form.on("Rate Analysis", {
         if (frm.doc.rate_basis !== "Price List") frm.set_value("buying_price_list", null);
     },
 
+    status(frm) {
+        if (frm.doc.status === "Obsolete") frm.set_value("is_active", 0);
+    },
+
+    is_active(frm) {
+        if (!frm.doc.is_active) frm.set_value("is_default", 0);
+    },
+
     output_qty(frm) { CMS.recalc(frm); },
     resources_remove(frm) { CMS.recalc(frm); },
 });
@@ -40,7 +53,7 @@ frappe.ui.form.on("Rate Analysis Resource", {
     },
 });
 
-/** Read-only the costed content and say why, naming the documents relying on it. */
+/** Read-only the costed content. The Used In tab names what relies on it. */
 function apply_lock(frm, lock) {
     (lock.locked_fields || []).forEach(f => frm.set_df_property(f, "read_only", 1));
     const grid = frm.fields_dict.resources && frm.fields_dict.resources.grid;
@@ -49,18 +62,7 @@ function apply_lock(frm, lock) {
         grid.df.cannot_delete_rows = 1;
         frm.refresh_field("resources");
     }
-
-    const names = (lock.references || [])
-        .map(r => `<a href="/app/${frappe.router.slug(r.doctype)}/${encodeURIComponent(r.name)}">${r.name}</a>`)
-        .join(", ");
-    const more = lock.reference_count > (lock.references || []).length
-        ? __(" and {0} more", [lock.reference_count - lock.references.length]) : "";
-
-    frm.dashboard.add_comment(
-        __("Priced into {0}{1}. The resources and quantities are locked so those documents keep the provenance of their rates. Use <b>Actions &gt; New Version</b> to change the costing — status, name and notes can still be edited here.",
-           [names, more]),
-        "orange", true
-    );
+    frm.page.set_indicator(__("Locked · used by {0}", [lock.reference_count]), "orange");
 }
 
 function new_version(frm) {

@@ -33,11 +33,12 @@ class RateAnalysis(Document):
 		self.set_missing_defaults()
 		self.validate_locked_content()
 		self.validate_rate_basis()
+		self.validate_active_and_default()
 		self.calculate_resources()
 		self.calculate_totals()
 
 	def on_update(self):
-		self.supersede_previous_version()
+		self.clear_other_defaults()
 
 	def set_missing_defaults(self):
 		if not self.status:
@@ -186,37 +187,67 @@ class RateAnalysis(Document):
 		# would carry across the very fields marked no_copy.
 		new = frappe.copy_doc(self, ignore_no_copy=False)
 		new.status = "Draft"
+		new.is_active = 1
+		# Never inherited. Two analyses claiming to be the default for one item
+		# is the one state clear_other_defaults() cannot resolve on its own.
+		new.is_default = 0
 		new.previous_version = self.name
 		new.date = nowdate()
 		new.last_cost_update = None
 		new.insert()
 		frappe.msgprint(
-			_("Created {0}. The previous version stays Approved until this one is approved.").format(
-				frappe.utils.get_link_to_form("Rate Analysis", new.name)
-			)
+			_(
+				"Created {0}. This version is untouched — when the new one is approved, "
+				"tick <b>Is Default</b> on it, and untick <b>Is Active</b> here if you no "
+				"longer want it offered."
+			).format(frappe.utils.get_link_to_form("Rate Analysis", new.name))
 		)
 		return new.name
 
-	def supersede_previous_version(self):
-		"""Retire the predecessor only once this version is approved.
+	# ----- Active / default -----
 
-		Retiring it at creation time would drop the item out of the rate library
-		entirely — both pickers filter on Approved, and the successor is a Draft
-		— so an item would have no rate for as long as the new version took to
-		review.
+	def validate_active_and_default(self):
+		"""Keep the two flags honest about what they claim.
+
+		A retired analysis cannot be active, and nothing but a live, approved
+		analysis can be the one an item is priced from by default. Enforced
+		here rather than left to the user because `is_default` is what the
+		pickers read — a default pointing at an obsolete build-up would quietly
+		price new work from a rate nobody stands behind any more.
 		"""
-		if self.status != "Approved" or not self.previous_version:
+		if self.status == "Obsolete":
+			self.is_active = 0
+		if not self.is_active:
+			self.is_default = 0
+		if self.is_default and self.status != "Approved":
+			frappe.throw(
+				_("Only an Approved analysis can be the default for {0}.").format(
+					self.item_code or _("an item")
+				)
+			)
+
+	def clear_other_defaults(self):
+		"""One default per item — set here, unset everywhere else.
+
+		Done after the write rather than in validate() so the winner is already
+		on disk: if this save later fails, nothing else has been demoted.
+		"""
+		if not self.is_default or not self.item_code:
 			return
-		before = self.get_doc_before_save()
-		if before and before.status == "Approved":
-			return
-		if frappe.db.get_value("Rate Analysis", self.previous_version, "status") != "Approved":
-			return
-		frappe.db.set_value("Rate Analysis", self.previous_version, "status", "Obsolete")
-		frappe.msgprint(
-			_("{0} marked Obsolete — superseded by this version").format(self.previous_version),
-			alert=True,
+		others = frappe.get_all(
+			"Rate Analysis",
+			filters={"item_code": self.item_code, "is_default": 1, "name": ("!=", self.name)},
+			pluck="name",
 		)
+		for name in others:
+			frappe.db.set_value("Rate Analysis", name, "is_default", 0, update_modified=False)
+		if others:
+			frappe.msgprint(
+				_("{0} is now the default analysis for {1}; {2} no longer is.").format(
+					self.name, self.item_code, ", ".join(others)
+				),
+				alert=True,
+			)
 
 	# ----- Cost configuration -----
 

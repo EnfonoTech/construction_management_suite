@@ -5,6 +5,7 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
+  "item_no",
   "item_code",
   "item_group",
   "description",
@@ -28,6 +29,7 @@
   "overhead_amount",
   "cost_rate",
   "margin_percent",
+  "margin_amount",
   "rate_applied_on",
   "rate_build_up",
   "section_meta",
@@ -42,13 +44,21 @@
  ],
  "fields": [
   {
+   "fieldname": "item_no",
+   "fieldtype": "Data",
+   "label": "Item No",
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "Stays put when rows move"
+  },
+  {
    "fieldname": "item_code",
    "fieldtype": "Link",
    "label": "Item Code",
    "options": "Item",
    "in_list_view": 1,
    "reqd": 1,
-   "columns": 2
+   "columns": 1
   },
   {
    "fieldname": "item_group",
@@ -114,13 +124,15 @@
   {
    "fieldname": "material_rate",
    "fieldtype": "Currency",
-   "label": "Material Rate"
+   "label": "Material Rate",
+   "print_hide": 1
   },
   {
    "fieldname": "material_amount",
    "fieldtype": "Currency",
    "label": "Material Amount",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "column_break_2",
@@ -129,37 +141,43 @@
   {
    "fieldname": "labour_rate",
    "fieldtype": "Currency",
-   "label": "Labour Rate"
+   "label": "Labour Rate",
+   "print_hide": 1
   },
   {
    "fieldname": "labour_amount",
    "fieldtype": "Currency",
    "label": "Labour Amount",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "equipment_rate",
    "fieldtype": "Currency",
-   "label": "Equipment Rate"
+   "label": "Equipment Rate",
+   "print_hide": 1
   },
   {
    "fieldname": "equipment_amount",
    "fieldtype": "Currency",
    "label": "Equipment Amount",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "subcontract_rate",
    "fieldtype": "Currency",
    "label": "Subcontract Rate",
-   "options": "currency"
+   "options": "currency",
+   "print_hide": 1
   },
   {
    "fieldname": "subcontract_amount",
    "fieldtype": "Currency",
    "label": "Subcontract Amount",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "column_break_3",
@@ -168,13 +186,15 @@
   {
    "fieldname": "overhead_rate",
    "fieldtype": "Currency",
-   "label": "Overhead Rate"
+   "label": "Overhead Rate",
+   "print_hide": 1
   },
   {
    "fieldname": "overhead_amount",
    "fieldtype": "Currency",
    "label": "Overhead Amount",
-   "read_only": 1
+   "read_only": 1,
+   "print_hide": 1
   },
   {
    "fieldname": "cost_rate",
@@ -182,13 +202,25 @@
    "label": "Cost Rate",
    "options": "currency",
    "read_only": 1,
-   "description": "Sum of the material, labour, equipment, subcontract and overhead rates"
+   "description": "Sum of the five cost rates",
+   "print_hide": 1
   },
   {
    "fieldname": "margin_percent",
    "fieldtype": "Percent",
    "label": "Margin %",
-   "description": "Set to price this line at cost plus this margin. Leave blank to type the rate yourself."
+   "read_only": 1,
+   "print_hide": 1,
+   "description": "(Rate - Cost Rate) / Cost Rate"
+  },
+  {
+   "fieldname": "margin_amount",
+   "fieldtype": "Currency",
+   "label": "Margin Amount",
+   "options": "currency",
+   "read_only": 1,
+   "print_hide": 1,
+   "description": "(Rate - Cost Rate) x Qty"
   },
   {
    "fieldname": "rate_applied_on",
@@ -202,8 +234,7 @@
    "label": "Rate Build-up (as applied)",
    "read_only": 1,
    "hidden": 1,
-   "print_hide": 1,
-   "description": "Frozen copy of the Rate Analysis resources at the moment this line was priced"
+   "print_hide": 1
   },
   {
    "fieldname": "section_meta",

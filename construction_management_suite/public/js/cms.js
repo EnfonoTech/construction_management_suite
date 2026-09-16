@@ -217,7 +217,9 @@ CMS.clearForeignProject = function (frm, fieldname) {
 CMS.rateAnalysisQuery = function (frm, tablefield) {
     frm.set_query("rate_analysis_ref", tablefield || "items", (doc, cdt, cdn) => {
         const row = locals[cdt][cdn];
-        const filters = { status: ["!=", "Obsolete"] };
+        // is_active covers retirement on its own; an Obsolete analysis is
+        // forced inactive on save, so one filter says both.
+        const filters = { is_active: 1 };
         // With no item chosen, filtering on an empty item_code would match only
         // analyses that have none — which reads as a broken picker.
         if (row.item_code) filters.item_code = row.item_code;
@@ -263,9 +265,10 @@ CMS.calc["BOQ"] = function (doc) {
     (doc.items || []).forEach(r => {
         r.cost_rate = flt(r.material_rate) + flt(r.labour_rate) + flt(r.equipment_rate)
             + flt(r.subcontract_rate) + flt(r.overhead_rate);
-        if (flt(r.margin_percent) && flt(r.cost_rate)) {
-            r.rate = flt(r.cost_rate) * (1 + flt(r.margin_percent) / 100);
-        }
+        // Reported, not applied — see BOQ.calculate_item_amounts.
+        r.margin_percent = flt(r.cost_rate)
+            ? (flt(r.rate) - flt(r.cost_rate)) / flt(r.cost_rate) * 100 : 0;
+        r.margin_amount = (flt(r.rate) - flt(r.cost_rate)) * flt(r.qty);
         r.amount = flt(r.qty) * flt(r.rate);
         r.material_amount = flt(r.qty) * flt(r.material_rate);
         r.labour_amount = flt(r.qty) * flt(r.labour_rate);
@@ -287,8 +290,8 @@ CMS.calc["BOQ"] = function (doc) {
     doc.total_cost_amount = (doc.items || []).reduce((t, r) => t + flt(r.qty) * flt(r.cost_rate), 0);
     doc.effective_margin_percent = flt(doc.total_cost_amount)
         ? (flt(doc.total_amount) - flt(doc.total_cost_amount)) / flt(doc.total_cost_amount) * 100 : 0;
-    doc.profit_margin_amount = flt(doc.total_amount) * flt(doc.profit_margin_percent) / 100;
-    doc.grand_total = flt(doc.total_amount) + flt(doc.profit_margin_amount);
+    // The tender sum is the sum of the priced lines — see BOQ.calculate_totals.
+    doc.grand_total = flt(doc.total_amount);
 };
 
 CMS.calc["Rate Analysis"] = function (doc) {
@@ -344,6 +347,7 @@ CMS.calc["Interim Payment Certificate"] = function (doc) {
         r.cumulative_qty = flt(r.previous_qty_claimed) + flt(r.qty_this_period);
         r.amount_this_period = flt(r.qty_this_period) * flt(r.contract_rate);
         r.cumulative_amount = flt(r.cumulative_qty) * flt(r.contract_rate);
+        r.remaining_qty = flt(r.contract_qty) - flt(r.cumulative_qty);
         r.percent_complete = flt(r.contract_amount) > 0
             ? flt(r.cumulative_amount) / flt(r.contract_amount) * 100 : 0;
         gross += flt(r.amount_this_period);

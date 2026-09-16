@@ -67,9 +67,8 @@
    "label": "Rate Build-up (as applied)",
    "read_only": 1,
    "hidden": 1,
-   "print_hide": 1,
-   "description": "Frozen copy of the Rate Analysis resources at the moment this line was priced"
-  },
+   "print_hide": 1
+},
   {
    "fieldname": "rate_applied_on",
    "fieldtype": "Datetime",

@@ -1,4 +1,5 @@
 MANIFEST.in
+README.md
 requirements.txt
 setup.py
 construction_management_suite/__init__.py
@@ -31,6 +32,7 @@ construction_management_suite/boq_management/report/__init__.py
 construction_management_suite/boq_management/report/boq_summary/__init__.py
 construction_management_suite/boq_management/report/boq_summary/boq_summary.py
 construction_management_suite/config/__init__.py
+construction_management_suite/config/dashboards.py
 construction_management_suite/config/desktop.py
 construction_management_suite/estimation/__init__.py
 construction_management_suite/estimation/dashboard/__init__.py
@@ -80,6 +82,7 @@ construction_management_suite/material_planning/doctype/site_transfer_item/__ini
 construction_management_suite/material_planning/doctype/site_transfer_item/site_transfer_item.py
 construction_management_suite/material_planning/report/__init__.py
 construction_management_suite/patches/__init__.py
+construction_management_suite/patches/fix_core_tables.py
 construction_management_suite/progress_billing/__init__.py
 construction_management_suite/progress_billing/utils.py
 construction_management_suite/progress_billing/dashboard/__init__.py
@@ -108,6 +111,8 @@ construction_management_suite/project_costing/doctype/project_budget/__init__.py
 construction_management_suite/project_costing/doctype/project_budget/project_budget.py
 construction_management_suite/project_costing/doctype/project_budget_item/__init__.py
 construction_management_suite/project_costing/doctype/project_budget_item/project_budget_item.py
+construction_management_suite/project_costing/doctype/project_cash_flow_item/__init__.py
+construction_management_suite/project_costing/doctype/project_cash_flow_item/project_cash_flow_item.py
 construction_management_suite/project_costing/doctype/wip_entry/__init__.py
 construction_management_suite/project_costing/doctype/wip_entry/wip_entry.py
 construction_management_suite/project_costing/doctype/wip_entry_item/__init__.py
@@ -143,6 +148,7 @@ construction_management_suite/site_management/doctype/site_report_material/__ini
 construction_management_suite/site_management/doctype/site_report_material/site_report_material.py
 construction_management_suite/site_management/report/__init__.py
 construction_management_suite/subcontractor_management/__init__.py
+construction_management_suite/subcontractor_management/utils.py
 construction_management_suite/subcontractor_management/dashboard/__init__.py
 construction_management_suite/subcontractor_management/doctype/__init__.py
 construction_management_suite/subcontractor_management/doctype/subcontract_agreement/__init__.py

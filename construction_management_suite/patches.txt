@@ -1,2 +1,9 @@
 # Patches are listed in the format: app.module.patch_module.patch_function
 # Example: construction_management_suite.patches.v1_0.migrate_boq_data
+
+[pre_model_sync]
+
+[post_model_sync]
+# Reads and writes columns this release adds, so it must run after the schema sync.
+construction_management_suite.patches.v1_1.link_ipc_lines_and_derive_margin
+construction_management_suite.patches.v1_1.tender_sum_and_item_numbers

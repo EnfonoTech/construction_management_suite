@@ -5,15 +5,23 @@ from frappe.utils import flt, nowdate
 from construction_management_suite.utils.validations import validate_project_company
 
 
+COMPONENT_RATES = (
+    "material_rate", "labour_rate", "equipment_rate", "subcontract_rate", "overhead_rate",
+)
+
+
 class BOQ(Document):
     # ----- Lifecycle -----
 
     def validate(self):
         validate_project_company(self)
         self.set_currency_from_project()
+        self.set_item_numbers()
+        self.apply_named_rate_analysis()
         self.calculate_item_amounts()
         self.calculate_totals()
         self.validate_items()
+        self.warn_priced_below_cost()
         self.capture_rate_build_ups()
 
     def before_submit(self):
@@ -41,17 +49,119 @@ class BOQ(Document):
             if project_currency:
                 self.currency = project_currency
 
+    def set_item_numbers(self):
+        """Give every new line a reference that survives the rows moving.
+
+        `idx` renumbers the moment a row is inserted above, so a bill referred
+        to in correspondence as item 2.4 quietly becomes 2.5. Numbers are
+        assigned once and never revised — an inserted line takes the next free
+        number in its section rather than pushing everything down.
+        """
+        used = {i.item_no for i in self.items if i.item_no}
+        sections = []
+        for i in self.items:
+            key = i.boq_section or ""
+            if key not in sections:
+                sections.append(key)
+        # Flat numbering while the bill has no sections; 1.1 / 2.3 once it does.
+        sectioned = len(sections) > 1 or (sections and sections[0])
+
+        counters = {}
+        for i in self.items:
+            if i.item_no:
+                continue
+            key = i.boq_section or ""
+            prefix = "{0}.".format(sections.index(key) + 1) if sectioned else ""
+            n = counters.get(key, 0)
+            while True:
+                n += 1
+                candidate = "{0}{1}".format(prefix, n)
+                if candidate not in used:
+                    break
+            counters[key] = n
+            used.add(candidate)
+            i.item_no = candidate
+
+    def apply_named_rate_analysis(self):
+        """Cost a line from the analysis it names when nothing was costed yet.
+
+        Picking an analysis in the grid fills the five component rates from the
+        form script, so a line built by hand arrives complete. Every other route
+        in — the REST API, a data import, get_mapped_doc, a fixture — left
+        `rate_analysis_ref` pointing at an analysis whose cost never landed, and
+        capture_rate_build_ups then declined to freeze a build-up because the
+        line's cost did not match the analysis. Cost Estimation has always done
+        this on the server; the BOQ simply never did.
+
+        Only fills when all five are zero. A hand-adjusted breakdown is a
+        decision, and a BOQ keeps its own rates on purpose — refreshing them
+        from the library on every save is exactly what check_rate_drift exists
+        to avoid.
+        """
+        from construction_management_suite.api.boq import get_rate_analysis_rates
+
+        for item in self.items:
+            if not item.rate_analysis_ref:
+                continue
+            if any(flt(item.get(f)) for f in COMPONENT_RATES):
+                continue
+            if not frappe.db.exists("Rate Analysis", item.rate_analysis_ref):
+                continue
+            rates = get_rate_analysis_rates(item.rate_analysis_ref)
+            for field in COMPONENT_RATES:
+                item.set(field, rates[field])
+            if not flt(item.rate):
+                item.rate = rates["rate"]
+
+    def warn_priced_below_cost(self):
+        """Say it out loud when a line sells for less than it costs to build.
+
+        Not an error — front-loading and loss-leading are real tactics — but
+        with the margin now derived rather than typed, nothing else on the form
+        announces it.
+        """
+        if self.docstatus != 0:
+            return
+        # At field precision. cost_rate is a sum of five floats, so a line whose
+        # rate exactly equals its cost lands at 0.42 vs 0.42000000000000004 and
+        # reads as a loss.
+        under = []
+        for i in self.items:
+            dp = self.precision("rate", i) or 2
+            if flt(i.cost_rate, dp) and flt(i.rate, dp) < flt(i.cost_rate, dp):
+                under.append(i)
+        if not under:
+            return
+        lines = "<br>".join(
+            _("Row {0} ({1}): sells {2}, costs {3}").format(
+                i.idx,
+                i.item_code,
+                frappe.format_value(flt(i.rate), {"fieldtype": "Currency"}, self),
+                frappe.format_value(flt(i.cost_rate), {"fieldtype": "Currency"}, self),
+            )
+            for i in under[:10]
+        )
+        frappe.msgprint(
+            lines + ("<br>…" if len(under) > 10 else ""),
+            title=_("{0} line(s) priced below cost").format(len(under)),
+            indicator="orange",
+        )
+
     def calculate_item_amounts(self):
         for item in self.items:
             item.cost_rate = (
                 flt(item.material_rate) + flt(item.labour_rate) + flt(item.equipment_rate)
                 + flt(item.subcontract_rate) + flt(item.overhead_rate)
             )
-            # A line that carries its own margin is priced from its cost. Contractors
-            # front-load deliberately — high margin on early work, thin on the tail —
-            # so this has to be per line, not one figure for the whole bill.
-            if flt(item.margin_percent) and flt(item.cost_rate):
-                item.rate = flt(item.cost_rate) * (1 + flt(item.margin_percent) / 100)
+            # Margin is reported, never applied. The rate is what the estimator
+            # decided to sell the line for — driving it off a typed percentage
+            # meant the only way to adjust one line was to solve for the
+            # percentage that produced the rate you already had in mind.
+            item.margin_percent = (
+                (flt(item.rate) - flt(item.cost_rate)) / flt(item.cost_rate) * 100
+                if flt(item.cost_rate) else 0
+            )
+            item.margin_amount = (flt(item.rate) - flt(item.cost_rate)) * flt(item.qty)
             item.amount = flt(item.qty) * flt(item.rate)
             item.material_amount = flt(item.qty) * flt(item.material_rate)
             item.labour_amount = flt(item.qty) * flt(item.labour_rate)
@@ -73,8 +183,11 @@ class BOQ(Document):
             (flt(self.total_amount) - flt(self.total_cost_amount)) / flt(self.total_cost_amount) * 100
             if flt(self.total_cost_amount) else 0
         )
-        self.profit_margin_amount = flt(self.total_amount) * flt(self.profit_margin_percent) / 100
-        self.grand_total = flt(self.total_amount) + flt(self.profit_margin_amount)
+        # The tender sum IS the sum of the priced lines. A percentage added
+        # below the line meant a client could add up the Amount column and get
+        # a different figure from the total on the same page — and the line
+        # explaining the gap was labelled "Margin". Margin belongs in the rates.
+        self.grand_total = flt(self.total_amount)
 
     def validate_items(self):
         for row in self.items:
@@ -108,6 +221,44 @@ class BOQ(Document):
             item.rate_build_up = snapshot_rate_analysis(ra)
             if not item.rate_applied_on:
                 item.rate_applied_on = frappe.utils.now()
+
+    # ----- Winning the job -----
+
+    @frappe.whitelist()
+    def create_project(self):
+        """Open a Project for a BOQ that was priced before the job was won.
+
+        A bill is quoted at tender stage, when there is nothing to attach it to
+        yet, so `project` stays blank until the client awards the work. This
+        carries across only what the BOQ already knows; everything else is the
+        project manager's to fill in.
+        """
+        if self.project:
+            frappe.throw(
+                _("This BOQ is already on project {0}").format(self.project)
+            )
+
+        project = frappe.new_doc("Project")
+        project.update({
+            "project_name": self.boq_title or self.name,
+            "company": self.company,
+            "customer": self.client,
+            "currency": self.currency,
+            "status": "Open",
+            "expected_start_date": self.contract_date,
+            "cms_contract_value": flt(self.grand_total),
+            "cms_client_po": self.client_po,
+        })
+        project.insert(ignore_permissions=True)
+
+        # db_set, not save: the BOQ may already be submitted — winning the work
+        # is not a change to the priced content.
+        self.db_set("project", project.name)
+        frappe.msgprint(
+            _("Created {0}").format(frappe.utils.get_link_to_form("Project", project.name)),
+            alert=True,
+        )
+        return project.name
 
     # ----- Revision Workflow -----
 

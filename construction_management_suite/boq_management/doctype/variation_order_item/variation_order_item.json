@@ -50,7 +50,7 @@
    "fieldname": "boq_item_ref",
    "fieldtype": "Data",
    "label": "BOQ Item Ref",
-   "description": "Item code of the BOQ line this varies, if any"
+   "description": "BOQ line this varies, if any"
   },
   {
    "fieldname": "column_break_1",
