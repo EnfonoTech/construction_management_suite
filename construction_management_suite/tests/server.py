@@ -46,12 +46,13 @@ for dt, data in cases.items():
                     frappe.utils.flt(doc.gross_amount_this_period)
                     - frappe.utils.flt(doc.retention_amount)
                     - frappe.utils.flt(doc.advance_recovery_amount)
-                    - frappe.utils.flt(doc.other_deductions)))
+                    - frappe.utils.flt(doc.other_deductions)),
+            doc.calculate_taxes())
     CALC[dt](doc)
     d = doc.as_dict()
     rec = {k: v for k, v in d.items() if isinstance(v, (int, float)) and k not in ("docstatus", "idx")}
     tables = {}
-    for tf in ({CHILD.get(dt)} | {"labour", "equipment"}):
+    for tf in ({CHILD.get(dt)} | {"labour", "equipment", "taxes"}):
         if tf and d.get(tf):
             tables[tf] = [{k: v for k, v in r.items()
                            if isinstance(v, (int, float)) and k not in ("docstatus", "idx")} for r in d[tf]]

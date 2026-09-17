@@ -4,6 +4,12 @@ from frappe.model.document import Document
 from frappe.utils import flt, nowdate
 
 from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.billing import (
+    add_deduction,
+    add_line,
+    billing_item,
+    warn_unapplied,
+)
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
 from construction_management_suite.utils.validations import validate_project_company
 
@@ -18,6 +24,7 @@ class InterimPaymentCertificate(Document):
         self.set_previous_claimed()
         self.calculate_items()
         self.calculate_deductions()
+        self.calculate_taxes()
         self.validate_over_certification()
 
     def set_contract_value(self):
@@ -30,6 +37,8 @@ class InterimPaymentCertificate(Document):
         """
         if not flt(self.retention_percent):
             self.retention_percent = flt(cms_setting("default_retention_percent", 0))
+        if not self.taxes_and_charges and not self.taxes:
+            self.taxes_and_charges = cms_setting("sales_taxes_template")
         if flt(self.contract_value) or not self.boq_ref:
             return
         self.contract_value = flt(frappe.db.get_value("BOQ", self.boq_ref, "grand_total"))
@@ -115,6 +124,47 @@ class InterimPaymentCertificate(Document):
         # Accumulate total retention held
         prev_retention = self._get_previous_retention()
         self.total_retention_held = prev_retention + flt(self.retention_amount)
+
+    def calculate_taxes(self):
+        """Apply the tax table to the certified value, ERPNext's own way.
+
+        Charged on the GROSS, not the net: the supply is the work done, and
+        retention is withheld afterwards rather than discounting it. The four
+        charge types follow `calculate_taxes` in erpnext's taxes_and_totals, so
+        the certificate and the invoice it raises reach the same figure.
+        """
+        running = flt(self.gross_amount_this_period)
+        for row in self.taxes:
+            if row.charge_type == "Actual":
+                amount = flt(row.tax_amount)
+            elif row.charge_type == "On Net Total":
+                amount = flt(self.gross_amount_this_period) * flt(row.rate) / 100
+            elif row.charge_type == "On Previous Row Amount":
+                amount = flt(self._previous_row(row, "tax_amount")) * flt(row.rate) / 100
+            elif row.charge_type == "On Previous Row Total":
+                amount = flt(self._previous_row(row, "total")) * flt(row.rate) / 100
+            else:
+                # On Item Quantity needs per-item tax handling this document does
+                # not have; refusing is better than a figure nobody can explain.
+                frappe.throw(
+                    _("Row {0}: charge type {1} is not supported on a certificate").format(
+                        row.idx, row.charge_type
+                    )
+                )
+            row.tax_amount = amount
+            running += amount
+            row.total = running
+
+        self.total_taxes_and_charges = sum(flt(r.tax_amount) for r in self.taxes)
+        self.total_payable = flt(self.net_payable_this_period) + flt(self.total_taxes_and_charges)
+
+    def _previous_row(self, row, fieldname):
+        if not row.row_id:
+            frappe.throw(_("Row {0}: set the row it is charged on").format(row.idx))
+        idx = int(row.row_id)
+        if idx >= row.idx:
+            frappe.throw(_("Row {0} can only refer to a row above it").format(row.idx))
+        return self.taxes[idx - 1].get(fieldname)
 
     def _get_previous_retention(self):
         prev = frappe.db.sql(
@@ -214,28 +264,78 @@ class InterimPaymentCertificate(Document):
         return added
 
     def _create_sales_invoice(self):
+        """Invoice the work line by line, with the deductions on the face of it.
+
+        One lump sum carrying no item_code told the client nothing, could not be
+        taxed, and left every sales report blind to what the money was for. The
+        invoice now mirrors the certificate: a line per certified item at its
+        contract rate, then the retention and recoveries as negative lines, so
+        it still totals the net payable and every figure is visible.
+        """
         if not self.client:
             return
+        cost_center = get_cost_center(self.project, self.company)
+        fallback = billing_item("progress_billing_item")
+
         si = frappe.new_doc("Sales Invoice")
         si.customer = self.client
         si.project = self.project
         si.company = self.company
         si.currency = self.currency
         si.cms_ipc_ref = self.name
-        si.append("items", {
-            "item_name": f"IPC #{self.ipc_number} — {self.project}",
-            "description": f"Progress Billing — {self.ipc_title}",
-            "qty": 1,
-            "rate": self.net_payable_this_period,
-            "uom": "Nos",
-            # No item_code, so ERPNext cannot derive these — set them explicitly.
-            "income_account": frappe.get_cached_value(
-                "Company", self.company, "default_income_account"
-            ),
-            "cost_center": get_cost_center(self.project, self.company),
-        })
+
+        for item in self.items:
+            if not flt(item.amount_this_period):
+                continue
+            add_line(
+                si,
+                item.item_code or fallback,
+                item.description or item.item_code,
+                item.amount_this_period,
+                cost_center=cost_center,
+                qty=flt(item.qty_this_period) or 1,
+                rate=flt(item.contract_rate) if flt(item.qty_this_period) else flt(item.amount_this_period),
+                uom=item.uom,
+            )
+
+        if not si.items:
+            add_line(si, fallback, _("Progress Billing — {0}").format(self.ipc_title),
+                     self.gross_amount_this_period, cost_center=cost_center)
+
+        # Charge rows, not negative item lines: ERPNext will not submit a Sales
+        # Invoice with a negative rate unless the whole site allows it, and a
+        # negative line would understate revenue. A charge credits Sales with
+        # the full certified value and parks the withheld amount in its own
+        # account, which is what retention is — earned, owed, not yet due.
+        unapplied, applied = [], 0
+        for amount, setting, label in (
+            (self.retention_amount, "retention_account",
+             _("Retention @ {0}%").format(flt(self.retention_percent))),
+            (self.advance_recovery_amount, "advance_recovery_account", _("Advance Recovery")),
+            (self.other_deductions, "other_deductions_account", _("Other Deductions")),
+        ):
+            left = add_deduction(si, setting, label, amount, self.company, cost_center)
+            unapplied.append((label, left))
+            applied += flt(amount) - flt(left)
+
+        # The certificate is the source: whatever was certified and taxed is
+        # what gets invoiced, so the two documents cannot say different things.
+        si.taxes_and_charges = self.taxes_and_charges
+        for row in self.taxes:
+            si.append("taxes", {
+                "charge_type": row.charge_type,
+                "account_head": row.account_head,
+                "description": row.description,
+                "rate": row.rate,
+                "tax_amount": row.tax_amount,
+                "row_id": row.row_id,
+                "cost_center": row.cost_center or cost_center,
+                "included_in_print_rate": row.included_in_print_rate,
+            })
         si.insert(ignore_permissions=True)
         self.db_set("sales_invoice_ref", si.name)
+
+        warn_unapplied(si, unapplied)
         frappe.msgprint(_("Sales Invoice {0} created").format(si.name))
 
     def _cancel_linked_invoice(self):

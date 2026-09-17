@@ -2,6 +2,7 @@
 const fs = require("fs");
 global.window = global;   // in a browser, window IS the global object
 global.flt = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+global.cint = (v) => { const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
 global.__ = (s) => s;
 global.$ = () => ({ append: () => {}, html: () => {}, css: () => {} });
 global.format_currency = (v) => String(v);

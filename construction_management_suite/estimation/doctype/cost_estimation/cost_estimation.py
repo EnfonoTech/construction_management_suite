@@ -2,12 +2,14 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
+from construction_management_suite.utils.settings import cms_setting
 from construction_management_suite.utils.validations import validate_project_company
 
 
 class CostEstimation(Document):
     def validate(self):
         validate_project_company(self)
+        self.set_missing_defaults()
         self.pull_costs_from_rate_analysis()
         self.calculate_totals()
 
@@ -17,6 +19,15 @@ class CostEstimation(Document):
 
     def on_submit(self):
         self._create_project_budget()
+
+    def set_missing_defaults(self):
+        """Contingency from the module default when this estimate states none.
+
+        The docfield carried a hardcoded 5, which _set_defaults applies before
+        validate ever runs — so the setting could never be reached.
+        """
+        if not flt(self.contingency_percent):
+            self.contingency_percent = flt(cms_setting("default_contingency_percent", 0))
 
     def pull_costs_from_rate_analysis(self):
         for item in self.items:

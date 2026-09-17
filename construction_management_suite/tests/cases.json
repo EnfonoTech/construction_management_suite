@@ -123,6 +123,24 @@
     "previous_qty_claimed": 0,
     "qty_this_period": 5
    }
+  ],
+  "taxes": [
+   {
+    "charge_type": "On Net Total",
+    "rate": 5,
+    "description": "VAT 5%"
+   },
+   {
+    "charge_type": "Actual",
+    "tax_amount": 12.5,
+    "description": "Stamp"
+   },
+   {
+    "charge_type": "On Previous Row Total",
+    "row_id": 2,
+    "rate": 2,
+    "description": "Surcharge"
+   }
   ]
  },
  "Variation Order": {

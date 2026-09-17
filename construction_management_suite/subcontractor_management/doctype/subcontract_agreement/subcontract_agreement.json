@@ -32,7 +32,7 @@
   {"fieldname": "items", "fieldtype": "Table", "label": "Subcontract Items", "options": "Subcontract Item"},
   {"fieldname": "section_amounts", "fieldtype": "Section Break", "label": "Financial Terms"},
   {"fieldname": "subcontract_value", "fieldtype": "Currency", "label": "Subcontract Value", "options": "currency", "reqd": 1, "bold": 1},
-  {"fieldname": "retention_percent", "fieldtype": "Percent", "label": "Retention %", "default": "10"},
+  {"fieldname": "retention_percent", "fieldtype": "Percent", "label": "Retention %"},
   {"fieldname": "column_break_2", "fieldtype": "Column Break"},
   {"fieldname": "advance_percent", "fieldtype": "Percent", "label": "Advance %"},
   {"fieldname": "advance_amount", "fieldtype": "Currency", "label": "Advance Amount", "options": "currency", "read_only": 1},

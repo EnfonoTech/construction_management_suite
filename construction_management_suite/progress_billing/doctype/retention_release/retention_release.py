@@ -4,6 +4,7 @@ from frappe.model.document import Document
 from frappe.utils import flt, nowdate
 
 from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.billing import add_line, apply_taxes, billing_item
 from construction_management_suite.utils.validations import validate_project_company
 
 
@@ -94,17 +95,14 @@ class RetentionRelease(Document):
         si.project = self.project
         si.company = self.company
         si.currency = self.currency
-        si.append("items", {
-            "item_name": f"Retention Release — {self.release_type}",
-            "description": f"Release of retention held on {self.project}",
-            "qty": 1,
-            "rate": self.release_amount,
-            "uom": "Nos",
-            "income_account": frappe.get_cached_value(
-                "Company", self.company, "default_income_account"
-            ),
-            "cost_center": get_cost_center(self.project, self.company),
-        })
+        add_line(
+            si,
+            billing_item("retention_item"),
+            _("Release of retention held on {0} — {1}").format(self.project, self.release_type),
+            self.release_amount,
+            cost_center=get_cost_center(self.project, self.company),
+        )
+        apply_taxes(si, "sales_taxes_template")
         si.insert(ignore_permissions=True)
         self.db_set("sales_invoice_ref", si.name)
         self.db_set("status", "Invoiced")

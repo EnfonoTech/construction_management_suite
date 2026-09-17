@@ -4,11 +4,20 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.settings import cms_setting
 from construction_management_suite.utils.validations import validate_project_company
 
 
 class SubcontractAgreement(Document):
+    def set_missing_defaults(self):
+        """Retention from the module default; the docfield's hardcoded 10 beat it."""
+        if not flt(self.retention_percent):
+            self.retention_percent = flt(
+                cms_setting("default_subcontract_retention_percent", 0)
+            )
+
     def validate(self):
+        self.set_missing_defaults()
         validate_project_company(self)
         self.calculate_items()
         self.calculate_advance()

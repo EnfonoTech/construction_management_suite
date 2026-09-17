@@ -7,8 +7,6 @@ frappe.ui.form.on("Interim Payment Certificate", {
 
         if (frm.doc.docstatus === 0 && frm.doc.boq_ref) {
             frm.add_custom_button(__("Get Items from BOQ"), () => get_items(frm));
-            frm.page.set_inner_btn_group_as_primary &&
-                frm.page.set_inner_btn_group_as_primary(__("Get Items from BOQ"));
         }
 
         if (frm.doc.docstatus === 1) {
@@ -36,7 +34,16 @@ frappe.ui.form.on("Interim Payment Certificate", {
             client: "customer",
             contract_value: "cms_contract_value",
             retention_percent: "cms_retention_percent",
-        }).then(() => frm.doc.project && fetch_previous_position(frm));
+        }).then(() => {
+            if (!frm.doc.project) return;
+            fetch_previous_position(frm);
+            // A project that states no retention falls back to the module
+            // default rather than to zero.
+            if (!frm.doc.retention_percent) {
+                frappe.db.get_single_value("Construction Settings", "default_retention_percent")
+                    .then(v => v && frm.set_value("retention_percent", v));
+            }
+        });
     },
 
     company(frm) {
@@ -48,11 +55,31 @@ frappe.ui.form.on("Interim Payment Certificate", {
         if (frm.doc.boq_ref && !(frm.doc.items || []).length) get_items(frm);
     },
 
+    taxes_and_charges(frm) {
+        if (!frm.doc.taxes_and_charges) return;
+        // ERPNext's own loader, so a template behaves here exactly as on an invoice.
+        frappe.call({
+            method: "erpnext.controllers.accounts_controller.get_taxes_and_charges",
+            args: {
+                master_doctype: "Sales Taxes and Charges Template",
+                master_name: frm.doc.taxes_and_charges,
+            },
+            callback: (r) => {
+                if (!r.message) return;
+                frm.clear_table("taxes");
+                r.message.forEach(row => frm.add_child("taxes", row));
+                frm.refresh_field("taxes");
+                CMS.recalc(frm);
+            },
+        });
+    },
+
     retention_percent(frm) { CMS.recalc(frm); },
     advance_recovery_amount(frm) { CMS.recalc(frm); },
     other_deductions(frm) { CMS.recalc(frm); },
     previous_cumulative_amount(frm) { CMS.recalc(frm); },
     items_remove(frm) { CMS.recalc(frm); },
+    taxes_remove(frm) { CMS.recalc(frm); },
 
 });
 
@@ -109,3 +136,4 @@ function fetch_previous_position(frm) {
 // previous_qty_claimed is read-only now — the server recomputes it from the
 // certificates already submitted, so it is not a field anyone types into.
 CMS.liveRows("IPC Item", ["contract_qty", "contract_rate", "qty_this_period"]);
+CMS.liveRows("Sales Taxes and Charges", ["charge_type", "rate", "tax_amount", "row_id"]);

@@ -357,6 +357,27 @@ CMS.calc["Interim Payment Certificate"] = function (doc) {
     doc.retention_amount = flt(doc.gross_amount_this_period) * flt(doc.retention_percent) / 100;
     doc.net_payable_this_period = flt(doc.gross_amount_this_period)
         - flt(doc.retention_amount) - flt(doc.advance_recovery_amount) - flt(doc.other_deductions);
+
+    // Charged on the GROSS — the supply is the work done; retention is withheld
+    // afterwards. Mirrors InterimPaymentCertificate.calculate_taxes.
+    let running = flt(doc.gross_amount_this_period);
+    (doc.taxes || []).forEach((r, i) => {
+        let amount = 0;
+        if (r.charge_type === "Actual") {
+            amount = flt(r.tax_amount);
+        } else if (r.charge_type === "On Net Total") {
+            amount = flt(doc.gross_amount_this_period) * flt(r.rate) / 100;
+        } else if (r.charge_type === "On Previous Row Amount") {
+            amount = flt((doc.taxes[cint(r.row_id) - 1] || {}).tax_amount) * flt(r.rate) / 100;
+        } else if (r.charge_type === "On Previous Row Total") {
+            amount = flt((doc.taxes[cint(r.row_id) - 1] || {}).total) * flt(r.rate) / 100;
+        }
+        r.tax_amount = amount;
+        running += amount;
+        r.total = running;
+    });
+    doc.total_taxes_and_charges = (doc.taxes || []).reduce((t, r) => t + flt(r.tax_amount), 0);
+    doc.total_payable = flt(doc.net_payable_this_period) + flt(doc.total_taxes_and_charges);
 };
 
 CMS.calc["Variation Order"] = function (doc) {

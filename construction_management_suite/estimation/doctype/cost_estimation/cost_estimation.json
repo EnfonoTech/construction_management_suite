@@ -158,8 +158,7 @@
   {
    "fieldname": "contingency_percent",
    "fieldtype": "Percent",
-   "label": "Contingency %",
-   "default": "5"
+   "label": "Contingency %"
   },
   {
    "fieldname": "contingency_amount",

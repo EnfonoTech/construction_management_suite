@@ -23,6 +23,16 @@
   "over_certification_action",
   "column_break_bil",
   "default_retention_percent",
+  "default_subcontract_retention_percent",
+  "section_billing_items",
+  "progress_billing_item",
+  "subcontract_billing_item",
+  "column_break_items",
+  "retention_account",
+  "advance_recovery_account",
+  "other_deductions_account",
+  "sales_taxes_template",
+  "purchase_taxes_template",
   "section_site",
   "consumption_over_takeoff_action",
   "column_break_site",
@@ -138,6 +148,66 @@
    "fieldtype": "Percent",
    "label": "Default Retention %",
    "default": "5"
+  },
+  {
+   "fieldname": "section_billing_items",
+   "fieldtype": "Section Break",
+   "label": "Billing Items and Taxes",
+   "description": "Items the generated invoices are written against"
+  },
+  {
+   "fieldname": "progress_billing_item",
+   "fieldtype": "Link",
+   "label": "Progress Billing Item",
+   "options": "Item",
+   "description": "Used when a certified line names no item"
+  },
+  {
+   "fieldname": "column_break_items",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "subcontract_billing_item",
+   "fieldtype": "Link",
+   "label": "Subcontract Billing Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "retention_account",
+   "fieldtype": "Link",
+   "label": "Retention Account",
+   "options": "Account",
+   "description": "Asset account holding retention until release"
+  },
+  {
+   "fieldname": "advance_recovery_account",
+   "fieldtype": "Link",
+   "label": "Advance Recovery Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "other_deductions_account",
+   "fieldtype": "Link",
+   "label": "Other Deductions Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "sales_taxes_template",
+   "fieldtype": "Link",
+   "label": "Sales Taxes Template",
+   "options": "Sales Taxes and Charges Template"
+  },
+  {
+   "fieldname": "purchase_taxes_template",
+   "fieldtype": "Link",
+   "label": "Purchase Taxes Template",
+   "options": "Purchase Taxes and Charges Template"
+  },
+  {
+   "fieldname": "default_subcontract_retention_percent",
+   "fieldtype": "Percent",
+   "label": "Default Subcontract Retention %",
+   "default": "10"
   },
   {
    "fieldname": "section_site",

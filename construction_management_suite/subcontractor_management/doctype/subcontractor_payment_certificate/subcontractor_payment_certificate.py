@@ -4,6 +4,13 @@ from frappe.model.document import Document
 from frappe.utils import flt, nowdate
 
 from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.billing import (
+    add_deduction,
+    add_line,
+    apply_taxes,
+    billing_item,
+    warn_unapplied,
+)
 from construction_management_suite.utils.validations import validate_project_company
 
 
@@ -36,18 +43,27 @@ class SubcontractorPaymentCertificate(Document):
         pi.company = self.company
         pi.currency = self.currency
         pi.project = self.project
-        pi.append("items", {
-            "item_name": f"Subcontract Payment — {self.subcontract_agreement}",
-            "description": self.certificate_title,
-            "qty": 1,
-            "rate": self.net_payable,
-            "uom": "Nos",
-            # No item_code, so ERPNext cannot derive these — set them explicitly.
-            "expense_account": frappe.get_cached_value(
-                "Company", self.company, "default_expense_account"
-            ),
-            "cost_center": get_cost_center(self.project, self.company),
-        })
+        cost_center = get_cost_center(self.project, self.company)
+        work = billing_item("subcontract_billing_item")
+        add_line(pi, work, self.certificate_title or self.subcontract_agreement,
+                 self.certified_amount, cost_center=cost_center)
+
+        # Same reasoning as the client certificate — see utils.billing.
+        unapplied = []
+        for amount, setting, label in (
+            (self.retention_deduction, "retention_account",
+             _("Retention @ {0}%").format(flt(self.retention_percent))),
+            (self.advance_recovery, "advance_recovery_account", _("Advance Recovery")),
+            (self.other_deductions, "other_deductions_account", _("Other Deductions")),
+        ):
+            left = add_deduction(pi, setting, label, amount, self.company, cost_center)
+            unapplied.append((label, left))
+
+        if not pi.items:
+            add_line(pi, work, self.certificate_title, self.net_payable, cost_center=cost_center)
+
+        apply_taxes(pi, "purchase_taxes_template")
         pi.insert(ignore_permissions=True)
         self.db_set("purchase_invoice_ref", pi.name)
+        warn_unapplied(pi, unapplied)
         frappe.msgprint(_("Purchase Invoice {0} created").format(pi.name))

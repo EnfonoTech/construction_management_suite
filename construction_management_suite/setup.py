@@ -5,12 +5,32 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 def after_install():
     create_roles()
     create_custom_fields_on_erpnext()
+    create_billing_items()
     frappe.db.commit()
 
 
 def after_migrate():
     create_custom_fields_on_erpnext()
+    create_billing_items()
     frappe.db.commit()
+
+
+def create_billing_items():
+    """Service items the generated invoices are written against.
+
+    Idempotent, and it never overwrites a setting a site has already pointed at
+    its own item — so an upgrade adds what is missing and leaves choices alone.
+    """
+    from construction_management_suite.utils.billing import create_service_items
+
+    try:
+        created = create_service_items()
+        if created:
+            print(f"Construction: created billing items {', '.join(created)}")
+    except Exception:
+        # A fresh site may not have Item Groups or UOMs yet; the settings can be
+        # filled in by hand, so this must never abort an install or a migrate.
+        frappe.log_error(frappe.get_traceback(), "Construction: billing item setup failed")
 
 
 def before_uninstall():
@@ -62,7 +82,7 @@ def create_custom_fields_on_erpnext():
                 "fieldname": "cms_retention_percent",
                 "label": "Retention %",
                 "fieldtype": "Percent",
-                "default": "10",
+                "description": "Blank = the module default",
                 "insert_after": "cms_client_po",
             },
         ],
