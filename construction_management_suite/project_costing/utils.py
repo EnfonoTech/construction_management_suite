@@ -14,4 +14,4 @@ def calculate_daily_variance():
             for item in doc.items:
                 item.db_update()
         except Exception:
-            frappe.log_error(frappe.get_traceback(), f"CMS: variance calc failed for {b.name}")
+            frappe.log_error(frappe.get_traceback(), f"Construction: variance calc failed for {b.name}")

@@ -8,22 +8,26 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "project",
   "boq_title",
+  "project",
   "status",
   "column_break_1",
   "company",
   "currency",
+  "rate_source",
+  "selling_price_list",
+  "column_break_1b",
   "revision_no",
   "is_revised",
   "previous_boq",
   "amended_from",
   "section_contract",
-  "contract_value",
   "client",
   "client_po",
   "column_break_2",
+  "contract_value",
   "contract_date",
+  "column_break_2b",
   "submission_date",
   "approved_date",
   "section_items",
@@ -61,8 +65,7 @@
    "label": "Project",
    "options": "Project",
    "in_list_view": 1,
-   "search_index": 1,
-   "description": "Blank until the job is won"
+   "search_index": 1
   },
   {
    "fieldname": "boq_title",
@@ -81,6 +84,10 @@
   },
   {
    "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_1b",
    "fieldtype": "Column Break"
   },
   {
@@ -138,6 +145,21 @@
    "options": "currency"
   },
   {
+   "fieldname": "rate_source",
+   "fieldtype": "Select",
+   "label": "Rate Source",
+   "options": "\nRate Analysis\nPrice List\nManual",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "selling_price_list",
+   "fieldtype": "Link",
+   "label": "Selling Price List",
+   "options": "Price List",
+   "depends_on": "eval:doc.rate_source=='Price List'",
+   "print_hide": 1
+  },
+  {
    "fieldname": "client",
    "fieldtype": "Link",
    "label": "Client",
@@ -150,6 +172,10 @@
   },
   {
    "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_2b",
    "fieldtype": "Column Break"
   },
   {
@@ -309,7 +335,7 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "role": "CMS Admin",
+   "role": "Construction Admin",
    "read": 1,
    "write": 1,
    "create": 1,
@@ -323,7 +349,7 @@
    "share": 1
   },
   {
-   "role": "CMS Quantity Surveyor",
+   "role": "Construction Quantity Surveyor",
    "read": 1,
    "write": 1,
    "create": 1,
@@ -333,7 +359,7 @@
    "export": 1
   },
   {
-   "role": "CMS Project Manager",
+   "role": "Construction Project Manager",
    "read": 1,
    "write": 1,
    "submit": 1,
@@ -341,7 +367,7 @@
    "report": 1
   },
   {
-   "role": "CMS Viewer",
+   "role": "Construction Viewer",
    "read": 1,
    "report": 1,
    "print": 1

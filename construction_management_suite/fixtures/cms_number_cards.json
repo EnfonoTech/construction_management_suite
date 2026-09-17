@@ -1,7 +1,7 @@
 [
  {
   "doctype": "Number Card",
-  "name": "CMS Contract Value",
+  "name": "Contract Value",
   "label": "Contract Value",
   "type": "Document Type",
   "document_type": "BOQ",
@@ -13,11 +13,12 @@
   "stats_time_interval": "Monthly",
   "owner": "Administrator",
   "aggregate_function_based_on": "grand_total",
-  "color": "#7575ff"
+  "color": "#7575ff",
+  "modified": "2026-09-17 00:00:00.000000"
  },
  {
   "doctype": "Number Card",
-  "name": "CMS Approved Variations",
+  "name": "Approved Variations",
   "label": "Approved Variations",
   "type": "Document Type",
   "document_type": "Variation Order",
@@ -29,11 +30,12 @@
   "stats_time_interval": "Monthly",
   "owner": "Administrator",
   "aggregate_function_based_on": "net_variation_amount",
-  "color": "#8f6bff"
+  "color": "#8f6bff",
+  "modified": "2026-09-17 00:00:00.000000"
  },
  {
   "doctype": "Number Card",
-  "name": "CMS Billed To Date",
+  "name": "Billed to Date",
   "label": "Billed to Date",
   "type": "Document Type",
   "document_type": "Interim Payment Certificate",
@@ -45,11 +47,12 @@
   "stats_time_interval": "Monthly",
   "owner": "Administrator",
   "aggregate_function_based_on": "gross_amount_this_period",
-  "color": "#29CD42"
+  "color": "#29CD42",
+  "modified": "2026-09-17 00:00:00.000000"
  },
  {
   "doctype": "Number Card",
-  "name": "CMS Retention Held",
+  "name": "Retention Held",
   "label": "Retention Held",
   "type": "Document Type",
   "document_type": "Interim Payment Certificate",
@@ -61,11 +64,12 @@
   "stats_time_interval": "Monthly",
   "owner": "Administrator",
   "aggregate_function_based_on": "retention_amount",
-  "color": "#ffc73b"
+  "color": "#ffc73b",
+  "modified": "2026-09-17 00:00:00.000000"
  },
  {
   "doctype": "Number Card",
-  "name": "CMS Actual Cost",
+  "name": "Actual Cost",
   "label": "Actual Cost",
   "type": "Document Type",
   "document_type": "Project Budget",
@@ -77,11 +81,12 @@
   "stats_time_interval": "Monthly",
   "owner": "Administrator",
   "aggregate_function_based_on": "total_actual_cost",
-  "color": "#ff8989"
+  "color": "#ff8989",
+  "modified": "2026-09-17 00:00:00.000000"
  },
  {
   "doctype": "Number Card",
-  "name": "CMS Subcontract Committed",
+  "name": "Subcontracted",
   "label": "Subcontracted",
   "type": "Document Type",
   "document_type": "Subcontract Agreement",
@@ -93,11 +98,12 @@
   "stats_time_interval": "Monthly",
   "owner": "Administrator",
   "aggregate_function_based_on": "subcontract_value",
-  "color": "#5e64ff"
+  "color": "#5e64ff",
+  "modified": "2026-09-17 00:00:00.000000"
  },
  {
   "doctype": "Number Card",
-  "name": "CMS Certificates In Draft",
+  "name": "Certificates Awaiting",
   "label": "Certificates Awaiting",
   "type": "Document Type",
   "document_type": "Interim Payment Certificate",
@@ -108,11 +114,12 @@
   "show_percentage_stats": 1,
   "stats_time_interval": "Monthly",
   "owner": "Administrator",
-  "color": "#ff5858"
+  "color": "#ff5858",
+  "modified": "2026-09-17 00:00:00.000000"
  },
  {
   "doctype": "Number Card",
-  "name": "CMS Safety Incidents",
+  "name": "Safety Incidents",
   "label": "Safety Incidents",
   "type": "Document Type",
   "document_type": "Daily Site Report",
@@ -124,6 +131,7 @@
   "stats_time_interval": "Monthly",
   "owner": "Administrator",
   "aggregate_function_based_on": "safety_incidents",
-  "color": "#cb2929"
+  "color": "#cb2929",
+  "modified": "2026-09-17 00:00:00.000000"
  }
 ]

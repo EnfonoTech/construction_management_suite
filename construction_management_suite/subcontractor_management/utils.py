@@ -21,7 +21,7 @@ def generate_aging_report():
         )
         if overdue:
             frappe.logger("cms").info(
-                f"CMS Subcontractor Aging: {len(overdue)} suppliers with outstanding payments"
+                f"Subcontractor Aging: {len(overdue)} suppliers with outstanding payments"
             )
     except Exception:
-        frappe.log_error(frappe.get_traceback(), "CMS: subcontractor aging report failed")
+        frappe.log_error(frappe.get_traceback(), "Construction: subcontractor aging report failed")

@@ -500,42 +500,42 @@
    "type": "Link"
   }
  ],
- "modified": "2026-09-10 10:28:23.909938",
+ "modified": "2026-09-17 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "BOQ Management",
  "name": "Construction Management Suite",
  "number_cards": [
   {
-   "label": "CMS Contract Value",
-   "number_card_name": "CMS Contract Value"
+   "label": "Contract Value",
+   "number_card_name": "Contract Value"
   },
   {
-   "label": "CMS Approved Variations",
-   "number_card_name": "CMS Approved Variations"
+   "label": "Approved Variations",
+   "number_card_name": "Approved Variations"
   },
   {
-   "label": "CMS Billed To Date",
-   "number_card_name": "CMS Billed To Date"
+   "label": "Billed to Date",
+   "number_card_name": "Billed to Date"
   },
   {
-   "label": "CMS Retention Held",
-   "number_card_name": "CMS Retention Held"
+   "label": "Retention Held",
+   "number_card_name": "Retention Held"
   },
   {
-   "label": "CMS Actual Cost",
-   "number_card_name": "CMS Actual Cost"
+   "label": "Actual Cost",
+   "number_card_name": "Actual Cost"
   },
   {
-   "label": "CMS Subcontract Committed",
-   "number_card_name": "CMS Subcontract Committed"
+   "label": "Subcontracted",
+   "number_card_name": "Subcontracted"
   },
   {
-   "label": "CMS Certificates In Draft",
-   "number_card_name": "CMS Certificates In Draft"
+   "label": "Certificates Awaiting",
+   "number_card_name": "Certificates Awaiting"
   },
   {
-   "label": "CMS Safety Incidents",
-   "number_card_name": "CMS Safety Incidents"
+   "label": "Safety Incidents",
+   "number_card_name": "Safety Incidents"
   }
  ],
  "owner": "Administrator",

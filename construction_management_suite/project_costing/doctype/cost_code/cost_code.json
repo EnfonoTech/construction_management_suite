@@ -29,10 +29,10 @@
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
-  {"role": "CMS Admin", "read": 1, "write": 1, "create": 1, "delete": 1},
-  {"role": "CMS Project Manager", "read": 1},
-  {"role": "CMS Quantity Surveyor", "read": 1},
-  {"role": "CMS Viewer", "read": 1}
+  {"role": "Construction Admin", "read": 1, "write": 1, "create": 1, "delete": 1},
+  {"role": "Construction Project Manager", "read": 1},
+  {"role": "Construction Quantity Surveyor", "read": 1},
+  {"role": "Construction Viewer", "read": 1}
  ],
  "title_field": "cost_code_name",
  "track_changes": 1

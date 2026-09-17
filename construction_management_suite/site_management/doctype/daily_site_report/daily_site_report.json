@@ -64,10 +64,10 @@
  "name": "Daily Site Report",
  "owner": "Administrator",
  "permissions": [
-  {"role": "CMS Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 1, "cancel": 1, "print": 1, "report": 1},
-  {"role": "CMS Project Manager", "read": 1, "write": 1, "submit": 1, "print": 1, "report": 1},
-  {"role": "CMS Site Engineer", "read": 1, "write": 1, "create": 1, "submit": 1, "print": 1},
-  {"role": "CMS Viewer", "read": 1, "report": 1}
+  {"role": "Construction Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 1, "cancel": 1, "print": 1, "report": 1},
+  {"role": "Construction Project Manager", "read": 1, "write": 1, "submit": 1, "print": 1, "report": 1},
+  {"role": "Construction Site Engineer", "read": 1, "write": 1, "create": 1, "submit": 1, "print": 1},
+  {"role": "Construction Viewer", "read": 1, "report": 1}
  ],
  "title_field": "project",
  "track_changes": 1

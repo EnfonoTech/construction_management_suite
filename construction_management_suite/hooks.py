@@ -22,13 +22,13 @@ fixtures = [
         "Material Forecast", "Site Transfer",
     ]]]},
     {"dt": "Role", "filters": [["role_name", "in", [
-        "CMS Admin",
-        "CMS Project Manager",
-        "CMS Site Engineer",
-        "CMS Quantity Surveyor",
-        "CMS Subcontractor",
-        "CMS Billing Officer",
-        "CMS Viewer",
+        "Construction Admin",
+        "Construction Project Manager",
+        "Construction Site Engineer",
+        "Construction Quantity Surveyor",
+        "Construction Subcontractor",
+        "Construction Billing Officer",
+        "Construction Viewer",
     ]]]},
     {"dt": "Workspace", "filters": [["name", "=", "Construction Management Suite"]]},
 ]
@@ -37,7 +37,14 @@ fixtures = [
 # NOTE: CMS's own doctypes must NOT be registered here. Frappe already calls the
 # controller's on_submit/on_cancel; adding a hook that re-calls it runs every
 # side effect twice (duplicate invoices, duplicate stock entries).
-doc_events = {}
+# Only doctypes this app does NOT own. Hooking one of our own here as well as
+# in its controller runs the same code twice — that is what emptied this dict
+# once already.
+doc_events = {
+    "Purchase Order": {
+        "validate": "construction_management_suite.project_costing.purchase_controls.validate_purchase_order",
+    },
+}
 
 # Scheduled Tasks
 scheduler_events = {

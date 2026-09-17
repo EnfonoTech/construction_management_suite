@@ -4,6 +4,7 @@ from frappe.model.document import Document
 from frappe.utils import flt, nowdate
 
 from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.settings import action_for, cms_setting, enforce
 from construction_management_suite.utils.validations import validate_project_company
 
 
@@ -27,6 +28,8 @@ class InterimPaymentCertificate(Document):
         blank — an approved Variation Order moves the contract sum away from the
         original bill, and that figure must win.
         """
+        if not flt(self.retention_percent):
+            self.retention_percent = flt(cms_setting("default_retention_percent", 0))
         if flt(self.contract_value) or not self.boq_ref:
             return
         self.contract_value = flt(frappe.db.get_value("BOQ", self.boq_ref, "grand_total"))
@@ -68,6 +71,7 @@ class InterimPaymentCertificate(Document):
         contract sum. Letting it through here instead would bill the client for
         work no contract covers and leave the BOQ showing more built than sold.
         """
+        action = action_for("over_certification_action", "Stop")
         for item in self.items:
             if flt(item.qty_this_period) < 0:
                 frappe.throw(
@@ -79,7 +83,10 @@ class InterimPaymentCertificate(Document):
             # Quantities are re-measured on site; a hair over the contract figure
             # is rounding, not a claim.
             if flt(item.cumulative_qty) - flt(item.contract_qty) > 0.0001:
-                frappe.throw(
+                if action == "Ignore":
+                    continue
+                enforce(
+                    action,
                     _(
                         "Row {0} ({1}): certifying {2} on top of {3} already certified "
                         "comes to {4}, but the contract quantity is only {5}.<br><br>"

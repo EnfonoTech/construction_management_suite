@@ -15,4 +15,4 @@ def recompute_forecasts():
             for item in doc.items:
                 item.db_update()
         except Exception:
-            frappe.log_error(frappe.get_traceback(), f"CMS: forecast recompute failed for {f.name}")
+            frappe.log_error(frappe.get_traceback(), f"Construction: forecast recompute failed for {f.name}")

@@ -1,4 +1,24 @@
 frappe.ui.form.on("BOQ", {
+    setup(frm) {
+        frm.set_query("selling_price_list", () => ({ filters: { selling: 1, enabled: 1 } }));
+    },
+
+    onload(frm) {
+        // The Select keeps a blank option in the schema on purpose: Frappe fills
+        // any blank Select with its FIRST option during insert, before validate
+        // runs, so without one the server could never apply the site default.
+        // The blank is stripped from the dropdown below, so it is never offered.
+        if (frm.is_new() && !frm.doc.rate_source) {
+            frappe.db.get_single_value("Construction Settings", "default_rate_source")
+                .then(v => {
+                    frm.set_value("rate_source", v || "Rate Analysis");
+                    hide_blank_rate_source(frm);
+                });
+            return;
+        }
+        hide_blank_rate_source(frm);
+    },
+
     refresh(frm) {
         CMS.uomQuery(frm, "items", "item_code");
         CMS.rateAnalysisQuery(frm, "items");
@@ -58,7 +78,7 @@ frappe.ui.form.on("BOQ", {
         }
 
         if (frm.doc.docstatus === 0) {
-            frm.add_custom_button(__("Price from Rate Library"), () => price_from_library(frm), __("Actions"));
+            frm.add_custom_button(__("Price Lines"), () => price_lines(frm), __("Actions"));
             show_rate_drift(frm);
 
             frm.add_custom_button(__("Import from Template"), () => {
@@ -130,15 +150,21 @@ frappe.ui.form.on("BOQ Item", {
     item_code(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
         if (!row.item_code || row.rate_analysis_ref) return;
+        // One call decides the cost breakdown AND where the selling rate comes
+        // from, so the row can never disagree with the bill's Rate Source.
         frappe.call({
-            method: "construction_management_suite.api.boq.get_rate_analysis_for_item",
-            args: { item_code: row.item_code },
-            callback: (r) => {
-                if (r.message) frappe.model.set_value(cdt, cdn, "rate_analysis_ref", r.message);
+            method: "construction_management_suite.api.boq.get_boq_line_rates",
+            args: {
+                item_code: row.item_code,
+                rate_source: frm.doc.rate_source,
+                price_list: frm.doc.selling_price_list,
             },
+            callback: (r) => r.message && apply_line_rates(frm, cdt, cdn, r.message),
         });
     },
 
+    // Picking an analysis by hand fills the cost, but only sets the selling
+    // rate when the bill is actually priced from the rate library.
     rate_analysis_ref(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
         if (!row.rate_analysis_ref) return;
@@ -147,34 +173,70 @@ frappe.ui.form.on("BOQ Item", {
             args: { rate_analysis: row.rate_analysis_ref },
             callback: (r) => {
                 if (!r.message) return;
-                Object.entries(r.message).forEach(([f, v]) => frappe.model.set_value(cdt, cdn, f, v));
-                CMS.recalc(frm);
+                const rates = Object.assign({}, r.message);
+                if (frm.doc.rate_source !== "Rate Analysis") delete rates.rate;
+                apply_line_rates(frm, cdt, cdn, rates);
             },
         });
     },
 });
 
-function price_from_library(frm) {
-    frappe.confirm(
-        __("Price every line that has an approved Rate Analysis for its item?<br><small>Lines that already carry a rate are left alone.</small>"),
-        () => {
+/** Write the returned fields onto the row and refresh the totals immediately. */
+function apply_line_rates(frm, cdt, cdn, rates) {
+    Object.entries(rates).forEach(([field, value]) => {
+        if (value !== null && value !== undefined) frappe.model.set_value(cdt, cdn, field, value);
+    });
+    CMS.recalc(frm);
+}
+
+/** Never offer the blank the schema needs. */
+function hide_blank_rate_source(frm) {
+    frm.set_df_property("rate_source", "options", ["Rate Analysis", "Price List", "Manual"]);
+}
+
+function price_lines(frm) {
+    const d = new frappe.ui.Dialog({
+        title: __("Price Lines"),
+        fields: [
+            {
+                fieldname: "source", fieldtype: "Select", label: __("From"), reqd: 1,
+                options: ["Rate Analysis", "Price List"],
+                default: frm.doc.rate_source === "Price List" ? "Price List" : "Rate Analysis",
+                description: __("A rate analysis brings the cost breakdown with it; a price list sets the selling rate only."),
+            },
+            {
+                fieldname: "price_list", fieldtype: "Link", label: __("Price List"),
+                options: "Price List", default: frm.doc.selling_price_list,
+                depends_on: "eval:doc.source=='Price List'",
+                mandatory_depends_on: "eval:doc.source=='Price List'",
+                get_query: () => ({ filters: { selling: 1, enabled: 1 } }),
+            },
+            {
+                fieldname: "overwrite", fieldtype: "Check", label: __("Overwrite rates already set"),
+                description: __("Off = a negotiated rate is never replaced"),
+            },
+        ],
+        primary_action_label: __("Price"),
+        primary_action(values) {
+            d.hide();
             frappe.call({
                 method: "construction_management_suite.api.boq.price_boq_from_library",
-                args: { boq: frm.doc.name },
+                args: { boq: frm.doc.name, ...values },
                 freeze: true,
-                freeze_message: __("Pricing from the rate library…"),
+                freeze_message: __("Pricing…"),
                 callback: (r) => {
                     if (!r.message) return;
                     const m = r.message;
-                    let msg = __("{0} line(s) priced.", [m.priced.length]);
+                    let msg = __("{0} line(s) priced from {1}.", [m.priced.length, m.source]);
                     if (m.skipped.length) msg += "<br>" + __("{0} already had a rate and were left alone.", [m.skipped.length]);
-                    if (m.unmatched.length) msg += "<br>" + __("No approved analysis for: {0}", [m.unmatched.join(", ")]);
-                    frappe.msgprint({ title: __("Priced from Library"), message: msg, indicator: m.priced.length ? "green" : "orange" });
+                    if (m.unmatched.length) msg += "<br>" + __("No rate found for: {0}", [m.unmatched.join(", ")]);
+                    frappe.msgprint({ title: __("Priced"), message: msg, indicator: m.priced.length ? "green" : "orange" });
                     frm.reload_doc();
                 },
             });
-        }
-    );
+        },
+    });
+    d.show();
 }
 
 /** Warn when the rate library has moved on since this bill was priced. */

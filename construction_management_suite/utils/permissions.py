@@ -11,7 +11,7 @@ def get_company_filter(user, doctype=None):
     Frappe passes the doctype as the second argument, so the same helper can be
     registered for every CMS doctype that carries a `company` field.
     """
-    if "CMS Admin" in frappe.get_roles(user):
+    if "Construction Admin" in frappe.get_roles(user):
         return ""
 
     if not doctype:
@@ -43,11 +43,11 @@ def has_permission(doc, user=None, permission_type=None):
     roles = frappe.get_roles(user)
 
     # Admins always pass
-    if "CMS Admin" in roles or "System Manager" in roles:
+    if "Construction Admin" in roles or "System Manager" in roles:
         return True
 
     # Subcontractor portal users: only their linked supplier records
-    if "CMS Subcontractor" in roles and doc.doctype == "Subcontractor Payment Certificate":
+    if "Construction Subcontractor" in roles and doc.doctype == "Subcontractor Payment Certificate":
         supplier = frappe.db.get_value("Supplier", {"email_id": user}, "name")
         return doc.subcontractor == supplier
 

@@ -2,6 +2,12 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate
+from construction_management_suite.utils.settings import (
+    action_for,
+    cms_setting,
+    enforce,
+    enforce_setting,
+)
 from construction_management_suite.utils.validations import validate_project_company
 
 
@@ -15,6 +21,7 @@ class BOQ(Document):
 
     def validate(self):
         validate_project_company(self)
+        self.set_rate_source()
         self.set_currency_from_project()
         self.set_item_numbers()
         self.apply_named_rate_analysis()
@@ -25,6 +32,8 @@ class BOQ(Document):
         self.capture_rate_build_ups()
 
     def before_submit(self):
+        self.validate_analyses_approved()
+        self.validate_minimum_margin()
         self.status = "Submitted"
 
     def on_submit(self):
@@ -42,6 +51,24 @@ class BOQ(Document):
             self.prepared_by = frappe.session.user
 
     # ----- Calculations -----
+
+    def set_rate_source(self):
+        """The module default, unless this bill says otherwise.
+
+        Held on the document rather than read from the settings each time, so
+        changing the site default later cannot silently reprice an old bill from
+        a different source than the one it was quoted on.
+
+        The Select carries no blank option, and Frappe fills a blank Select with
+        its first option before any of this runs (create_new.get_static_default_value),
+        so only a document built without new_doc ever reaches here empty. What a
+        user sees is set by the form script on load; this is the fallback for
+        the API, an import, or get_mapped_doc.
+        """
+        if not self.rate_source:
+            self.rate_source = cms_setting("default_rate_source", "Rate Analysis")
+        if self.rate_source == "Price List" and not self.selling_price_list:
+            self.selling_price_list = cms_setting("default_selling_price_list")
 
     def set_currency_from_project(self):
         if self.project and not self.currency:
@@ -98,7 +125,16 @@ class BOQ(Document):
         from the library on every save is exactly what check_rate_drift exists
         to avoid.
         """
-        from construction_management_suite.api.boq import get_rate_analysis_rates
+        from construction_management_suite.api.boq import (
+            get_rate_analysis_rates,
+            get_selling_rate,
+        )
+
+        if self.rate_source == "Price List" and self.selling_price_list:
+            for item in self.items:
+                if flt(item.rate) or not item.item_code:
+                    continue
+                item.rate = flt(get_selling_rate(item.item_code, self.selling_price_list))
 
         for item in self.items:
             if not item.rate_analysis_ref:
@@ -110,7 +146,11 @@ class BOQ(Document):
             rates = get_rate_analysis_rates(item.rate_analysis_ref)
             for field in COMPONENT_RATES:
                 item.set(field, rates[field])
-            if not flt(item.rate):
+            # The analysis sets the SELLING rate only when the bill is priced
+            # from the rate library. Under Price List the rate is whatever was
+            # agreed; under Manual it is typed. Cost is filled either way,
+            # because that is what margin is measured against.
+            if not flt(item.rate) and self.rate_source == "Rate Analysis":
                 item.rate = rates["rate"]
 
     def warn_priced_below_cost(self):
@@ -120,7 +160,8 @@ class BOQ(Document):
         with the margin now derived rather than typed, nothing else on the form
         announces it.
         """
-        if self.docstatus != 0:
+        action = action_for("below_cost_action")
+        if action == "Ignore" or self.docstatus != 0:
             return
         # At field precision. cost_rate is a sum of five floats, so a line whose
         # rate exactly equals its cost lands at 0.42 vs 0.42000000000000004 and
@@ -141,10 +182,10 @@ class BOQ(Document):
             )
             for i in under[:10]
         )
-        frappe.msgprint(
+        enforce(
+            action,
             lines + ("<br>…" if len(under) > 10 else ""),
             title=_("{0} line(s) priced below cost").format(len(under)),
-            indicator="orange",
         )
 
     def calculate_item_amounts(self):
@@ -221,6 +262,56 @@ class BOQ(Document):
             item.rate_build_up = snapshot_rate_analysis(ra)
             if not item.rate_applied_on:
                 item.rate_applied_on = frappe.utils.now()
+
+    def validate_analyses_approved(self):
+        """A bill should not be signed off an analysis nobody has approved.
+
+        Checked on submit rather than on save, so an estimator can price a draft
+        from a work-in-progress build-up and get it approved before the bill goes
+        out.
+        """
+        action = action_for("unapproved_analysis_action")
+        if action == "Ignore":
+            return
+        bad = []
+        for item in self.items:
+            if not item.rate_analysis_ref:
+                continue
+            status = frappe.db.get_value("Rate Analysis", item.rate_analysis_ref, "status")
+            if status and status != "Approved":
+                bad.append((item, status))
+        if not bad:
+            return
+        enforce(
+            action,
+            "<br>".join(
+                _("Row {0} ({1}): {2} is {3}").format(
+                    i.idx, i.item_code, i.rate_analysis_ref, st
+                )
+                for i, st in bad[:10]
+            ),
+            title=_("{0} line(s) priced from an unapproved analysis").format(len(bad)),
+        )
+
+    def validate_minimum_margin(self):
+        """Refuse or flag a bill that does not clear the margin floor."""
+        action = action_for("below_minimum_margin_action", "Ignore")
+        floor = flt(cms_setting("minimum_margin_percent", 0))
+        if action == "Ignore" or not floor:
+            return
+        # Nothing costed means nothing to judge — an unpriced bill is not a
+        # thin-margin bill.
+        if not flt(self.total_cost_amount):
+            return
+        if flt(self.effective_margin_percent) >= floor:
+            return
+        enforce(
+            action,
+            _("This bill makes {0}% over its cost. The floor is {1}%.").format(
+                flt(self.effective_margin_percent, 2), floor
+            ),
+            title=_("Below the minimum margin"),
+        )
 
     # ----- Winning the job -----
 

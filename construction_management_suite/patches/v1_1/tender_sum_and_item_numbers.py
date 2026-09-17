@@ -26,7 +26,7 @@ def restate_grand_totals():
         if abs(old - new) < 0.005:
             continue
         frappe.db.set_value("BOQ", b.name, "grand_total", new, update_modified=False)
-        print(f"CMS: {b.name} grand total {old:,.2f} -> {new:,.2f}")
+        print(f"Construction: {b.name} grand total {old:,.2f} -> {new:,.2f}")
         carry_to_project(b.project, old, new)
         carry_to_certificates(b.name, old, new)
 
@@ -43,7 +43,7 @@ def carry_to_project(project, old, new):
     if abs(current - old) > 0.005:
         return
     frappe.db.set_value("Project", project, "cms_contract_value", new, update_modified=False)
-    print(f"CMS: project {project} contract value {current:,.2f} -> {new:,.2f}")
+    print(f"Construction: project {project} contract value {current:,.2f} -> {new:,.2f}")
 
 
 def carry_to_certificates(boq, old, new):
@@ -60,7 +60,7 @@ def carry_to_certificates(boq, old, new):
         frappe.db.set_value(
             "Interim Payment Certificate", ipc.name, "contract_value", new, update_modified=False
         )
-        print(f"CMS: {ipc.name} contract value {flt(ipc.contract_value):,.2f} -> {new:,.2f}")
+        print(f"Construction: {ipc.name} contract value {flt(ipc.contract_value):,.2f} -> {new:,.2f}")
 
 
 def number_existing_lines():

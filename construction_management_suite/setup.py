@@ -20,13 +20,13 @@ def before_uninstall():
 
 def create_roles():
     roles = [
-        "CMS Admin",
-        "CMS Project Manager",
-        "CMS Site Engineer",
-        "CMS Quantity Surveyor",
-        "CMS Subcontractor",
-        "CMS Billing Officer",
-        "CMS Viewer",
+        "Construction Admin",
+        "Construction Project Manager",
+        "Construction Site Engineer",
+        "Construction Quantity Surveyor",
+        "Construction Subcontractor",
+        "Construction Billing Officer",
+        "Construction Viewer",
     ]
     for role in roles:
         if not frappe.db.exists("Role", role):
@@ -41,7 +41,7 @@ def create_custom_fields_on_erpnext():
         "Project": [
             {
                 "fieldname": "cms_project_type",
-                "label": "CMS Project Type",
+                "label": "Project Type",
                 "fieldtype": "Select",
                 "options": "\nBuilding Construction\nCivil Works\nMEP\nInfrastructure\nInterior Fit-Out\nRoad Works\nOil & Gas\nOther",
                 "insert_after": "project_type",
@@ -69,7 +69,7 @@ def create_custom_fields_on_erpnext():
         "Purchase Order": [
             {
                 "fieldname": "cms_subcontract_ref",
-                "label": "CMS Subcontract Ref",
+                "label": "Subcontract Ref",
                 "fieldtype": "Link",
                 "options": "Subcontract Agreement",
                 "insert_after": "title",
@@ -78,7 +78,7 @@ def create_custom_fields_on_erpnext():
         "Sales Invoice": [
             {
                 "fieldname": "cms_ipc_ref",
-                "label": "CMS IPC Reference",
+                "label": "IPC Reference",
                 "fieldtype": "Link",
                 "options": "Interim Payment Certificate",
                 "insert_after": "title",
@@ -87,7 +87,7 @@ def create_custom_fields_on_erpnext():
         "Stock Entry": [
             {
                 "fieldname": "cms_site_ref",
-                "label": "CMS Site Transfer Ref",
+                "label": "Site Transfer Ref",
                 "fieldtype": "Link",
                 "options": "Site Transfer",
                 "insert_after": "title",

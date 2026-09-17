@@ -245,7 +245,7 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "role": "CMS Admin",
+   "role": "Construction Admin",
    "read": 1,
    "write": 1,
    "create": 1,
@@ -254,7 +254,7 @@
    "report": 1
   },
   {
-   "role": "CMS Quantity Surveyor",
+   "role": "Construction Quantity Surveyor",
    "read": 1,
    "write": 1,
    "create": 1,
@@ -262,7 +262,7 @@
    "report": 1
   },
   {
-   "role": "CMS Viewer",
+   "role": "Construction Viewer",
    "read": 1,
    "report": 1
   }

@@ -1,0 +1,189 @@
+{
+ "actions": [],
+ "creation": "2026-09-16 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "issingle": 1,
+ "field_order": [
+  "section_estimating",
+  "default_rate_source",
+  "default_selling_price_list",
+  "default_contingency_percent",
+  "column_break_est",
+  "unapproved_analysis_action",
+  "below_cost_action",
+  "minimum_margin_percent",
+  "below_minimum_margin_action",
+  "section_purchasing",
+  "po_over_budget_action",
+  "column_break_pur",
+  "purchase_rate_action",
+  "purchase_rate_tolerance_percent",
+  "section_billing",
+  "over_certification_action",
+  "column_break_bil",
+  "default_retention_percent",
+  "section_site",
+  "consumption_over_takeoff_action",
+  "column_break_site",
+  "consumption_tolerance_percent"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_estimating",
+   "fieldtype": "Section Break",
+   "label": "Estimating"
+  },
+  {
+   "fieldname": "default_rate_source",
+   "fieldtype": "Select",
+   "label": "Default Rate Source",
+   "options": "Rate Analysis\nPrice List\nManual",
+   "default": "Rate Analysis",
+   "description": "Where a new BOQ prices its lines from"
+  },
+  {
+   "fieldname": "default_selling_price_list",
+   "fieldtype": "Link",
+   "label": "Default Selling Price List",
+   "options": "Price List"
+  },
+  {
+   "fieldname": "default_contingency_percent",
+   "fieldtype": "Percent",
+   "label": "Default Contingency %",
+   "default": "5"
+  },
+  {
+   "fieldname": "column_break_est",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "unapproved_analysis_action",
+   "fieldtype": "Select",
+   "label": "Line Priced From An Unapproved Analysis",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn",
+   "description": "Checked on submit"
+  },
+  {
+   "fieldname": "below_cost_action",
+   "fieldtype": "Select",
+   "label": "Line Priced Below Cost",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn"
+  },
+  {
+   "fieldname": "minimum_margin_percent",
+   "fieldtype": "Percent",
+   "label": "Minimum Margin %",
+   "default": "0",
+   "description": "Across the whole bill"
+  },
+  {
+   "fieldname": "below_minimum_margin_action",
+   "fieldtype": "Select",
+   "label": "Bill Below Minimum Margin",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Ignore",
+   "description": "Checked on submit"
+  },
+  {
+   "fieldname": "section_purchasing",
+   "fieldtype": "Section Break",
+   "label": "Purchasing and Budget"
+  },
+  {
+   "fieldname": "po_over_budget_action",
+   "fieldtype": "Select",
+   "label": "Purchase Order Over Project Budget",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn"
+  },
+  {
+   "fieldname": "column_break_pur",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_rate_action",
+   "fieldtype": "Select",
+   "label": "Buying Above The Estimated Rate",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn"
+  },
+  {
+   "fieldname": "purchase_rate_tolerance_percent",
+   "fieldtype": "Percent",
+   "label": "Purchase Rate Tolerance %",
+   "default": "10"
+  },
+  {
+   "fieldname": "section_billing",
+   "fieldtype": "Section Break",
+   "label": "Progress Billing"
+  },
+  {
+   "fieldname": "over_certification_action",
+   "fieldtype": "Select",
+   "label": "Certifying More Than The Contract Qty",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Stop"
+  },
+  {
+   "fieldname": "column_break_bil",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "default_retention_percent",
+   "fieldtype": "Percent",
+   "label": "Default Retention %",
+   "default": "5"
+  },
+  {
+   "fieldname": "section_site",
+   "fieldtype": "Section Break",
+   "label": "Site and Consumption"
+  },
+  {
+   "fieldname": "consumption_over_takeoff_action",
+   "fieldtype": "Select",
+   "label": "Consuming More Than The Take-off",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn"
+  },
+  {
+   "fieldname": "column_break_site",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "consumption_tolerance_percent",
+   "fieldtype": "Percent",
+   "label": "Consumption Tolerance %",
+   "default": "10"
+  }
+ ],
+ "links": [],
+ "modified": "2026-09-16 00:00:00.000000",
+ "module": "Construction Setup",
+ "name": "Construction Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "share": 1,
+   "print": 1,
+   "email": 1
+  },
+  {
+   "role": "Projects Manager",
+   "read": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

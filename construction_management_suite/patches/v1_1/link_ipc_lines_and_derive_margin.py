@@ -61,7 +61,7 @@ def link_ipc_lines_to_boq_rows():
 
     if ambiguous or unresolved:
         print(
-            f"CMS: {len(ambiguous)} IPC line(s) matched more than one BOQ row and "
+            f"Construction: {len(ambiguous)} IPC line(s) matched more than one BOQ row and "
             f"{len(unresolved)} matched none — link these by hand: "
             f"{[a[1] for a in ambiguous] + unresolved}"
         )
@@ -135,6 +135,6 @@ def seed_rate_analysis_flags():
                                 update_modified=False)
         else:
             print(
-                f"CMS: {item_code} has {len(names)} approved analyses "
+                f"Construction: {item_code} has {len(names)} approved analyses "
                 f"({', '.join(names)}) — tick Is Default on the one to price from."
             )

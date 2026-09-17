@@ -416,6 +416,64 @@ def get_rate_analysis_for_item(item_code):
 
 
 @frappe.whitelist()
+def get_selling_rate(item_code, price_list):
+    """The agreed selling rate for an item, if the list carries one."""
+    if not item_code or not price_list:
+        return 0
+    return flt(
+        frappe.db.get_value(
+            "Item Price",
+            {"item_code": item_code, "price_list": price_list, "selling": 1},
+            "price_list_rate",
+            order_by="valid_from desc, modified desc",
+        )
+    )
+
+
+@frappe.whitelist()
+def get_boq_line_rates(item_code, rate_source=None, price_list=None):
+    """Everything a BOQ line needs the moment its item is chosen.
+
+    One call, and one place that decides where the SELLING rate comes from —
+    the row handler used to take it from the rate analysis whatever the bill's
+    Rate Source said, so a bill priced against a client's schedule of rates
+    silently billed them at cost.
+
+    The cost breakdown is always returned when an analysis exists, whichever
+    source is in force: cost is what margin is measured against, and a line
+    priced from a price list still needs to know what it costs to build.
+    """
+    out = {
+        "rate_analysis_ref": None,
+        "material_rate": 0,
+        "labour_rate": 0,
+        "equipment_rate": 0,
+        "subcontract_rate": 0,
+        "overhead_rate": 0,
+    }
+    if not item_code:
+        return out
+
+    analysis = get_rate_analysis_for_item(item_code)
+    cost = 0
+    if analysis:
+        rates = get_rate_analysis_rates(analysis)
+        cost = flt(rates.pop("rate"))
+        out.update(rates)
+        out["rate_analysis_ref"] = analysis
+
+    source = rate_source or "Rate Analysis"
+    if source == "Rate Analysis" and analysis:
+        out["rate"] = cost
+    elif source == "Price List":
+        rate = get_selling_rate(item_code, price_list)
+        if rate:
+            out["rate"] = rate
+    # Manual returns no rate at all — that is what Manual means.
+    return out
+
+
+@frappe.whitelist()
 def get_rate_analysis_rates(rate_analysis):
     """The five per-unit component rates behind an analysis, plus the total."""
     ra = frappe.get_cached_doc("Rate Analysis", rate_analysis)
@@ -431,17 +489,35 @@ def get_rate_analysis_rates(rate_analysis):
 
 
 @frappe.whitelist()
-def price_boq_from_library(boq, overwrite=0):
-    """Price every BOQ line that has an approved Rate Analysis for its item.
+def price_boq_from_library(boq, overwrite=0, source=None, price_list=None):
+    """Price every line of a BOQ from the library, or from a price list.
 
     Beats the old one-item-at-a-time prompt: a fifty-line bill is priced in a
     click, and by default lines already carrying a rate are left alone so a
     negotiated rate is never silently overwritten.
+
+    Two sources, because they answer different questions. A **Rate Analysis**
+    builds the rate from what the work consumes, and brings the cost breakdown
+    and a frozen build-up with it — the only source that can support a take-off
+    or a margin. A **Price List** is a rate somebody already agreed: a client's
+    schedule of rates, a framework agreement, last year's tender. It sets the
+    selling rate and nothing else, so margin stays unknown unless the line also
+    carries a build-up.
     """
+    from construction_management_suite.utils.settings import cms_setting
+
     overwrite = int(overwrite or 0)
     doc = frappe.get_doc("BOQ", boq)
     if doc.docstatus != 0:
         frappe.throw(_("Only a draft BOQ can be priced from the library"))
+
+    source = source or doc.rate_source or cms_setting("default_rate_source", "Rate Analysis")
+    if source == "Price List":
+        return _price_boq_from_price_list(
+            doc,
+            overwrite,
+            price_list or doc.selling_price_list or cms_setting("default_selling_price_list"),
+        )
 
     # setdefault, not a dict comprehension: iterating best-first and assigning
     # every time leaves the WORST analysis in the map, which is the opposite of
@@ -476,6 +552,54 @@ def price_boq_from_library(boq, overwrite=0):
         doc.save(ignore_permissions=True)
 
     return {
+        "source": _("Rate Analysis"),
+        "priced": priced,
+        "skipped": skipped,
+        "unmatched": sorted(set(unmatched)),
+    }
+
+
+def _price_boq_from_price_list(doc, overwrite, price_list):
+    """Set each line's selling rate from an Item Price in the chosen list.
+
+    Only `rate` is touched. The cost breakdown is left exactly as it is, so a
+    line already costed from an analysis keeps its build-up and simply gets a
+    different selling rate — which is the normal case when a client hands you
+    their own schedule of rates to price against.
+    """
+    if not price_list:
+        frappe.throw(_("Choose a Price List, or set a default in Construction Settings"))
+    if not frappe.db.get_value("Price List", price_list, "selling"):
+        frappe.throw(_("{0} is not a selling price list").format(price_list))
+
+    prices = {
+        r.item_code: flt(r.price_list_rate)
+        for r in frappe.get_all(
+            "Item Price",
+            filters={"price_list": price_list, "selling": 1},
+            fields=["item_code", "price_list_rate"],
+            order_by="valid_from asc, modified asc",
+        )
+    }
+
+    priced, skipped, unmatched = [], [], []
+    for row in doc.items:
+        rate = prices.get(row.item_code)
+        if not rate:
+            unmatched.append(row.item_code)
+            continue
+        if flt(row.rate) and not overwrite:
+            skipped.append(row.item_code)
+            continue
+        row.rate = rate
+        row.rate_applied_on = frappe.utils.now()
+        priced.append(row.item_code)
+
+    if priced:
+        doc.save(ignore_permissions=True)
+
+    return {
+        "source": _("Price List: {0}").format(price_list),
         "priced": priced,
         "skipped": skipped,
         "unmatched": sorted(set(unmatched)),
