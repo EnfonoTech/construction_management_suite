@@ -357,7 +357,7 @@ def _previously_claimed_by_line(project, exclude_ipc=None):
 
 @frappe.whitelist()
 def get_agreement_lines(agreement, work_order=None):
-    """The agreed scope, with how much each line has been instructed elsewhere.
+    """The agreed scope, with how much of each line another order has delivered.
 
     Quantities already on the order being edited are NOT netted off here: the
     form sends its in-memory document, so the caller knows what is on screen and
@@ -382,25 +382,27 @@ def get_agreement_lines(agreement, work_order=None):
         {"a": agreement, "w": work_order or ""},
         as_dict=True,
     )
-    done, by_text, where = {}, {}, {}
+    # What an order still HOLDS is what it has not delivered. An order that is
+    # open and half built is not a reason to refuse the rest of the scope — the
+    # balance may go to another trade, or in another batch — so the undelivered
+    # quantity is offered and the orders already holding it are named, rather
+    # than the decision being made here.
+    delivered, by_text, where = {}, {}, {}
     for r in instructed:
-        # A closed order only holds what it actually delivered; the rest is free
-        # to be instructed again, because that order will never deliver it.
-        held = flt(r.done) if r.status == "Completed" else flt(r.qty)
-        if held <= 0:
-            continue
         key = r.ref or None
+        built = flt(r.done)
         if key:
-            done[key] = done.get(key, 0) + held
-            where.setdefault(key, {})[r.wo] = {
-                "instructed": flt(r.qty), "completed": flt(r.done), "status": r.status,
-            }
+            delivered[key] = delivered.get(key, 0) + built
+            if flt(r.qty) - built > 0.0001:
+                where.setdefault(key, {})[r.wo] = {
+                    "instructed": flt(r.qty), "completed": built, "status": r.status,
+                }
         else:
-            by_text[r.d] = by_text.get(r.d, 0) + held
+            by_text[r.d] = by_text.get(r.d, 0) + built
 
     lines = []
     for row in doc.items:
-        elsewhere = flt(done.get(row.name)) + flt(by_text.get(row.description))
+        elsewhere = flt(delivered.get(row.name)) + flt(by_text.get(row.description))
         lines.append({
             "agreement_item_ref": row.name,
             "item_code": row.item_code,
@@ -409,10 +411,12 @@ def get_agreement_lines(agreement, work_order=None):
             "description": row.description,
             "uom": row.uom,
             "agreed_qty": flt(row.qty),
-            "instructed_elsewhere": elsewhere,
+            # Named for what it is: quantity another order has DELIVERED and
+            # which therefore cannot be instructed again.
+            "delivered_elsewhere": elsewhere,
             "contract_rate": flt(row.rate),
             "completed_qty": 0,
-            "instructed_on": [
+            "open_on": [
                 dict(order=k, **v) for k, v in sorted((where.get(row.name) or {}).items())
             ],
         })

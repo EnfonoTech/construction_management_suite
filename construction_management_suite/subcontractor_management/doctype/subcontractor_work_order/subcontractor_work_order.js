@@ -15,16 +15,20 @@ frappe.ui.form.on("Subcontractor Work Order", {
                     const parts = [];
                     if (m.added) parts.push(__("{0} line(s) added", [m.added]));
                     if (m.topped_up) parts.push(__("{0} topped up", [m.topped_up]));
-                    if (parts.length) {
-                        return frappe.show_alert({ message: parts.join(", "), indicator: "green" });
+                    if (!parts.length) {
+                        return frappe.msgprint({
+                            title: __("Nothing left"),
+                            indicator: "orange",
+                            message: __("Every line of this agreement has already been delivered."),
+                        });
                     }
-                    // Show the numbers, so it is obvious the work is not lost:
-                    // instructed in full on an open order is not the same as built.
-                    const covered = m.covered_by || [];
-                    if (!covered.length) {
-                        return frappe.msgprint(__("This agreement has no lines to instruct."));
-                    }
-                    const rows = covered.map(c => c.orders.map(o => `
+                    frappe.show_alert({ message: parts.join(", "), indicator: "green" });
+
+                    // The quantity is offered, but another order still holds it.
+                    // Instructing the same work twice is a real mistake, so say so.
+                    const open = m.open_elsewhere || [];
+                    if (!open.length) return;
+                    const rows = open.map(c => c.orders.map(o => `
                         <tr>
                           <td>${frappe.utils.escape_html(c.description)}</td>
                           <td><a href="/app/subcontractor-work-order/${encodeURIComponent(o.order)}">${o.order}</a></td>
@@ -33,9 +37,9 @@ frappe.ui.form.on("Subcontractor Work Order", {
                           <td class="text-right">${format_number(o.completed, null, 2)}</td>
                         </tr>`).join("")).join("");
                     frappe.msgprint({
-                        title: __("Already instructed in full"),
+                        title: __("Also open on another order"),
                         indicator: "orange",
-                        message: `<p>${__("Every line is covered by an open order. Record progress on that order rather than issuing another — the outstanding quantity is already under it.")}</p>
+                        message: `<p>${__("These lines are still open elsewhere. Remove them here if that order will finish the work.")}</p>
                             <table class="table table-sm">
                               <thead><tr><th>${__("Line")}</th><th>${__("Order")}</th>
                                 <th>${__("Status")}</th><th class="text-right">${__("Instructed")}</th>

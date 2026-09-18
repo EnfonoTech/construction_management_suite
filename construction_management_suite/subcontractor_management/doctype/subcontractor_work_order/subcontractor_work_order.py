@@ -41,18 +41,23 @@ class SubcontractorWorkOrder(Document):
         rows = {r.agreement_item_ref: r for r in self.items if r.agreement_item_ref}
 
         added = topped = 0
-        covered = []
+        open_elsewhere = []
         for line in get_agreement_lines(self.subcontract_agreement, work_order=self.name):
             ref = line["agreement_item_ref"]
             remaining = (
                 flt(line["agreed_qty"])
-                - flt(line["instructed_elsewhere"])
+                - flt(line["delivered_elsewhere"])
                 - flt(mine.get(ref))
             )
             if remaining <= 0.0001:
-                if line["instructed_on"]:
-                    covered.append((line["description"], line["instructed_on"]))
                 continue
+            if line["open_on"]:
+                # Offered, but say so: another order still has this quantity on
+                # its books, and instructing it twice is a real mistake.
+                open_elsewhere.append({
+                    "description": line["description"],
+                    "orders": line["open_on"],
+                })
             row = rows.get(ref)
             if row:
                 row.contract_qty = flt(row.contract_qty) + remaining
@@ -70,29 +75,7 @@ class SubcontractorWorkOrder(Document):
                     "completed_qty": 0,
                 })
                 added += 1
-        return {
-            "added": added,
-            "topped_up": topped,
-            # Say WHERE the quantity went, rather than only that there is none.
-            "covered_by": [
-                {"description": d, "orders": o} for d, o in covered
-            ],
-        }
-
-    def on_update_after_submit(self):
-        """Recompute and PERSIST after progress is recorded.
-
-        update_after_submit writes only the allow_on_submit fields the client
-        sent; anything derived here lives in memory until it is written, which
-        is why the totals read zero while the rows held real quantities.
-        """
-        self.calculate_totals()
-        self.set_status()
-        for row in self.items:
-            row.db_set("completed_amount", flt(row.completed_amount), update_modified=False)
-            row.db_set("completion_percent", flt(row.completion_percent), update_modified=False)
-        for field in ("total_contract_value", "total_completed_value", "completion_percent", "status"):
-            self.db_set(field, self.get(field), update_modified=False)
+        return {"added": added, "topped_up": topped, "open_elsewhere": open_elsewhere}
 
     def set_status(self):
         """Draft, Issued, In Progress, Completed — the options existed and
