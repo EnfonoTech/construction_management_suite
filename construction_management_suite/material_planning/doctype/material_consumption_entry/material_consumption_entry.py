@@ -3,7 +3,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
-from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.accounting import (
+    consumption_account,
+    ensure_project_cost_center,
+    get_cost_center,
+)
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
 from construction_management_suite.utils.validations import validate_project_company
 
@@ -85,7 +89,9 @@ class MaterialConsumptionEntry(Document):
         se.posting_date = self.posting_date
         se.project = self.project
         se.cms_consumption_ref = self.name
+        ensure_project_cost_center(self.project, self.company)
         cost_center = get_cost_center(self.project, self.company)
+        expense = consumption_account(self.company)
         for item in self.items:
             se.append("items", {
                 "item_code": item.item_code,
@@ -94,6 +100,12 @@ class MaterialConsumptionEntry(Document):
                 "s_warehouse": self.warehouse,
                 "batch_no": item.batch_no,
                 "cost_center": cost_center,
+                # On the row, not just the header: a report grouping Stock Entry
+                # Detail by project saw nothing, and the expense defaulted to
+                # Stock Adjustment, which is a variance account rather than the
+                # cost of the work.
+                "project": self.project,
+                "expense_account": expense,
             })
         se.insert(ignore_permissions=True)
         se.submit()

@@ -34,6 +34,9 @@
   "subcontract_billing_item",
   "sales_taxes_template",
   "purchase_taxes_template",
+  "section_stock",
+  "consumption_expense_account",
+  "auto_create_project_cost_center",
   "section_site",
   "consumption_over_takeoff_action",
   "column_break_site",
@@ -218,6 +221,24 @@
    "fieldtype": "Link",
    "label": "Purchase Taxes Template",
    "options": "Purchase Taxes and Charges Template"
+  },
+  {
+   "fieldname": "section_stock",
+   "fieldtype": "Section Break",
+   "label": "Stock and Cost Centres"
+  },
+  {
+   "fieldname": "consumption_expense_account",
+   "fieldtype": "Link",
+   "label": "Material Consumption Account",
+   "options": "Account",
+   "description": "Where material issued to site is charged"
+  },
+  {
+   "fieldname": "auto_create_project_cost_center",
+   "fieldtype": "Check",
+   "label": "Create A Cost Centre Per Project",
+   "default": "1"
   },
   {
    "fieldname": "section_site",
