@@ -1,4 +1,12 @@
 frappe.ui.form.on("Retention Release", {
+    onload(frm) {
+        CMS.defaultTaxTemplate(frm, "sales_taxes_template");
+    },
+
+    taxes_and_charges(frm) { CMS.loadTaxTemplate(frm); },
+
+    taxes_remove(frm) { CMS.recalc(frm); },
+
     refresh(frm) {
         CMS.filterProjects(frm);
         if (!frm.doc.request_date) frm.set_value("request_date", frappe.datetime.get_today());
@@ -16,8 +24,8 @@ frappe.ui.form.on("Retention Release", {
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
 
-    release_amount: balance,
-    total_retention_held: balance,
+    release_amount(frm) { CMS.recalc(frm); },
+    release_type(frm) { suggest_amount(frm); },
 });
 
 /** Read how much has actually been held and released on this project. */
@@ -27,7 +35,9 @@ function fetch_retention(frm) {
         args: { project: frm.doc.project },
         callback: (r) => {
             if (!r.message) return;
-            CMS.fillIfBlank(frm, "total_retention_held", r.message.total_held);
+            frm.set_value("total_retention_held", r.message.total_held);
+            frm.doc.released_to_date = r.message.total_released;
+            suggest_amount(frm);
             frm.dashboard.clear_headline();
             const cur = frm.doc.currency || frappe.defaults.get_default("currency");
             frm.dashboard.set_headline(
@@ -37,12 +47,18 @@ function fetch_retention(frm) {
                     format_currency(r.message.net_retention, cur),
                 ])
             );
-            balance(frm);
+            CMS.recalc(frm);
         },
     });
 }
 
-function balance(frm) {
-    frm.set_value("balance_retention",
-        flt(frm.doc.total_retention_held) - flt(frm.doc.release_amount));
+/** Half at Practical Completion, the rest at the end of the defects period. */
+function suggest_amount(frm) {
+    if (frm.doc.release_amount || !frm.doc.release_type) return CMS.recalc(frm);
+    const outstanding = flt(frm.doc.total_retention_held) - flt(frm.doc.released_to_date);
+    if (outstanding <= 0) return;
+    const share = frm.doc.release_type === "Practical Completion" ? 0.5 : 1;
+    frm.set_value("release_amount", flt(outstanding * share)).then(() => CMS.recalc(frm));
 }
+
+CMS.liveRows("Sales Taxes and Charges", ["charge_type", "rate", "tax_amount", "row_id"]);

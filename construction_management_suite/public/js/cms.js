@@ -227,6 +227,38 @@ CMS.rateAnalysisQuery = function (frm, tablefield) {
     });
 };
 
+/** Load a tax template's rows into the document, ERPNext's own way.
+ *
+ * Setting the template alone leaves the table empty; the server fills it on
+ * save, but a user typing quantities wants the tax to move with them.
+ */
+CMS.loadTaxTemplate = function (frm) {
+    if (!frm.doc.taxes_and_charges) {
+        frm.clear_table("taxes");
+        frm.refresh_field("taxes");
+        return Promise.resolve();
+    }
+    const master = frm.fields_dict.taxes_and_charges.df.options;
+    return frappe.call({
+        method: "erpnext.controllers.accounts_controller.get_taxes_and_charges",
+        args: { master_doctype: master, master_name: frm.doc.taxes_and_charges },
+    }).then((r) => {
+        frm.clear_table("taxes");
+        (r.message || []).forEach((row) => frm.add_child("taxes", row));
+        frm.refresh_field("taxes");
+        CMS.recalc(frm);
+    });
+};
+
+/** On a new document, take the module default and load its rows straight away. */
+CMS.defaultTaxTemplate = function (frm, setting) {
+    if (!frm.is_new() || frm.doc.taxes_and_charges || (frm.doc.taxes || []).length) return;
+    frappe.db.get_single_value("Construction Settings", setting).then((template) => {
+        if (!template) return;
+        frm.set_value("taxes_and_charges", template).then(() => CMS.loadTaxTemplate(frm));
+    });
+};
+
 /** Restrict a link field to the document's own project. */
 CMS.filterByProject = function (frm, fieldname, extra) {
     frm.set_query(fieldname, () => ({
@@ -292,6 +324,30 @@ CMS.calc["BOQ"] = function (doc) {
         ? (flt(doc.total_amount) - flt(doc.total_cost_amount)) / flt(doc.total_cost_amount) * 100 : 0;
     // The tender sum is the sum of the priced lines — see BOQ.calculate_totals.
     doc.grand_total = flt(doc.total_amount);
+};
+
+CMS.calc["Retention Release"] = function (doc) {
+    // released_to_date is server-owned (it reads other releases), so the form
+    // is handed it and mirrors the arithmetic from there. Without it the form
+    // showed held - this_release and the server stored held - released - this.
+    doc.balance_retention = flt(doc.total_retention_held)
+        - flt(doc.released_to_date) - flt(doc.release_amount);
+
+    let running = flt(doc.release_amount);
+    (doc.taxes || []).forEach((r) => {
+        let amount = 0;
+        if (r.charge_type === "Actual") amount = flt(r.tax_amount);
+        else if (r.charge_type === "On Net Total") amount = flt(doc.release_amount) * flt(r.rate) / 100;
+        else if (r.charge_type === "On Previous Row Amount")
+            amount = flt((doc.taxes[cint(r.row_id) - 1] || {}).tax_amount) * flt(r.rate) / 100;
+        else if (r.charge_type === "On Previous Row Total")
+            amount = flt((doc.taxes[cint(r.row_id) - 1] || {}).total) * flt(r.rate) / 100;
+        r.tax_amount = amount;
+        running += amount;
+        r.total = running;
+    });
+    doc.total_taxes_and_charges = (doc.taxes || []).reduce((t, r) => t + flt(r.tax_amount), 0);
+    doc.total_payable = flt(doc.release_amount) + flt(doc.total_taxes_and_charges);
 };
 
 CMS.calc["Rate Analysis"] = function (doc) {

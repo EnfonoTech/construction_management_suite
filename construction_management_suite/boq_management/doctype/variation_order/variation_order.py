@@ -68,8 +68,11 @@ class VariationOrder(Document):
     def on_submit(self):
         self._apply_to_project(flt(self.net_variation_amount))
 
-    def on_cancel(self):
+    def before_cancel(self):
+        # before, not on_cancel: on_cancel runs after the row is written.
         self.status = "Cancelled"
+
+    def on_cancel(self):
         self._apply_to_project(-flt(self.net_variation_amount))
 
     # ----- Calculations -----

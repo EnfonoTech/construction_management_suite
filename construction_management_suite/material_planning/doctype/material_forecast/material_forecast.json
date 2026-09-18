@@ -2,35 +2,155 @@
  "actions": [],
  "autoname": "naming_series:",
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Document", "engine": "InnoDB",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
  "field_order": [
-  "naming_series", "forecast_title", "project", "boq_ref",
-  "column_break_1", "company", "from_date", "to_date", "status",
-  "section_items", "items",
-  "section_summary", "total_forecast_qty_value", "notes"
+  "naming_series",
+  "forecast_title",
+  "project",
+  "boq_ref",
+  "column_break_1",
+  "company",
+  "from_date",
+  "to_date",
+  "status",
+  "section_items",
+  "items",
+  "section_summary",
+  "total_forecast_qty_value",
+  "notes",
+  "amended_from"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "MF-.YYYY.MM.-.####", "reqd": 1},
-  {"fieldname": "forecast_title", "fieldtype": "Data", "label": "Forecast Title", "in_list_view": 1, "description": "Auto-filled if left blank"},
-  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "boq_ref", "fieldtype": "Link", "label": "Based on BOQ", "options": "BOQ"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
-  {"fieldname": "from_date", "fieldtype": "Date", "label": "Forecast From"},
-  {"fieldname": "to_date", "fieldtype": "Date", "label": "Forecast To"},
-  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nApproved\nPartially Procured\nFully Procured", "default": "Draft"},
-  {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Forecast Items"},
-  {"fieldname": "items", "fieldtype": "Table", "label": "Items", "options": "Material Forecast Item"},
-  {"fieldname": "section_summary", "fieldtype": "Section Break", "label": "Summary"},
-  {"fieldname": "total_forecast_qty_value", "fieldtype": "Currency", "label": "Total Forecast Value", "read_only": 1},
-  {"fieldname": "notes", "fieldtype": "Text Editor", "label": "Notes"}
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "MF-.YYYY.MM.-.####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "forecast_title",
+   "fieldtype": "Data",
+   "label": "Forecast Title",
+   "in_list_view": 1,
+   "description": "Auto-filled if left blank"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "boq_ref",
+   "fieldtype": "Link",
+   "label": "Based on BOQ",
+   "options": "BOQ"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "remember_last_selected_value": 1
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "Forecast From"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "Forecast To"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nApproved\nPartially Procured\nFully Procured\nCancelled",
+   "default": "Draft",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "section_items",
+   "fieldtype": "Section Break",
+   "label": "Forecast Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Material Forecast Item"
+  },
+  {
+   "fieldname": "section_summary",
+   "fieldtype": "Section Break",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "total_forecast_qty_value",
+   "fieldtype": "Currency",
+   "label": "Total Forecast Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Material Forecast",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  }
  ],
- "is_submittable": 1, "module": "Material Planning", "name": "Material Forecast", "owner": "Administrator",
+ "is_submittable": 1,
+ "module": "Material Planning",
+ "name": "Material Forecast",
+ "owner": "Administrator",
  "permissions": [
-  {"role": "Construction Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 1, "cancel": 1, "print": 1},
-  {"role": "Construction Project Manager", "read": 1, "write": 1, "submit": 1, "print": 1},
-  {"role": "Construction Site Engineer", "read": 1, "write": 1, "create": 1},
-  {"role": "Construction Viewer", "read": 1}
+  {
+   "role": "Construction Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 1,
+   "cancel": 1,
+   "print": 1
+  },
+  {
+   "role": "Construction Project Manager",
+   "read": 1,
+   "write": 1,
+   "submit": 1,
+   "print": 1
+  },
+  {
+   "role": "Construction Site Engineer",
+   "read": 1,
+   "write": 1,
+   "create": 1
+  },
+  {
+   "role": "Construction Viewer",
+   "read": 1
+  }
  ],
- "title_field": "forecast_title", "track_changes": 1
+ "title_field": "forecast_title",
+ "track_changes": 1
 }

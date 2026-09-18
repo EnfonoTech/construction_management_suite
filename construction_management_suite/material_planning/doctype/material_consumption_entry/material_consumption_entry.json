@@ -2,34 +2,154 @@
  "actions": [],
  "autoname": "naming_series:",
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Document", "engine": "InnoDB",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
  "field_order": [
-  "naming_series", "project", "posting_date", "daily_site_report_ref",
-  "column_break_1", "company", "warehouse", "status",
-  "section_items", "items",
-  "section_meta", "stock_entry_ref", "notes"
+  "naming_series",
+  "project",
+  "posting_date",
+  "daily_site_report_ref",
+  "column_break_1",
+  "company",
+  "warehouse",
+  "status",
+  "section_items",
+  "items",
+  "section_meta",
+  "stock_entry_ref",
+  "notes",
+  "amended_from"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "MCE-.YYYY.MM.-.####", "reqd": 1},
-  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "posting_date", "fieldtype": "Date", "label": "Posting Date", "default": "Today", "reqd": 1},
-  {"fieldname": "daily_site_report_ref", "fieldtype": "Link", "label": "Daily Site Report", "options": "Daily Site Report"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
-  {"fieldname": "warehouse", "fieldtype": "Link", "label": "Consume From Warehouse", "options": "Warehouse", "reqd": 1},
-  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nCancelled", "default": "Draft"},
-  {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Consumption Items"},
-  {"fieldname": "items", "fieldtype": "Table", "label": "Items", "options": "Material Consumption Item", "reqd": 1},
-  {"fieldname": "section_meta", "fieldtype": "Section Break", "label": "References"},
-  {"fieldname": "stock_entry_ref", "fieldtype": "Link", "label": "Stock Entry", "options": "Stock Entry", "read_only": 1},
-  {"fieldname": "notes", "fieldtype": "Text", "label": "Notes"}
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "MCE-.YYYY.MM.-.####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "default": "Today",
+   "reqd": 1
+  },
+  {
+   "fieldname": "daily_site_report_ref",
+   "fieldtype": "Link",
+   "label": "Daily Site Report",
+   "options": "Daily Site Report"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "remember_last_selected_value": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Consume From Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nSubmitted\nCancelled",
+   "default": "Draft",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "section_items",
+   "fieldtype": "Section Break",
+   "label": "Consumption Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Material Consumption Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_meta",
+   "fieldtype": "Section Break",
+   "label": "References"
+  },
+  {
+   "fieldname": "stock_entry_ref",
+   "fieldtype": "Data",
+   "label": "Stock Entry",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "The Stock Entry this raised"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Material Consumption Entry",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  }
  ],
- "is_submittable": 1, "module": "Material Planning", "name": "Material Consumption Entry", "owner": "Administrator",
+ "is_submittable": 1,
+ "module": "Material Planning",
+ "name": "Material Consumption Entry",
+ "owner": "Administrator",
  "permissions": [
-  {"role": "Construction Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 1, "cancel": 1, "print": 1},
-  {"role": "Construction Site Engineer", "read": 1, "write": 1, "create": 1, "submit": 1},
-  {"role": "Construction Project Manager", "read": 1, "write": 1, "submit": 1},
-  {"role": "Construction Viewer", "read": 1}
+  {
+   "role": "Construction Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 1,
+   "cancel": 1,
+   "print": 1
+  },
+  {
+   "role": "Construction Site Engineer",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1
+  },
+  {
+   "role": "Construction Project Manager",
+   "read": 1,
+   "write": 1,
+   "submit": 1
+  },
+  {
+   "role": "Construction Viewer",
+   "read": 1
+  }
  ],
- "title_field": "project", "track_changes": 1
+ "title_field": "project",
+ "track_changes": 1
 }

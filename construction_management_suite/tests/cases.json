@@ -284,5 +284,22 @@
     "hourly_rate": 4.5
    }
   ]
+ },
+ "Retention Release": {
+  "total_retention_held": 18450.75,
+  "released_to_date": 6200.0,
+  "release_amount": 4125.5,
+  "taxes": [
+   {
+    "charge_type": "On Net Total",
+    "rate": 5,
+    "description": "VAT 5%"
+   },
+   {
+    "charge_type": "Actual",
+    "tax_amount": 30,
+    "description": "Bank charge"
+   }
+  ]
  }
 }

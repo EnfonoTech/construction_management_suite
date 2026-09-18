@@ -1,4 +1,8 @@
 frappe.ui.form.on("Interim Payment Certificate", {
+    onload(frm) {
+        CMS.defaultTaxTemplate(frm, "sales_taxes_template");
+    },
+
     refresh(frm) {
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
         CMS.filterProjects(frm);
@@ -55,24 +59,7 @@ frappe.ui.form.on("Interim Payment Certificate", {
         if (frm.doc.boq_ref && !(frm.doc.items || []).length) get_items(frm);
     },
 
-    taxes_and_charges(frm) {
-        if (!frm.doc.taxes_and_charges) return;
-        // ERPNext's own loader, so a template behaves here exactly as on an invoice.
-        frappe.call({
-            method: "erpnext.controllers.accounts_controller.get_taxes_and_charges",
-            args: {
-                master_doctype: "Sales Taxes and Charges Template",
-                master_name: frm.doc.taxes_and_charges,
-            },
-            callback: (r) => {
-                if (!r.message) return;
-                frm.clear_table("taxes");
-                r.message.forEach(row => frm.add_child("taxes", row));
-                frm.refresh_field("taxes");
-                CMS.recalc(frm);
-            },
-        });
-    },
+    taxes_and_charges(frm) { CMS.loadTaxTemplate(frm); },
 
     retention_percent(frm) { CMS.recalc(frm); },
     advance_recovery_amount(frm) { CMS.recalc(frm); },

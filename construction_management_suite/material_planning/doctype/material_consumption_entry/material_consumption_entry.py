@@ -84,6 +84,7 @@ class MaterialConsumptionEntry(Document):
         se.company = self.company
         se.posting_date = self.posting_date
         se.project = self.project
+        se.cms_consumption_ref = self.name
         cost_center = get_cost_center(self.project, self.company)
         for item in self.items:
             se.append("items", {

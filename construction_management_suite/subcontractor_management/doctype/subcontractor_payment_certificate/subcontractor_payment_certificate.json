@@ -41,7 +41,8 @@
   "taxes_and_charges",
   "taxes",
   "total_taxes_and_charges",
-  "total_payable"
+  "total_payable",
+  "amended_from"
  ],
  "fields": [
   {
@@ -112,9 +113,10 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nSubmitted\nCertified\nPaid\nDisputed",
+   "options": "Draft\nSubmitted\nCertified\nPaid\nDisputed\nCancelled",
    "default": "Draft",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "section_items",
@@ -222,10 +224,11 @@
   },
   {
    "fieldname": "purchase_invoice_ref",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Purchase Invoice",
-   "options": "Purchase Invoice",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "The Purchase Invoice this raised"
   },
   {
    "fieldname": "notes",
@@ -264,6 +267,15 @@
    "options": "currency",
    "read_only": 1,
    "bold": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Subcontractor Payment Certificate",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
   }
  ],
  "is_submittable": 1,

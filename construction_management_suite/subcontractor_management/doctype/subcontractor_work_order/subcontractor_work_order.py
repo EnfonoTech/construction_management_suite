@@ -11,6 +11,10 @@ from construction_management_suite.utils.titles import (
 
 
 class SubcontractorWorkOrder(Document):
+    def before_cancel(self):
+        # before, not on_cancel: on_cancel runs after the row is written.
+        self.status = "Cancelled"
+
     def validate(self):
         set_auto_title(self, "work_order_title", [_("Work Order"), self.subcontractor, project_label(self.project)])
         validate_project_company(self)

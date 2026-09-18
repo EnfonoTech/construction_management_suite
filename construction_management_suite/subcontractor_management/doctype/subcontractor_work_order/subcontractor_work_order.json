@@ -6,39 +6,186 @@
  "document_type": "Document",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series", "work_order_title", "subcontract_agreement", "project",
-  "column_break_1", "subcontractor", "company", "currency", "status",
-  "section_schedule", "start_date", "end_date",
-  "column_break_2", "actual_start_date", "actual_end_date",
-  "section_items", "items",
-  "section_amounts", "total_contract_value", "total_completed_value", "completion_percent",
-  "section_notes", "scope_description", "notes"
+  "naming_series",
+  "work_order_title",
+  "subcontract_agreement",
+  "project",
+  "column_break_1",
+  "subcontractor",
+  "company",
+  "currency",
+  "status",
+  "section_schedule",
+  "start_date",
+  "end_date",
+  "column_break_2",
+  "actual_start_date",
+  "actual_end_date",
+  "section_items",
+  "items",
+  "section_amounts",
+  "total_contract_value",
+  "total_completed_value",
+  "completion_percent",
+  "section_notes",
+  "scope_description",
+  "notes",
+  "amended_from"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "SWO-.YYYY.-.####", "reqd": 1},
-  {"fieldname": "work_order_title", "fieldtype": "Data", "label": "Work Order Title", "in_list_view": 1, "description": "Auto-filled if left blank"},
-  {"fieldname": "subcontract_agreement", "fieldtype": "Link", "label": "Subcontract Agreement", "options": "Subcontract Agreement", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "fetch_from": "subcontract_agreement.project"},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "subcontractor", "fieldtype": "Link", "label": "Subcontractor", "options": "Supplier", "fetch_from": "subcontract_agreement.subcontractor", "in_list_view": 1},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
-  {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency"},
-  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nIssued\nIn Progress\nCompleted\nCancelled", "default": "Draft", "in_list_view": 1},
-  {"fieldname": "section_schedule", "fieldtype": "Section Break", "label": "Schedule"},
-  {"fieldname": "start_date", "fieldtype": "Date", "label": "Planned Start"},
-  {"fieldname": "end_date", "fieldtype": "Date", "label": "Planned End"},
-  {"fieldname": "column_break_2", "fieldtype": "Column Break"},
-  {"fieldname": "actual_start_date", "fieldtype": "Date", "label": "Actual Start"},
-  {"fieldname": "actual_end_date", "fieldtype": "Date", "label": "Actual End"},
-  {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Work Items"},
-  {"fieldname": "items", "fieldtype": "Table", "label": "Work Items", "options": "Subcontractor Work Order Item"},
-  {"fieldname": "section_amounts", "fieldtype": "Section Break", "label": "Progress Summary"},
-  {"fieldname": "total_contract_value", "fieldtype": "Currency", "label": "Total Contract Value", "options": "currency", "read_only": 1},
-  {"fieldname": "total_completed_value", "fieldtype": "Currency", "label": "Total Completed Value", "options": "currency", "read_only": 1},
-  {"fieldname": "completion_percent", "fieldtype": "Percent", "label": "Completion %", "read_only": 1},
-  {"fieldname": "section_notes", "fieldtype": "Section Break", "label": "Notes"},
-  {"fieldname": "scope_description", "fieldtype": "Text Editor", "label": "Scope Description"},
-  {"fieldname": "notes", "fieldtype": "Text", "label": "Notes"}
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SWO-.YYYY.-.####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "work_order_title",
+   "fieldtype": "Data",
+   "label": "Work Order Title",
+   "in_list_view": 1,
+   "description": "Auto-filled if left blank"
+  },
+  {
+   "fieldname": "subcontract_agreement",
+   "fieldtype": "Link",
+   "label": "Subcontract Agreement",
+   "options": "Subcontract Agreement",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "fetch_from": "subcontract_agreement.project"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "subcontractor",
+   "fieldtype": "Link",
+   "label": "Subcontractor",
+   "options": "Supplier",
+   "fetch_from": "subcontract_agreement.subcontractor",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "remember_last_selected_value": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nIssued\nIn Progress\nCompleted\nCancelled",
+   "default": "Draft",
+   "in_list_view": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "section_schedule",
+   "fieldtype": "Section Break",
+   "label": "Schedule"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Planned Start"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "Planned End"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "actual_start_date",
+   "fieldtype": "Date",
+   "label": "Actual Start"
+  },
+  {
+   "fieldname": "actual_end_date",
+   "fieldtype": "Date",
+   "label": "Actual End"
+  },
+  {
+   "fieldname": "section_items",
+   "fieldtype": "Section Break",
+   "label": "Work Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Work Items",
+   "options": "Subcontractor Work Order Item"
+  },
+  {
+   "fieldname": "section_amounts",
+   "fieldtype": "Section Break",
+   "label": "Progress Summary"
+  },
+  {
+   "fieldname": "total_contract_value",
+   "fieldtype": "Currency",
+   "label": "Total Contract Value",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_completed_value",
+   "fieldtype": "Currency",
+   "label": "Total Completed Value",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completion_percent",
+   "fieldtype": "Percent",
+   "label": "Completion %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "scope_description",
+   "fieldtype": "Text Editor",
+   "label": "Scope Description"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Subcontractor Work Order",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  }
  ],
  "is_submittable": 1,
  "links": [],
@@ -46,10 +193,33 @@
  "name": "Subcontractor Work Order",
  "owner": "Administrator",
  "permissions": [
-  {"role": "Construction Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 1, "cancel": 1, "print": 1, "report": 1},
-  {"role": "Construction Project Manager", "read": 1, "write": 1, "submit": 1, "print": 1},
-  {"role": "Construction Subcontractor", "read": 1, "print": 1},
-  {"role": "Construction Viewer", "read": 1}
+  {
+   "role": "Construction Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 1,
+   "cancel": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "Construction Project Manager",
+   "read": 1,
+   "write": 1,
+   "submit": 1,
+   "print": 1
+  },
+  {
+   "role": "Construction Subcontractor",
+   "read": 1,
+   "print": 1
+  },
+  {
+   "role": "Construction Viewer",
+   "read": 1
+  }
  ],
  "title_field": "work_order_title",
  "track_changes": 1

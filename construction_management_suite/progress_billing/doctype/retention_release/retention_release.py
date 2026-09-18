@@ -4,12 +4,15 @@ from frappe.model.document import Document
 from frappe.utils import flt, nowdate
 
 from construction_management_suite.utils.accounting import get_cost_center
-from construction_management_suite.utils.billing import add_line, apply_taxes, billing_item
+from construction_management_suite.utils.titles import project_label
 from construction_management_suite.utils.validations import validate_project_company
 from construction_management_suite.utils.billing import (
+    add_line,
+    billing_item,
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
     company_setting,
+    load_tax_template,
 )
 
 
@@ -26,6 +29,7 @@ class RetentionRelease(Document):
     def validate(self):
         if not self.taxes_and_charges and not self.taxes:
             self.taxes_and_charges = company_setting(self.company, "sales_taxes_template")
+        load_tax_template(self)
         validate_project_company(self)
         self.set_retention_position()
         self.validate_release_amount()
@@ -41,18 +45,29 @@ class RetentionRelease(Document):
         if not self.approval_date:
             self.approval_date = nowdate()
 
+    def before_cancel(self):
+        # before, not on_cancel: on_cancel runs after the row is written.
+        self.status = "Cancelled"
+
     def on_submit(self):
         self._create_sales_invoice()
 
     def on_cancel(self):
         self._cancel_linked_invoice()
-        self.status = "Draft"
 
     # ----- Position -----
 
     def set_retention_position(self):
         self.total_retention_held = self._held()
-        self.balance_retention = flt(self.total_retention_held) - self._released() - flt(self.release_amount)
+        # Stored rather than recomputed each time it is needed: the form has to
+        # reach the same balance as the server, and it cannot query other
+        # releases from the browser.
+        self.released_to_date = self._released()
+        self.balance_retention = (
+            flt(self.total_retention_held)
+            - flt(self.released_to_date)
+            - flt(self.release_amount)
+        )
 
     def _held(self):
         """Everything withheld across the project's submitted certificates."""
@@ -80,7 +95,7 @@ class RetentionRelease(Document):
         if flt(self.release_amount) <= 0:
             frappe.throw(_("Release Amount must be greater than zero"))
 
-        outstanding = flt(self.total_retention_held) - self._released()
+        outstanding = flt(self.total_retention_held) - flt(self.released_to_date)
         if flt(self.release_amount) > outstanding + 0.005:
             frappe.throw(
                 _("Cannot release {0}. Only {1} is still held on this project "
@@ -88,7 +103,7 @@ class RetentionRelease(Document):
                     self.format_money(self.release_amount),
                     self.format_money(outstanding),
                     self.format_money(self.total_retention_held),
-                    self.format_money(self._released()),
+                    self.format_money(self.released_to_date),
                 ),
                 title=_("Over-release"),
             )
@@ -108,6 +123,7 @@ class RetentionRelease(Document):
         si.project = self.project
         si.company = self.company
         si.currency = self.currency
+        si.cms_retention_release_ref = self.name
         cost_center = get_cost_center(self.project, self.company)
         add_line(
             si,

@@ -8,6 +8,7 @@ from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
     company_setting,
+    load_tax_template,
     add_line,
     billing_item,
 )
@@ -47,6 +48,7 @@ class InterimPaymentCertificate(Document):
             self.retention_percent = flt(cms_setting("default_retention_percent", 0))
         if not self.taxes_and_charges and not self.taxes:
             self.taxes_and_charges = company_setting(self.company, "sales_taxes_template")
+        load_tax_template(self)
         if flt(self.contract_value) or not self.boq_ref:
             return
         self.contract_value = flt(frappe.db.get_value("BOQ", self.boq_ref, "grand_total"))

@@ -11,6 +11,10 @@ from construction_management_suite.utils.titles import (
 
 
 class MaterialForecast(Document):
+    def before_cancel(self):
+        # before, not on_cancel: on_cancel runs after the row is written.
+        self.status = "Cancelled"
+
     def validate(self):
         set_auto_title(self, "forecast_title", [_("Forecast"), project_label(self.project), month_of(self.forecast_date) if self.get("forecast_date") else None])
         validate_project_company(self)

@@ -113,6 +113,24 @@ def create_service_items():
     return created
 
 
+def load_tax_template(doc):
+    """Fill an empty taxes table from the template named on the document.
+
+    Setting `taxes_and_charges` alone did nothing — only a manual change in the
+    form loaded the rows, so a certificate saved straight from the API, an
+    import, or the Next Certificate button carried a template and no tax.
+    """
+    if not doc.get("taxes_and_charges") or doc.get("taxes"):
+        return
+    from erpnext.controllers.accounts_controller import get_taxes_and_charges
+
+    master = doc.meta.get_field("taxes_and_charges").options
+    if not frappe.db.exists(master, doc.taxes_and_charges):
+        return
+    for row in get_taxes_and_charges(master, doc.taxes_and_charges) or []:
+        doc.append("taxes", row)
+
+
 def calculate_taxes(doc, base_amount, net_field="total_payable"):
     """Apply a taxes table to a base amount, ERPNext's way.
 

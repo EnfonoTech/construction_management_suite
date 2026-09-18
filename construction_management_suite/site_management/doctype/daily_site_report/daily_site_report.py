@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, nowdate
+from frappe.utils import getdate, flt, nowdate
 from construction_management_suite.utils.validations import validate_project_company
 
 
@@ -15,7 +15,10 @@ class DailySiteReport(Document):
         self.calculate_equipment_cost()
 
     def validate_date(self):
-        if self.report_date and self.report_date > nowdate():
+        # getdate on both sides: a field read back from the database is a
+        # date object while a field typed in the form is a string, and Python
+        # refuses to compare the two.
+        if self.report_date and getdate(self.report_date) > getdate(nowdate()):
             frappe.throw(_("Report date cannot be in the future"))
 
     def set_submitted_by(self):
@@ -61,6 +64,10 @@ class DailySiteReport(Document):
 
     def before_submit(self):
         self.status = "Submitted"
+
+    def before_cancel(self):
+        # before, not on_cancel: on_cancel runs after the row is written.
+        self.status = "Cancelled"
 
     def on_submit(self):
         self._update_project_progress()

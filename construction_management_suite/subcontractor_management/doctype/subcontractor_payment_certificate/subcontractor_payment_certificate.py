@@ -13,6 +13,7 @@ from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
     company_setting,
+    load_tax_template,
 )
 from construction_management_suite.utils.titles import (
     month_of,
@@ -25,8 +26,10 @@ class SubcontractorPaymentCertificate(Document):
     def validate(self):
         if not self.taxes_and_charges and not self.taxes:
             self.taxes_and_charges = company_setting(self.company, "purchase_taxes_template")
+        load_tax_template(self)
         set_auto_title(self, "certificate_title", [self.subcontractor, project_label(self.project), month_of(self.submission_date)])
         validate_project_company(self)
+        self.set_previous_certified()
         self.calculate_totals()
         self.calculate_document_taxes()
 
@@ -60,6 +63,45 @@ class SubcontractorPaymentCertificate(Document):
 
     def on_submit(self):
         self._create_purchase_invoice()
+        self.refresh_agreement()
+
+    def before_cancel(self):
+        # on_cancel runs after the row is written, so a status set there is lost.
+        self.status = "Cancelled"
+
+    def on_cancel(self):
+        self._cancel_linked_invoice()
+        self.refresh_agreement()
+
+    def _cancel_linked_invoice(self):
+        if not self.purchase_invoice_ref:
+            return
+        pi = frappe.get_doc("Purchase Invoice", self.purchase_invoice_ref)
+        if pi.docstatus == 1:
+            pi.cancel()
+            frappe.msgprint(_("Purchase Invoice {0} cancelled").format(pi.name))
+
+    def refresh_agreement(self):
+        """Push the running totals back onto the agreement this bills against."""
+        if not self.subcontract_agreement:
+            return
+        frappe.get_doc("Subcontract Agreement", self.subcontract_agreement).refresh_payment_summary()
+
+    def set_previous_certified(self):
+        """What earlier certificates on this agreement already certified.
+
+        The form script filled it from the agreement, which was itself stale —
+        two wrong numbers agreeing with each other. Read from the certificates
+        themselves, on every save of a draft.
+        """
+        if self.docstatus != 0 or not self.subcontract_agreement:
+            return
+        total = frappe.db.sql(
+            """SELECT SUM(certified_amount) FROM `tabSubcontractor Payment Certificate`
+               WHERE subcontract_agreement = %(a)s AND docstatus = 1 AND name != %(n)s""",
+            {"a": self.subcontract_agreement, "n": self.name or ""},
+        )
+        self.previous_amount_certified = flt(total[0][0]) if total else 0
 
     def _create_purchase_invoice(self):
         pi = frappe.new_doc("Purchase Invoice")
@@ -67,6 +109,7 @@ class SubcontractorPaymentCertificate(Document):
         pi.company = self.company
         pi.currency = self.currency
         pi.project = self.project
+        pi.cms_subcontract_certificate_ref = self.name
         cost_center = get_cost_center(self.project, self.company)
         work = billing_item("subcontract_billing_item")
         add_line(pi, work, self.invoice_line_description(),

@@ -14,26 +14,29 @@
   "company",
   "currency",
   "release_date",
+  "column_break_1b",
   "status",
+  "defects_liability_period_end",
+  "sales_invoice_ref",
   "section_amounts",
   "total_retention_held",
+  "released_to_date",
   "release_amount",
   "column_break_2",
   "balance_retention",
-  "defects_liability_period_end",
   "section_approval",
   "requested_by",
   "approved_by",
   "column_break_3",
   "request_date",
   "approval_date",
-  "sales_invoice_ref",
   "notes",
   "section_taxes",
   "taxes_and_charges",
   "taxes",
   "total_taxes_and_charges",
-  "total_payable"
+  "total_payable",
+  "amended_from"
  ],
  "fields": [
   {
@@ -94,9 +97,10 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nRequested\nApproved\nInvoiced",
+   "options": "Draft\nRequested\nApproved\nInvoiced\nCancelled",
    "default": "Draft",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "section_amounts",
@@ -107,7 +111,9 @@
    "fieldname": "total_retention_held",
    "fieldtype": "Currency",
    "label": "Total Retention Held",
-   "options": "currency"
+   "options": "currency",
+   "read_only": 1,
+   "description": "Across every submitted certificate"
   },
   {
    "fieldname": "release_amount",
@@ -126,7 +132,8 @@
    "fieldtype": "Currency",
    "label": "Balance Retention After Release",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "description": "Still held after this release"
   },
   {
    "fieldname": "defects_liability_period_end",
@@ -166,10 +173,11 @@
   },
   {
    "fieldname": "sales_invoice_ref",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Sales Invoice",
-   "options": "Sales Invoice",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "The Sales Invoice this raised"
   },
   {
    "fieldname": "notes",
@@ -208,6 +216,28 @@
    "options": "currency",
    "read_only": 1,
    "bold": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Retention Release",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "column_break_1b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "released_to_date",
+   "fieldtype": "Currency",
+   "label": "Already Released",
+   "options": "currency",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "On earlier releases for this project"
   }
  ],
  "is_submittable": 1,

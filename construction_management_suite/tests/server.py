@@ -23,6 +23,13 @@ CALC = {
  "Material Consumption Entry": lambda d: [
      setattr(r, "amount", frappe.utils.flt(r.qty) * frappe.utils.flt(r.valuation_rate)) for r in d.items],
  "Project Budget": lambda d: d.calculate_variance(),
+ # set_retention_position reads other releases from the DB; isolate the arithmetic.
+ "Retention Release": lambda d: (
+     setattr(d, "balance_retention",
+             frappe.utils.flt(d.total_retention_held)
+             - frappe.utils.flt(d.released_to_date)
+             - frappe.utils.flt(d.release_amount)),
+     d.calculate_document_taxes()),
  "Daily Site Report": lambda d: (d.calculate_labour_cost(), d.calculate_equipment_cost()),
 }
 

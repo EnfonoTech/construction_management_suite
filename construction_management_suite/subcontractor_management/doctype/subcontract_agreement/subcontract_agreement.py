@@ -10,6 +10,7 @@ from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
     company_setting,
+    load_tax_template,
 )
 from construction_management_suite.utils.titles import (
     month_of,
@@ -29,6 +30,7 @@ class SubcontractAgreement(Document):
     def validate(self):
         if not self.taxes_and_charges and not self.taxes:
             self.taxes_and_charges = company_setting(self.company, "purchase_taxes_template")
+        load_tax_template(self)
         set_auto_title(self, "agreement_title", [self.subcontractor, project_label(self.project), self.scope_summary if self.get("scope_summary") else None])
         self.set_missing_defaults()
         validate_project_company(self)
@@ -54,6 +56,19 @@ class SubcontractAgreement(Document):
     def calculate_advance(self):
         self.advance_amount = flt(self.subcontract_value) * flt(self.advance_percent) / 100
 
+    @frappe.whitelist()
+    def refresh_payment_summary(self):
+        """Recompute and store, for an agreement already submitted.
+
+        validate() only runs while a document is being saved, and nobody saves
+        a signed agreement — so the running totals froze at zero the moment it
+        was submitted, and the aging job and the balance due read them.
+        Certificates call this on submit and on cancel.
+        """
+        self.fetch_payment_summary()
+        for field in ("total_claimed", "total_certified", "total_paid", "balance_due"):
+            self.db_set(field, flt(self.get(field)), update_modified=False)
+
     def fetch_payment_summary(self):
         if self.is_new():
             return
@@ -76,6 +91,10 @@ class SubcontractAgreement(Document):
 
     def before_submit(self):
         self.status = "Active"
+
+    def before_cancel(self):
+        # before, not on_cancel: on_cancel runs after the row is written.
+        self.status = "Cancelled"
 
     def on_submit(self):
         self._create_purchase_order()

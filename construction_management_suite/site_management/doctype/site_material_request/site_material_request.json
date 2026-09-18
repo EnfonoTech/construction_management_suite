@@ -2,39 +2,168 @@
  "actions": [],
  "autoname": "naming_series:",
  "creation": "2024-01-01 00:00:00.000000",
- "doctype": "DocType", "document_type": "Document", "engine": "InnoDB",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
  "field_order": [
-  "naming_series", "project", "request_date", "required_date", "status",
-  "column_break_1", "company", "requested_by", "approved_by",
-  "section_items", "items",
-  "section_meta", "purpose", "remarks", "material_request_ref"
+  "naming_series",
+  "project",
+  "request_date",
+  "required_date",
+  "status",
+  "column_break_1",
+  "company",
+  "requested_by",
+  "approved_by",
+  "section_items",
+  "items",
+  "section_meta",
+  "purpose",
+  "remarks",
+  "material_request_ref",
+  "amended_from"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "SMR-.YYYY.MM.-.####", "reqd": 1},
-  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "request_date", "fieldtype": "Date", "label": "Request Date", "default": "Today", "reqd": 1},
-  {"fieldname": "required_date", "fieldtype": "Date", "label": "Required By Date"},
-  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nPending Approval\nApproved\nOrdered\nReceived\nRejected", "default": "Draft", "in_list_view": 1},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
-  {"fieldname": "requested_by", "fieldtype": "Link", "label": "Requested By", "options": "User"},
-  {"fieldname": "approved_by", "fieldtype": "Link", "label": "Approved By", "options": "User"},
-  {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Requested Items"},
-  {"fieldname": "items", "fieldtype": "Table", "label": "Items", "options": "Site Material Request Item", "reqd": 1},
-  {"fieldname": "section_meta", "fieldtype": "Section Break", "label": "Details"},
-  {"fieldname": "purpose", "fieldtype": "Select", "label": "Purpose", "options": "\nNew Construction\nMaintenance\nReplacement\nProvisional"},
-  {"fieldname": "remarks", "fieldtype": "Text", "label": "Remarks"},
-  {"fieldname": "material_request_ref", "fieldtype": "Link", "label": "ERPNext Material Request", "options": "Material Request", "read_only": 1}
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SMR-.YYYY.MM.-.####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "request_date",
+   "fieldtype": "Date",
+   "label": "Request Date",
+   "default": "Today",
+   "reqd": 1
+  },
+  {
+   "fieldname": "required_date",
+   "fieldtype": "Date",
+   "label": "Required By Date"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nPending Approval\nApproved\nOrdered\nReceived\nRejected\nCancelled",
+   "default": "Draft",
+   "in_list_view": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "remember_last_selected_value": 1
+  },
+  {
+   "fieldname": "requested_by",
+   "fieldtype": "Link",
+   "label": "Requested By",
+   "options": "User"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User"
+  },
+  {
+   "fieldname": "section_items",
+   "fieldtype": "Section Break",
+   "label": "Requested Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Site Material Request Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_meta",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Select",
+   "label": "Purpose",
+   "options": "\nNew Construction\nMaintenance\nReplacement\nProvisional"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "material_request_ref",
+   "fieldtype": "Data",
+   "label": "ERPNext Material Request",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "The Material Request this raised"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Site Material Request",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  }
  ],
  "is_submittable": 1,
  "module": "Site Management",
  "name": "Site Material Request",
  "owner": "Administrator",
  "permissions": [
-  {"role": "Construction Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 1, "cancel": 1, "print": 1},
-  {"role": "Construction Project Manager", "read": 1, "write": 1, "submit": 1, "print": 1},
-  {"role": "Construction Site Engineer", "read": 1, "write": 1, "create": 1, "submit": 1},
-  {"role": "Construction Viewer", "read": 1}
+  {
+   "role": "Construction Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 1,
+   "cancel": 1,
+   "print": 1
+  },
+  {
+   "role": "Construction Project Manager",
+   "read": 1,
+   "write": 1,
+   "submit": 1,
+   "print": 1
+  },
+  {
+   "role": "Construction Site Engineer",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1
+  },
+  {
+   "role": "Construction Viewer",
+   "read": 1
+  }
  ],
- "title_field": "project", "track_changes": 1
+ "title_field": "project",
+ "track_changes": 1
 }

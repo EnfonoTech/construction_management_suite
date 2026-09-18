@@ -65,6 +65,7 @@ class SiteMaterialRequest(Document):
         if not mr.items:
             frappe.throw(_("Nothing to request — every row has zero quantity"))
 
+        mr.cms_site_request_ref = self.name
         mr.insert(ignore_permissions=True)
         self.db_set("material_request_ref", mr.name)
         frappe.msgprint(_("Material Request {0} created").format(mr.name))

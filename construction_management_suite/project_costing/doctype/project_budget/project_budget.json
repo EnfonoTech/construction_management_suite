@@ -6,42 +6,207 @@
  "document_type": "Document",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series", "budget_title", "project", "company", "cost_estimation_ref",
-  "column_break_1", "currency", "fiscal_year", "status",
-  "section_amounts", "total_budget", "total_actual_cost", "total_committed_cost",
-  "column_break_2", "budget_utilization_percent", "variance_amount", "forecasted_final_cost",
-  "section_items", "items",
-  "section_cash_flow", "cash_flow_table",
-  "section_wip", "wip_amount", "wip_account",
-  "column_break_3", "notes"
+  "naming_series",
+  "budget_title",
+  "project",
+  "company",
+  "cost_estimation_ref",
+  "column_break_1",
+  "currency",
+  "fiscal_year",
+  "status",
+  "section_amounts",
+  "total_budget",
+  "total_actual_cost",
+  "total_committed_cost",
+  "column_break_2",
+  "budget_utilization_percent",
+  "variance_amount",
+  "forecasted_final_cost",
+  "section_items",
+  "items",
+  "section_cash_flow",
+  "cash_flow_table",
+  "section_wip",
+  "wip_amount",
+  "wip_account",
+  "column_break_3",
+  "notes",
+  "amended_from"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "PBGT-.YYYY.-.####", "reqd": 1},
-  {"fieldname": "budget_title", "fieldtype": "Data", "label": "Budget Title", "in_list_view": 1, "description": "Auto-filled if left blank"},
-  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_list_view": 1, "search_index": 1},
-  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "remember_last_selected_value": 1},
-  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-  {"fieldname": "currency", "fieldtype": "Link", "label": "Currency", "options": "Currency", "reqd": 1},
-  {"fieldname": "cost_estimation_ref", "fieldtype": "Link", "label": "From Cost Estimation", "options": "Cost Estimation", "read_only": 1},
-  {"fieldname": "fiscal_year", "fieldtype": "Link", "label": "Fiscal Year", "options": "Fiscal Year"},
-  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nActive\nRevised\nClosed", "default": "Draft", "in_list_view": 1},
-  {"fieldname": "section_amounts", "fieldtype": "Section Break", "label": "Budget vs Actual"},
-  {"fieldname": "total_budget", "fieldtype": "Currency", "label": "Total Budget", "options": "currency", "bold": 1},
-  {"fieldname": "total_actual_cost", "fieldtype": "Currency", "label": "Total Actual Cost", "options": "currency", "read_only": 1},
-  {"fieldname": "total_committed_cost", "fieldtype": "Currency", "label": "Committed Cost (POs)", "options": "currency", "read_only": 1},
-  {"fieldname": "column_break_2", "fieldtype": "Column Break"},
-  {"fieldname": "budget_utilization_percent", "fieldtype": "Percent", "label": "Budget Utilization %", "read_only": 1},
-  {"fieldname": "variance_amount", "fieldtype": "Currency", "label": "Variance (Over/Under)", "options": "currency", "read_only": 1},
-  {"fieldname": "forecasted_final_cost", "fieldtype": "Currency", "label": "Forecasted Final Cost (EAC)", "options": "currency"},
-  {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Budget Line Items"},
-  {"fieldname": "items", "fieldtype": "Table", "label": "Budget Items", "options": "Project Budget Item"},
-  {"fieldname": "section_cash_flow", "fieldtype": "Section Break", "label": "Cash Flow Schedule", "collapsible": 1},
-  {"fieldname": "cash_flow_table", "fieldtype": "Table", "label": "Cash Flow Schedule", "options": "Project Cash Flow Item"},
-  {"fieldname": "section_wip", "fieldtype": "Section Break", "label": "WIP Settings"},
-  {"fieldname": "wip_amount", "fieldtype": "Currency", "label": "Current WIP Amount", "options": "currency", "read_only": 1},
-  {"fieldname": "wip_account", "fieldtype": "Link", "label": "WIP Account", "options": "Account"},
-  {"fieldname": "column_break_3", "fieldtype": "Column Break"},
-  {"fieldname": "notes", "fieldtype": "Text Editor", "label": "Notes"}
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PBGT-.YYYY.-.####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "budget_title",
+   "fieldtype": "Data",
+   "label": "Budget Title",
+   "in_list_view": 1,
+   "description": "Auto-filled if left blank"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "remember_last_selected_value": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "cost_estimation_ref",
+   "fieldtype": "Link",
+   "label": "From Cost Estimation",
+   "options": "Cost Estimation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fiscal_year",
+   "fieldtype": "Link",
+   "label": "Fiscal Year",
+   "options": "Fiscal Year"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nActive\nRevised\nClosed\nCancelled",
+   "default": "Draft",
+   "in_list_view": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "section_amounts",
+   "fieldtype": "Section Break",
+   "label": "Budget vs Actual"
+  },
+  {
+   "fieldname": "total_budget",
+   "fieldtype": "Currency",
+   "label": "Total Budget",
+   "options": "currency",
+   "bold": 1
+  },
+  {
+   "fieldname": "total_actual_cost",
+   "fieldtype": "Currency",
+   "label": "Total Actual Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_committed_cost",
+   "fieldtype": "Currency",
+   "label": "Committed Cost (POs)",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "budget_utilization_percent",
+   "fieldtype": "Percent",
+   "label": "Budget Utilization %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "variance_amount",
+   "fieldtype": "Currency",
+   "label": "Variance (Over/Under)",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "forecasted_final_cost",
+   "fieldtype": "Currency",
+   "label": "Forecasted Final Cost (EAC)",
+   "options": "currency"
+  },
+  {
+   "fieldname": "section_items",
+   "fieldtype": "Section Break",
+   "label": "Budget Line Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Budget Items",
+   "options": "Project Budget Item"
+  },
+  {
+   "fieldname": "section_cash_flow",
+   "fieldtype": "Section Break",
+   "label": "Cash Flow Schedule",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "cash_flow_table",
+   "fieldtype": "Table",
+   "label": "Cash Flow Schedule",
+   "options": "Project Cash Flow Item"
+  },
+  {
+   "fieldname": "section_wip",
+   "fieldtype": "Section Break",
+   "label": "WIP Settings"
+  },
+  {
+   "fieldname": "wip_amount",
+   "fieldtype": "Currency",
+   "label": "Current WIP Amount",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "wip_account",
+   "fieldtype": "Link",
+   "label": "WIP Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Project Budget",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  }
  ],
  "is_submittable": 1,
  "links": [],
@@ -49,10 +214,38 @@
  "name": "Project Budget",
  "owner": "Administrator",
  "permissions": [
-  {"role": "Construction Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 1, "cancel": 1, "amend": 1, "print": 1, "report": 1},
-  {"role": "Construction Project Manager", "read": 1, "write": 1, "submit": 1, "print": 1, "report": 1},
-  {"role": "Construction Quantity Surveyor", "read": 1, "write": 1, "create": 1, "print": 1},
-  {"role": "Construction Viewer", "read": 1, "report": 1}
+  {
+   "role": "Construction Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "Construction Project Manager",
+   "read": 1,
+   "write": 1,
+   "submit": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "Construction Quantity Surveyor",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "print": 1
+  },
+  {
+   "role": "Construction Viewer",
+   "read": 1,
+   "report": 1
+  }
  ],
  "title_field": "budget_title",
  "track_changes": 1

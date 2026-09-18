@@ -45,8 +45,11 @@ class BOQ(Document):
     def on_submit(self):
         self._update_project_boq_link()
 
-    def on_cancel(self):
+    def before_cancel(self):
+        # before, not on_cancel: on_cancel runs after the row is written.
         self.status = "Cancelled"
+
+    def on_cancel(self):
         self._update_project_boq_link()
 
     def on_update_after_submit(self):

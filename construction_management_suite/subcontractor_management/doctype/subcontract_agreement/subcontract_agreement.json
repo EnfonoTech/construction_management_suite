@@ -52,7 +52,8 @@
   "taxes_and_charges",
   "taxes",
   "total_taxes_and_charges",
-  "total_with_taxes"
+  "total_with_taxes",
+  "amended_from"
  ],
  "fields": [
   {
@@ -114,9 +115,10 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nActive\nSuspended\nCompleted\nTerminated",
+   "options": "Draft\nActive\nSuspended\nCompleted\nTerminated\nCancelled",
    "default": "Draft",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "section_scope",
@@ -291,10 +293,11 @@
   },
   {
    "fieldname": "purchase_order_ref",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Purchase Order",
-   "options": "Purchase Order",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "The Purchase Order this raised"
   },
   {
    "fieldname": "notes",
@@ -333,6 +336,15 @@
    "options": "currency",
    "read_only": 1,
    "bold": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Subcontract Agreement",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
   }
  ],
  "is_submittable": 1,

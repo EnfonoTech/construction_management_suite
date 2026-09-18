@@ -103,6 +103,31 @@ def create_custom_fields_on_erpnext():
                 "options": "Interim Payment Certificate",
                 "insert_after": "title",
             },
+            {
+                "fieldname": "cms_retention_release_ref",
+                "label": "Retention Release Ref",
+                "fieldtype": "Link",
+                "options": "Retention Release",
+                "insert_after": "cms_ipc_ref",
+            },
+        ],
+        "Purchase Invoice": [
+            {
+                "fieldname": "cms_subcontract_certificate_ref",
+                "label": "Subcontractor Certificate Ref",
+                "fieldtype": "Link",
+                "options": "Subcontractor Payment Certificate",
+                "insert_after": "title",
+            },
+        ],
+        "Material Request": [
+            {
+                "fieldname": "cms_site_request_ref",
+                "label": "Site Material Request Ref",
+                "fieldtype": "Link",
+                "options": "Site Material Request",
+                "insert_after": "title",
+            },
         ],
         "Stock Entry": [
             {
@@ -111,6 +136,13 @@ def create_custom_fields_on_erpnext():
                 "fieldtype": "Link",
                 "options": "Site Transfer",
                 "insert_after": "title",
+            },
+            {
+                "fieldname": "cms_consumption_ref",
+                "label": "Material Consumption Ref",
+                "fieldtype": "Link",
+                "options": "Material Consumption Entry",
+                "insert_after": "cms_site_ref",
             },
         ],
     }

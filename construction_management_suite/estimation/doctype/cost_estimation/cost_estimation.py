@@ -23,6 +23,10 @@ class CostEstimation(Document):
         self.submitted_by = frappe.session.user
         self.status = "Submitted"
 
+    def before_cancel(self):
+        # before, not on_cancel: on_cancel runs after the row is written.
+        self.status = "Cancelled"
+
     def on_submit(self):
         self._create_project_budget()
 

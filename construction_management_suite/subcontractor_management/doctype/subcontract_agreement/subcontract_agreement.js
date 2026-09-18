@@ -1,4 +1,12 @@
 frappe.ui.form.on("Subcontract Agreement", {
+    onload(frm) {
+        CMS.defaultTaxTemplate(frm, "purchase_taxes_template");
+    },
+
+    taxes_and_charges(frm) { CMS.loadTaxTemplate(frm); },
+
+    taxes_remove(frm) { CMS.recalc(frm); },
+
     refresh(frm) {
         CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
@@ -44,3 +52,5 @@ frappe.ui.form.on("Subcontract Item", {
         CMS.fetchItemRate(frm, cdt, cdn, { itemfield: "item_code", target: "rate" });
     },
 });
+
+CMS.liveRows("Purchase Taxes and Charges", ["charge_type", "rate", "tax_amount", "row_id"]);

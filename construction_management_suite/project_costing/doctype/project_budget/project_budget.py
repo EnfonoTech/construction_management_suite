@@ -11,6 +11,10 @@ from construction_management_suite.utils.titles import (
 
 
 class ProjectBudget(Document):
+    def before_cancel(self):
+        # before, not on_cancel: on_cancel runs after the row is written.
+        self.status = "Cancelled"
+
     def validate(self):
         set_auto_title(self, "budget_title", [_("Budget"), project_label(self.project), self.fiscal_year if self.get("fiscal_year") else None])
         validate_project_company(self)

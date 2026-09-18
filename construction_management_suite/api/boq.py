@@ -71,9 +71,9 @@ def get_project_cost_dashboard(project):
             SUM(net_payable_this_period) AS total_net_billed,
             COUNT(*) AS ipc_count
         FROM `tabInterim Payment Certificate`
-        WHERE project = %(project)s AND docstatus = 1 AND name != %(exclude)s
+        WHERE project = %(project)s AND docstatus = 1
         """,
-        {"project": project, "exclude": exclude_ipc or ""},
+        {"project": project},
         as_dict=True,
     )[0] or {}
 
@@ -151,9 +151,9 @@ def get_retention_summary(project):
         """
         SELECT SUM(retention_amount) AS total_held
         FROM `tabInterim Payment Certificate`
-        WHERE project = %(project)s AND docstatus = 1 AND name != %(exclude)s
+        WHERE project = %(project)s AND docstatus = 1
         """,
-        {"project": project, "exclude": exclude_ipc or ""},
+        {"project": project},
         as_dict=True,
     )[0].get("total_held") or 0
 
@@ -161,9 +161,9 @@ def get_retention_summary(project):
         """
         SELECT SUM(release_amount) AS total_released
         FROM `tabRetention Release`
-        WHERE project = %(project)s AND docstatus = 1 AND name != %(exclude)s
+        WHERE project = %(project)s AND docstatus = 1
         """,
-        {"project": project, "exclude": exclude_ipc or ""},
+        {"project": project},
         as_dict=True,
     )[0].get("total_released") or 0
 
