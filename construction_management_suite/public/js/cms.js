@@ -460,9 +460,28 @@ CMS.calc["Subcontract Agreement"] = function (doc) {
 
 CMS.calc["Subcontractor Payment Certificate"] = function (doc) {
     doc.gross_amount_claimed = (doc.items || []).reduce((t, r) => t + flt(r.amount_claimed), 0);
+    // A certificate certifies what was claimed unless the engineer reduces it —
+    // see SubcontractorPaymentCertificate.calculate_totals.
+    if (!flt(doc.certified_amount)) doc.certified_amount = flt(doc.gross_amount_claimed);
     doc.retention_deduction = flt(doc.certified_amount) * flt(doc.retention_percent) / 100;
     doc.net_payable = flt(doc.certified_amount) - flt(doc.retention_deduction)
         - flt(doc.advance_recovery) - flt(doc.other_deductions);
+
+    let running = flt(doc.net_payable);
+    (doc.taxes || []).forEach((r) => {
+        let amount = 0;
+        if (r.charge_type === "Actual") amount = flt(r.tax_amount);
+        else if (r.charge_type === "On Net Total") amount = flt(doc.net_payable) * flt(r.rate) / 100;
+        else if (r.charge_type === "On Previous Row Amount")
+            amount = flt((doc.taxes[cint(r.row_id) - 1] || {}).tax_amount) * flt(r.rate) / 100;
+        else if (r.charge_type === "On Previous Row Total")
+            amount = flt((doc.taxes[cint(r.row_id) - 1] || {}).total) * flt(r.rate) / 100;
+        r.tax_amount = amount;
+        running += amount;
+        r.total = running;
+    });
+    doc.total_taxes_and_charges = (doc.taxes || []).reduce((t, r) => t + flt(r.tax_amount), 0);
+    doc.total_payable = flt(doc.net_payable) + flt(doc.total_taxes_and_charges);
 };
 
 CMS.calc["Subcontractor Work Order"] = function (doc) {

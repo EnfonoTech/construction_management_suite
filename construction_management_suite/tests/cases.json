@@ -177,7 +177,6 @@
   ]
  },
  "Subcontractor Payment Certificate": {
-  "certified_amount": 4750,
   "retention_percent": 10,
   "advance_recovery": 475,
   "other_deductions": 12.25,
@@ -187,6 +186,13 @@
    },
    {
     "amount_claimed": 250.75
+   }
+  ],
+  "taxes": [
+   {
+    "charge_type": "On Net Total",
+    "rate": 5,
+    "description": "VAT 5%"
    }
   ]
  },

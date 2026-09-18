@@ -12,6 +12,7 @@ from construction_management_suite.utils.billing import (
     billing_item,
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
+    refuse_empty,
     company_setting,
     load_tax_template,
 )
@@ -130,6 +131,7 @@ class RetentionRelease(Document):
             self.release_amount,
             cost_center=cost_center,
         )
+        refuse_empty(si, self)
         carry_taxes(self, si, cost_center)
         si.insert(ignore_permissions=True)
         self.db_set("sales_invoice_ref", si.name)

@@ -8,6 +8,7 @@ from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
     money,
     carry_taxes,
+    refuse_empty,
     company_setting,
     load_tax_template,
     add_line,
@@ -334,6 +335,7 @@ class InterimPaymentCertificate(Document):
             cost_center=cost_center,
         )
 
+        refuse_empty(si, self)
         carry_taxes(self, si, cost_center)
 
         si.insert(ignore_permissions=True)

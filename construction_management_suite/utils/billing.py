@@ -142,6 +142,24 @@ def load_tax_template(doc):
         doc.append("taxes", row)
 
 
+def refuse_empty(target, source):
+    """Never hand ERPNext an invoice with no lines.
+
+    add_line skips a non-positive amount, so a nil document produced an invoice
+    with an empty items table — and ERPNext dies computing a payment schedule
+    for it, with a TypeError that names none of the documents involved. Say
+    which document is empty and why.
+    """
+    if target.get("items"):
+        return False
+    frappe.throw(
+        _("{0} {1} has nothing to invoice — every line came to zero.").format(
+            _(source.doctype), source.name
+        ),
+        title=_("Nothing to invoice"),
+    )
+
+
 def calculate_taxes(doc, base_amount, net_field="total_payable"):
     """Apply a taxes table to a base amount, ERPNext's way.
 

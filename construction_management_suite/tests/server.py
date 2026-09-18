@@ -17,7 +17,8 @@ CALC = {
  "Interim Payment Certificate": lambda d: (d.calculate_items(), d._deduct()),
  "Variation Order": lambda d: (d.calculate_items(), d.calculate_totals()),
  "Subcontract Agreement": lambda d: (d.calculate_items(), d.calculate_advance()),
- "Subcontractor Payment Certificate": lambda d: d.calculate_totals(),
+ "Subcontractor Payment Certificate": lambda d: (d.calculate_totals(),
+     d.calculate_document_taxes()),
  "Subcontractor Work Order": lambda d: d.calculate_totals(),
  "Material Forecast": lambda d: d.recalculate(),
  "Material Consumption Entry": lambda d: [

@@ -11,7 +11,9 @@ from construction_management_suite.utils.billing import (
 from construction_management_suite.utils.validations import validate_project_company
 from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
+    money,
     carry_taxes,
+    refuse_empty,
     company_setting,
     load_tax_template,
 )
@@ -31,6 +33,7 @@ class SubcontractorPaymentCertificate(Document):
         validate_project_company(self)
         self.set_previous_certified()
         self.calculate_totals()
+        self.validate_payable()
         self.calculate_document_taxes()
 
     def invoice_line_description(self):
@@ -64,12 +67,35 @@ class SubcontractorPaymentCertificate(Document):
 
     def calculate_totals(self):
         self.gross_amount_claimed = sum(flt(i.amount_claimed) for i in self.items)
+        # A certificate certifies what was claimed unless the engineer reduces
+        # it. Left at zero it produced a nil payment and an invoice with no
+        # lines at all, which ERPNext then crashed on.
+        if not flt(self.certified_amount):
+            self.certified_amount = flt(self.gross_amount_claimed)
         self.retention_deduction = flt(self.certified_amount) * flt(self.retention_percent) / 100
         self.net_payable = (
             flt(self.certified_amount)
             - flt(self.retention_deduction)
             - flt(self.advance_recovery)
             - flt(self.other_deductions)
+        )
+
+    def validate_payable(self):
+        """There has to be something to pay before an invoice is raised."""
+        if flt(self.net_payable) > 0:
+            return
+        frappe.throw(
+            _(
+                "Nothing is payable on this certificate: {0} certified less {1} "
+                "in deductions leaves {2}. Certify an amount, or reduce the "
+                "retention and recoveries."
+            ).format(
+                money(self, self.certified_amount),
+                money(self, flt(self.retention_deduction) + flt(self.advance_recovery)
+                      + flt(self.other_deductions)),
+                money(self, self.net_payable),
+            ),
+            title=_("Nothing payable"),
         )
 
     def check_advance(self):
@@ -150,6 +176,7 @@ class SubcontractorPaymentCertificate(Document):
         add_line(pi, work, self.invoice_line_description(),
                  self.net_payable, cost_center=cost_center)
 
+        refuse_empty(pi, self)
         carry_taxes(self, pi, cost_center)
         pi.insert(ignore_permissions=True)
         self.db_set("purchase_invoice_ref", pi.name)
