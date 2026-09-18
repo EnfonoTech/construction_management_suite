@@ -16,8 +16,12 @@ frappe.ui.form.on("Material Forecast", {
                     const parts = [];
                     if (m.added) parts.push(__("{0} material(s) added", [m.added]));
                     if (m.updated) parts.push(__("{0} refreshed", [m.updated]));
+                    if (m.already_planned) {
+                        parts.push(__("{0} already covered by another forecast",
+                                      [m.already_planned]));
+                    }
                     frappe.show_alert(parts.length
-                        ? { message: parts.join(", "), indicator: "green" }
+                        ? { message: parts.join(", "), indicator: m.added || m.updated ? "green" : "orange" }
                         : { message: __("No priced line on this project explodes into materials — link a Rate Analysis whose resources name Items"),
                             indicator: "orange" });
                 });

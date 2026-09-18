@@ -35,13 +35,37 @@ class MaterialForecast(Document):
 
         if not self.project:
             frappe.throw(_("Choose the project this forecast is for"))
+
+        # A job is normally forecast in stages, so what other submitted
+        # forecasts already cover is netted off — otherwise the second forecast
+        # asks for the whole job again and the material is ordered twice.
+        planned = frappe.db.sql(
+            """
+            SELECT i.item_code AS code, SUM(i.net_qty_required) AS qty
+            FROM `tabMaterial Forecast Item` i
+            JOIN `tabMaterial Forecast` f ON f.name = i.parent
+            WHERE f.project = %(p)s AND f.docstatus = 1 AND f.name != %(n)s
+            GROUP BY i.item_code
+            """,
+            {"p": self.project, "n": self.name or ""},
+            as_dict=True,
+        )
+        elsewhere = {r.code: flt(r.qty) for r in planned}
+
         rows = {i.item_code: i for i in self.items if i.item_code}
-        added = updated = 0
+        added = updated = skipped = 0
         for line in take_off_detail(self.project, boq=self.boq_ref):
+            # net_qty_required is boq_qty plus waste, so take the already
+            # planned quantity off the base before waste is applied again.
+            waste = 1 + flt(line["waste_factor"]) / 100
+            outstanding = flt(line["boq_qty"]) - (flt(elsewhere.get(line["item_code"])) / waste)
+            if outstanding <= 0.0001:
+                skipped += 1
+                continue
             row = rows.get(line["item_code"])
             values = {
                 "uom": line["uom"],
-                "boq_qty": line["boq_qty"],
+                "boq_qty": outstanding,
                 "waste_factor": line["waste_factor"],
                 "estimated_rate": line["estimated_rate"],
                 "boq_items": ", ".join(line["boq_items"])[:140],
@@ -53,7 +77,7 @@ class MaterialForecast(Document):
                 self.append("items", dict(item_code=line["item_code"], **values))
                 added += 1
         self.recalculate()
-        return {"added": added, "updated": updated}
+        return {"added": added, "updated": updated, "already_planned": skipped}
 
     def recalculate(self):
         """Work out what still needs ordering, and what that will cost.
