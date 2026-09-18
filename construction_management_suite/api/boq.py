@@ -424,7 +424,7 @@ def get_agreement_lines(agreement, work_order=None):
 
 
 @frappe.whitelist()
-def get_completed_work(agreement, certificate=None):
+def get_completed_work(agreement, certificate=None, work_order=None):
     """What the work orders say is built, less what has already been claimed.
 
     The certificate used to be typed from scratch, so a subcontractor could be
@@ -437,9 +437,10 @@ def get_completed_work(agreement, certificate=None):
                i.contract_rate AS rate, i.completed_qty AS done
         FROM `tabSubcontractor Work Order Item` i
         JOIN `tabSubcontractor Work Order` w ON w.name = i.parent
-        WHERE w.subcontract_agreement = %s AND w.docstatus = 1
+        WHERE w.subcontract_agreement = %(a)s AND w.docstatus = 1
+          AND (%(w)s = '' OR w.name = %(w)s)
         """,
-        agreement,
+        {"a": agreement, "w": work_order or ""},
         as_dict=True,
     )
     claimed = frappe.db.sql(
@@ -473,6 +474,53 @@ def get_completed_work(agreement, certificate=None):
             "amount_claimed": outstanding * flt(r.rate),
         })
     return lines
+
+
+@frappe.whitelist()
+def make_payment_certificate(source_name, target_doc=None):
+    """Open a certificate carrying what a work order has actually built.
+
+    The button used to hand over three header fields and leave the schedule to
+    be retyped from the order sitting on the next screen — which is how a
+    subcontractor gets paid for a quantity no order records.
+    """
+    from frappe.model.mapper import get_mapped_doc
+
+    def postprocess(source, target):
+        target.retention_percent = flt(
+            frappe.db.get_value("Subcontract Agreement", source.subcontract_agreement,
+                                "retention_percent")
+        )
+        target.submission_date = frappe.utils.nowdate()
+        lines = get_completed_work(source.subcontract_agreement, work_order=source.name)
+        if not lines:
+            frappe.throw(
+                _("Everything built on {0} has already been certified. Record more "
+                  "progress on it first.").format(source.name),
+                title=_("Nothing to certify"),
+            )
+        for line in lines:
+            target.append("items", line)
+
+    return get_mapped_doc(
+        "Subcontractor Work Order",
+        source_name,
+        {
+            "Subcontractor Work Order": {
+                "doctype": "Subcontractor Payment Certificate",
+                "field_map": {
+                    "subcontract_agreement": "subcontract_agreement",
+                    "project": "project",
+                    "subcontractor": "subcontractor",
+                    "company": "company",
+                    "currency": "currency",
+                },
+                "validation": {"docstatus": ["=", 1]},
+            },
+        },
+        target_doc,
+        postprocess,
+    )
 
 
 @frappe.whitelist()

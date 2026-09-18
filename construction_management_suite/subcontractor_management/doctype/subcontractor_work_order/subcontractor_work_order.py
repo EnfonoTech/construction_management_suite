@@ -77,6 +77,22 @@ class SubcontractorWorkOrder(Document):
                 added += 1
         return {"added": added, "topped_up": topped, "open_elsewhere": open_elsewhere}
 
+    def on_update_after_submit(self):
+        """Recompute and PERSIST after progress is recorded.
+
+        update_after_submit writes only the allow_on_submit fields the client
+        sent; anything derived here lives in memory until it is written, which
+        is why the totals read zero while the rows held real quantities.
+        """
+        self.calculate_totals()
+        self.set_status()
+        for row in self.items:
+            row.db_set("completed_amount", flt(row.completed_amount), update_modified=False)
+            row.db_set("completion_percent", flt(row.completion_percent), update_modified=False)
+        for field in ("total_contract_value", "total_completed_value",
+                      "completion_percent", "status"):
+            self.db_set(field, self.get(field), update_modified=False)
+
     def set_status(self):
         """Draft, Issued, In Progress, Completed — the options existed and
         nothing ever moved between them, so every submitted order read Draft and

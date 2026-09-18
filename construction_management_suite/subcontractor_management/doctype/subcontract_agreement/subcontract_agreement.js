@@ -23,7 +23,13 @@ frappe.ui.form.on("Subcontract Agreement", {
             frm.add_custom_button(__("Payment Certificate"), () => {
                 frappe.new_doc("Subcontractor Payment Certificate", {
                     subcontract_agreement: frm.doc.name,
+                    project: frm.doc.project, subcontractor: frm.doc.subcontractor,
+                    company: frm.doc.company, currency: frm.doc.currency,
+                    retention_percent: frm.doc.retention_percent,
                 });
+                // The schedule is pulled once the form is up, because it spans
+                // every order under the agreement rather than one of them.
+                frappe.show_alert(__("Use Get Completed Work to pull the schedule"));
             }, __("Create"));
             frm.add_custom_button(__("Work Order"), () => {
                 frappe.new_doc("Subcontractor Work Order", {

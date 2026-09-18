@@ -51,10 +51,12 @@ frappe.ui.form.on("Subcontractor Work Order", {
             });
         }
         if (frm.doc.docstatus === 1) {
+            // Carries the schedule, not just the header — see
+            // api.boq.make_payment_certificate.
             frm.add_custom_button(__("Payment Certificate"), () => {
-                frappe.new_doc("Subcontractor Payment Certificate", {
-                    subcontract_agreement: frm.doc.subcontract_agreement,
-                    project: frm.doc.project, subcontractor: frm.doc.subcontractor,
+                frappe.model.open_mapped_doc({
+                    method: "construction_management_suite.api.boq.make_payment_certificate",
+                    frm: frm,
                 });
             }, __("Create"));
         }

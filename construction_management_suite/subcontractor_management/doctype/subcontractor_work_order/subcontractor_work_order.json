@@ -138,7 +138,8 @@
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Work Items",
-   "options": "Subcontractor Work Order Item"
+   "options": "Subcontractor Work Order Item",
+   "allow_on_submit": 1
   },
   {
    "fieldname": "section_amounts",
