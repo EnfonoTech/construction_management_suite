@@ -502,7 +502,11 @@ CMS.calc["Subcontractor Work Order"] = function (doc) {
 CMS.calc["Material Forecast"] = function (doc) {
     (doc.items || []).forEach(r => {
         r.net_qty_required = flt(r.boq_qty) * (1 + flt(r.waste_factor) / 100);
-        r.qty_to_order = Math.max(0, flt(r.net_qty_required) - flt(r.already_ordered_qty));
+        // Rounded UP for a whole-number UOM, never down: ordering 8,059 of the
+        // 8,059.8 a take-off asks for leaves the job short by design.
+        const outstanding = Math.max(0, flt(r.net_qty_required) - flt(r.already_ordered_qty));
+        r.qty_to_order = cint(r.uom_must_be_whole) && outstanding > 0
+            ? Math.ceil(outstanding - 0.000001) : outstanding;
         r.estimated_value = flt(r.qty_to_order) * flt(r.estimated_rate);
     });
     doc.total_forecast_qty_value = (doc.items || []).reduce((t, r) => t + flt(r.estimated_value), 0);

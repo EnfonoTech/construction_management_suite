@@ -129,6 +129,13 @@ def create_custom_fields_on_erpnext():
         ],
         "Material Request": [
             {
+                "fieldname": "cms_forecast_ref",
+                "label": "Material Forecast Ref",
+                "fieldtype": "Link",
+                "options": "Material Forecast",
+                "insert_after": "title",
+            },
+            {
                 "fieldname": "cms_site_request_ref",
                 "label": "Site Material Request Ref",
                 "fieldtype": "Link",

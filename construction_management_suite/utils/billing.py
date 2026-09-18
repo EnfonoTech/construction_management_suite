@@ -31,6 +31,23 @@ DEFAULT_ITEMS = {
 }
 
 
+def orderable_qty(qty, uom):
+    """Round a take-off quantity up to something you can actually buy.
+
+    A take-off with a waste factor produces 8,059.8 bags of cement, and ERPNext
+    refuses a fraction on a UOM marked Must Be Whole Number. Rounding UP, never
+    down: ordering 8,059 leaves the job short by design.
+    """
+    import math
+
+    qty = flt(qty)
+    if not uom or qty <= 0:
+        return qty
+    if frappe.db.get_value("UOM", uom, "must_be_whole_number"):
+        return float(math.ceil(qty - 0.000001))
+    return qty
+
+
 def money(doc, value):
     """Format a figure in the document's own currency, for a message."""
     return frappe.format_value(

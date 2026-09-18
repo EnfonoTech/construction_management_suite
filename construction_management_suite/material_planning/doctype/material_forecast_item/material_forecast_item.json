@@ -8,6 +8,7 @@
   "item_name",
   "uom",
   "column_break_1",
+  "boq_items",
   "boq_qty",
   "waste_factor",
   "net_qty_required",
@@ -16,7 +17,8 @@
   "estimated_rate",
   "estimated_value",
   "required_by_date",
-  "warehouse"
+  "warehouse",
+  "uom_must_be_whole"
  ],
  "fields": [
   {
@@ -40,8 +42,6 @@
    "fieldtype": "Link",
    "label": "UOM",
    "options": "UOM",
-   "in_list_view": 1,
-   "columns": 1,
    "fetch_from": "item_code.stock_uom",
    "fetch_if_empty": 1
   },
@@ -52,17 +52,13 @@
   {
    "fieldname": "boq_qty",
    "fieldtype": "Float",
-   "label": "BOQ Qty",
-   "in_list_view": 1,
-   "columns": 1
+   "label": "BOQ Qty"
   },
   {
    "fieldname": "waste_factor",
    "fieldtype": "Percent",
    "label": "Waste %",
-   "default": "5",
-   "in_list_view": 1,
-   "columns": 1
+   "default": "5"
   },
   {
    "fieldname": "net_qty_required",
@@ -70,7 +66,7 @@
    "label": "Net Qty Required",
    "read_only": 1,
    "in_list_view": 1,
-   "columns": 1
+   "columns": 2
   },
   {
    "fieldname": "already_ordered_qty",
@@ -86,7 +82,7 @@
    "label": "Qty to Order",
    "read_only": 1,
    "in_list_view": 1,
-   "columns": 1
+   "columns": 2
   },
   {
    "fieldname": "estimated_rate",
@@ -99,7 +95,7 @@
    "label": "Estimated Value",
    "read_only": 1,
    "in_list_view": 1,
-   "columns": 2
+   "columns": 1
   },
   {
    "fieldname": "required_by_date",
@@ -111,6 +107,24 @@
    "fieldtype": "Link",
    "label": "Target Warehouse",
    "options": "Warehouse"
+  },
+  {
+   "fieldname": "boq_items",
+   "fieldtype": "Data",
+   "label": "For BOQ Items",
+   "read_only": 1,
+   "description": "The contract lines this quantity is for",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "uom_must_be_whole",
+   "fieldtype": "Check",
+   "label": "UOM Must Be Whole",
+   "read_only": 1,
+   "hidden": 1,
+   "print_hide": 1,
+   "description": "So the form rounds the order quantity the same way the server does"
   }
  ],
  "istable": 1,

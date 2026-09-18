@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
+from construction_management_suite.utils.billing import orderable_qty
 from construction_management_suite.utils.validations import validate_project_company
 from construction_management_suite.utils.titles import (
     month_of,
@@ -20,6 +21,40 @@ class MaterialForecast(Document):
         validate_project_company(self)
         self.recalculate()
 
+    @frappe.whitelist()
+    def get_items_from_boq(self):
+        """Build the forecast from what the bills are priced to consume.
+
+        Every figure here — quantity, waste, rate — is already computed by the
+        take-off that the BOQ Resource Analysis report and the consumption check
+        read. Retyping it was three places to disagree.
+        """
+        from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+            take_off_detail,
+        )
+
+        if not self.project:
+            frappe.throw(_("Choose the project this forecast is for"))
+        rows = {i.item_code: i for i in self.items if i.item_code}
+        added = updated = 0
+        for line in take_off_detail(self.project, boq=self.boq_ref):
+            row = rows.get(line["item_code"])
+            values = {
+                "uom": line["uom"],
+                "boq_qty": line["boq_qty"],
+                "waste_factor": line["waste_factor"],
+                "estimated_rate": line["estimated_rate"],
+                "boq_items": ", ".join(line["boq_items"])[:140],
+            }
+            if row:
+                row.update(values)
+                updated += 1
+            else:
+                self.append("items", dict(item_code=line["item_code"], **values))
+                added += 1
+        self.recalculate()
+        return {"added": added, "updated": updated}
+
     def recalculate(self):
         """Work out what still needs ordering, and what that will cost.
 
@@ -27,9 +62,17 @@ class MaterialForecast(Document):
         correct the moment it is entered rather than only after the job has run.
         """
         for item in self.items:
+            # Carried on the row so the form can round exactly as this does.
+            item.uom_must_be_whole = 1 if (
+                item.uom and frappe.db.get_value("UOM", item.uom, "must_be_whole_number")
+            ) else 0
             item.already_ordered_qty = self._ordered_qty(item.item_code)
             item.net_qty_required = flt(item.boq_qty) * (1 + flt(item.waste_factor) / 100)
-            item.qty_to_order = max(0, flt(item.net_qty_required) - flt(item.already_ordered_qty))
+            # What you can actually place on an order — a whole-number UOM will
+            # not accept the fraction a waste factor produces.
+            item.qty_to_order = orderable_qty(
+                max(0, flt(item.net_qty_required) - flt(item.already_ordered_qty)), item.uom
+            )
             item.estimated_value = flt(item.qty_to_order) * flt(item.estimated_rate)
         self.total_forecast_qty_value = sum(flt(i.estimated_value) for i in self.items)
 

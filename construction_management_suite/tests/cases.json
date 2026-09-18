@@ -221,19 +221,22 @@
     "boq_qty": 1260,
     "waste_factor": 5,
     "already_ordered_qty": 0,
-    "estimated_rate": 2.1
+    "estimated_rate": 2.1,
+    "uom": "Nos"
    },
    {
     "boq_qty": 153,
     "waste_factor": 5,
     "already_ordered_qty": 0,
-    "estimated_rate": 8.5
+    "estimated_rate": 8.5,
+    "uom": "Cubic Meter"
    },
    {
     "boq_qty": 15500,
     "waste_factor": 3,
     "already_ordered_qty": 0,
-    "estimated_rate": 0.32
+    "estimated_rate": 0.32,
+    "uom": "Kg"
    }
   ]
  },

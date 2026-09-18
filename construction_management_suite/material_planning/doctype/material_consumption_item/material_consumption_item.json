@@ -13,7 +13,8 @@
   "valuation_rate",
   "amount",
   "batch_no",
-  "boq_item_ref"
+  "boq_item_ref",
+  "boq_item_no"
  ],
  "fields": [
   {
@@ -85,7 +86,20 @@
   {
    "fieldname": "boq_item_ref",
    "fieldtype": "Data",
-   "label": "BOQ Item Ref"
+   "label": "BOQ Line",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1,
+   "description": "Row name of the BOQ line this is for"
+  },
+  {
+   "fieldname": "boq_item_no",
+   "fieldtype": "Data",
+   "label": "BOQ Item",
+   "read_only": 1,
+   "description": "The contract line this is for"
   }
  ],
  "istable": 1,

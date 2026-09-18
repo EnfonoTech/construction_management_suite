@@ -139,9 +139,38 @@ def create_material_request_from_forecast(forecast_name):
         frappe.msgprint(_("No items require ordering — all quantities already covered"))
         return None
 
+    mr.cms_forecast_ref = forecast.name
     mr.insert(ignore_permissions=True)
+    frappe.db.set_value("Material Forecast", forecast.name, "material_request_ref", mr.name,
+                        update_modified=False)
     frappe.msgprint(_("Material Request {0} created").format(mr.name))
     return mr.name
+
+
+@frappe.whitelist()
+def get_consumption_position(project):
+    """What a project has consumed against what its bills were priced to use."""
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        consumed_by_item,
+        take_off_detail,
+    )
+
+    detail = {d["item_code"]: d for d in take_off_detail(project)}
+    used = consumed_by_item(project)
+    allowed_qty = sum(flt(d["boq_qty"]) * (1 + flt(d["waste_factor"]) / 100) for d in detail.values())
+    allowed_value = sum(
+        flt(d["boq_qty"]) * (1 + flt(d["waste_factor"]) / 100) * flt(d["estimated_rate"])
+        for d in detail.values()
+    )
+    used_value = sum(
+        flt(q) * flt((detail.get(code) or {}).get("estimated_rate")) for code, q in used.items()
+    )
+    return {
+        "allowed": allowed_qty,
+        "used": sum(flt(q) for q in used.values()),
+        "allowed_value": allowed_value,
+        "used_value": used_value,
+    }
 
 
 @frappe.whitelist()
