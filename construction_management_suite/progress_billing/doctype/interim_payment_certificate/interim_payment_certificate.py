@@ -6,6 +6,7 @@ from frappe.utils import flt, nowdate
 from construction_management_suite.utils.accounting import get_cost_center
 from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
+    money,
     carry_taxes,
     company_setting,
     load_tax_template,
@@ -34,6 +35,7 @@ class InterimPaymentCertificate(Document):
         self.calculate_items()
         self.calculate_deductions()
         self.calculate_taxes()
+        self.validate_deductions()
         self.validate_over_certification()
 
     def set_contract_value(self):
@@ -100,6 +102,31 @@ class InterimPaymentCertificate(Document):
             gross += flt(item.amount_this_period)
         self.gross_amount_this_period = gross
         self.cumulative_amount_to_date = flt(self.previous_cumulative_amount) + gross
+
+    def validate_deductions(self):
+        """Deductions cannot exceed what was certified.
+
+        A negative net payable is not a certificate, it is a credit note — and
+        it produced an invoice with no lines at all, which ERPNext then crashed
+        computing a payment schedule for. Cap the recovery and carry the rest to
+        the next certificate.
+        """
+        if flt(self.net_payable_this_period) >= 0:
+            return
+        frappe.throw(
+            _(
+                "Deductions come to {0} against {1} certified, leaving {2}. "
+                "Reduce the advance recovery or other deductions — the balance "
+                "carries to the next certificate."
+            ).format(
+                money(self, 
+                    flt(self.retention_amount) + flt(self.advance_recovery_amount)
+                    + flt(self.other_deductions)),
+                money(self, self.gross_amount_this_period),
+                money(self, self.net_payable_this_period),
+            ),
+            title=_("Deductions exceed the certified value"),
+        )
 
     def validate_over_certification(self):
         """Never certify more of a line than the contract contains.
@@ -175,7 +202,24 @@ class InterimPaymentCertificate(Document):
         )
         return flt((prev[0] or {}).get("total", 0))
 
+    def check_advance(self):
+        """The client's advance, recovered from these certificates."""
+        from construction_management_suite.utils.billing import check_advance_recovery
+
+        if not self.project:
+            return
+        advance = flt(frappe.db.get_value("Project", self.project, "cms_advance_amount"))
+        if not advance:
+            return
+        recovered = flt(frappe.db.sql(
+            """SELECT SUM(advance_recovery_amount) FROM `tabInterim Payment Certificate`
+               WHERE project = %(p)s AND docstatus = 1 AND name != %(n)s""",
+            {"p": self.project, "n": self.name or ""})[0][0]) + flt(self.advance_recovery_amount)
+        check_advance_recovery(self, advance, recovered,
+                               self.cumulative_amount_to_date, self.contract_value, _("client"))
+
     def before_submit(self):
+        self.check_advance()
         self.submitted_by = frappe.session.user
         self.submission_date = nowdate()
         self.status = "Submitted"

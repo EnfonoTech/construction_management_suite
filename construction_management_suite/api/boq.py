@@ -356,6 +356,32 @@ def _previously_claimed_by_line(project, exclude_ipc=None):
 
 
 @frappe.whitelist()
+def get_boq_lines_for_subcontract(boq):
+    """Contract lines a trade could be engaged to deliver.
+
+    Carries the line's COST rate, not its selling rate — what a subcontract
+    should be judged against is what the bill was priced to build the work for,
+    never what the client is being charged.
+    """
+    doc = frappe.get_doc("BOQ", boq)
+    if doc.docstatus != 1:
+        frappe.throw(_("Only a submitted BOQ can be subcontracted against"))
+    return [
+        {
+            "boq_ref": row.name,
+            "boq_item_no": row.item_no,
+            "boq_cost_rate": flt(row.cost_rate),
+            "item_code": row.item_code,
+            "description": row.description or row.item_code,
+            "uom": row.uom,
+            "qty": flt(row.qty),
+            "rate": 0,
+        }
+        for row in doc.items
+    ]
+
+
+@frappe.whitelist()
 def get_boq_lines_for_variation(boq):
     """Every line of a bill, so a variation can be built against the real rows.
 

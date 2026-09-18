@@ -27,6 +27,13 @@ DEFAULT_ITEMS = {
 }
 
 
+def money(doc, value):
+    """Format a figure in the document's own currency, for a message."""
+    return frappe.format_value(
+        flt(value), {"fieldtype": "Currency", "options": "currency"}, doc
+    )
+
+
 def billing_item(setting_name):
     """The Item configured for this kind of line, if it still exists."""
     item = cms_setting(setting_name)
@@ -190,3 +197,39 @@ def carry_taxes(source, target, cost_center=None):
             "cost_center": row.cost_center or cost_center,
             "included_in_print_rate": row.included_in_print_rate,
         })
+
+
+def check_advance_recovery(doc, advance, recovered, billed, contract, label):
+    """Flag an advance still outstanding when the job is nearly billed out.
+
+    An advance is money handed over before any work was done, clawed back a
+    slice at a time from each certificate — by hand, because how much to recover
+    this period is a commercial decision. Nothing checked it ever reached zero,
+    so a job could finish with the advance simply given away. Chased only once
+    billing passes a threshold, because early on an outstanding advance is
+    exactly what it should be.
+    """
+    from construction_management_suite.utils.settings import action_for, cms_setting
+
+    action = action_for("advance_recovery_action")
+    outstanding = flt(advance) - flt(recovered)
+    if action == "Ignore" or outstanding <= 0.005 or not flt(contract):
+        return
+    threshold = flt(cms_setting("advance_recovery_threshold_percent", 0))
+    progress = flt(billed) / flt(contract) * 100
+    if progress < threshold:
+        return
+
+    from construction_management_suite.utils.settings import enforce
+
+    enforce(
+        action,
+        _("{0} of the {1} advance is still outstanding, and {2}% of the contract "
+          "has been billed. Recover it on this certificate or the remaining ones.")
+        .format(
+            frappe.format_value(outstanding, {"fieldtype": "Currency"}, doc),
+            label,
+            flt(progress, 1),
+        ),
+        title=_("Advance not recovered"),
+    )

@@ -16,6 +16,9 @@
   "below_minimum_margin_action",
   "section_purchasing",
   "po_over_budget_action",
+  "subcontract_above_cost_action",
+  "advance_recovery_action",
+  "advance_recovery_threshold_percent",
   "column_break_pur",
   "purchase_rate_action",
   "purchase_rate_tolerance_percent",
@@ -106,6 +109,28 @@
    "label": "Purchase Order Over Project Budget",
    "options": "Ignore\nWarn\nStop",
    "default": "Warn"
+  },
+  {
+   "fieldname": "subcontract_above_cost_action",
+   "fieldtype": "Select",
+   "label": "Subcontracting Above The Costed Rate",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn"
+  },
+  {
+   "fieldname": "advance_recovery_action",
+   "fieldtype": "Select",
+   "label": "Advance Left Unrecovered",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn",
+   "description": "Checked as a certificate is submitted"
+  },
+  {
+   "fieldname": "advance_recovery_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Advance Recovery Threshold %",
+   "default": "75",
+   "description": "Start chasing once billing passes this much of the contract"
   },
   {
    "fieldname": "column_break_pur",

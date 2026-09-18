@@ -8,6 +8,7 @@ from construction_management_suite.utils.titles import project_label
 from construction_management_suite.utils.validations import validate_project_company
 from construction_management_suite.utils.billing import (
     add_line,
+    money,
     billing_item,
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
@@ -100,18 +101,13 @@ class RetentionRelease(Document):
             frappe.throw(
                 _("Cannot release {0}. Only {1} is still held on this project "
                   "({2} withheld, {3} already released).").format(
-                    self.format_money(self.release_amount),
-                    self.format_money(outstanding),
-                    self.format_money(self.total_retention_held),
-                    self.format_money(self.released_to_date),
+                    money(self, self.release_amount),
+                    money(self, outstanding),
+                    money(self, self.total_retention_held),
+                    money(self, self.released_to_date),
                 ),
                 title=_("Over-release"),
             )
-
-    def format_money(self, value):
-        return frappe.format_value(
-            flt(value), {"fieldtype": "Currency", "options": "currency"}, self
-        )
 
     # ----- ERPNext Integration -----
 

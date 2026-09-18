@@ -79,6 +79,13 @@ def create_custom_fields_on_erpnext():
                 "insert_after": "cms_contract_value",
             },
             {
+                "fieldname": "cms_advance_amount",
+                "label": "Advance Received",
+                "fieldtype": "Currency",
+                "description": "Paid by the client up front, recovered from certificates",
+                "insert_after": "cms_client_po",
+            },
+            {
                 "fieldname": "cms_retention_percent",
                 "label": "Retention %",
                 "fieldtype": "Percent",

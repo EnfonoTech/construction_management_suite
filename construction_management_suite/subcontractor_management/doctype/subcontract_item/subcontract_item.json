@@ -11,6 +11,8 @@
   "qty",
   "rate",
   "amount",
+  "boq_cost_rate",
+  "boq_item_no",
   "boq_ref"
  ],
  "fields": [
@@ -29,7 +31,7 @@
    "label": "Description",
    "reqd": 1,
    "in_list_view": 1,
-   "columns": 3
+   "columns": 2
   },
   {
    "fieldname": "uom",
@@ -70,7 +72,31 @@
   {
    "fieldname": "boq_ref",
    "fieldtype": "Data",
-   "label": "BOQ Reference"
+   "label": "BOQ Line",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1,
+   "description": "Row name of the BOQ line this delivers"
+  },
+  {
+   "fieldname": "boq_item_no",
+   "fieldtype": "Data",
+   "label": "BOQ Item",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "The contract line this delivers"
+  },
+  {
+   "fieldname": "boq_cost_rate",
+   "fieldtype": "Currency",
+   "label": "BOQ Cost Rate",
+   "options": "currency",
+   "read_only": 1,
+   "print_hide": 1,
+   "description": "What the bill was priced to build this for"
   }
  ],
  "istable": 1,

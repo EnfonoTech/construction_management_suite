@@ -8,6 +8,12 @@ frappe.ui.form.on("Subcontract Agreement", {
     taxes_remove(frm) { CMS.recalc(frm); },
 
     refresh(frm) {
+        frm.set_query("boq_ref", () => ({
+            filters: { project: frm.doc.project, docstatus: 1 },
+        }));
+        if (frm.doc.docstatus === 0 && frm.doc.boq_ref) {
+            frm.add_custom_button(__("Get Items from BOQ"), () => pick_boq_lines(frm));
+        }
         CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
         CMS.linkButton(frm, __("Purchase Order"), "Purchase Order", frm.doc.purchase_order_ref);
@@ -54,3 +60,67 @@ frappe.ui.form.on("Subcontract Item", {
 });
 
 CMS.liveRows("Purchase Taxes and Charges", ["charge_type", "rate", "tax_amount", "row_id"]);
+
+
+/** Pick the contract lines this trade is engaged to deliver. */
+function pick_boq_lines(frm) {
+    frappe.call({
+        method: "construction_management_suite.api.boq.get_boq_lines_for_subcontract",
+        args: { boq: frm.doc.boq_ref },
+        callback: (r) => {
+            const lines = r.message || [];
+            const taken = new Set((frm.doc.items || []).map(i => i.boq_ref).filter(Boolean));
+            const available = lines.filter(l => !taken.has(l.boq_ref));
+            if (!available.length) {
+                return frappe.msgprint(__("Every line of this BOQ is already on the agreement"));
+            }
+            const d = new frappe.ui.Dialog({
+                title: __("Lines from {0}", [frm.doc.boq_ref]),
+                size: "large",
+                fields: [{ fieldname: "lines", fieldtype: "HTML" }],
+                primary_action_label: __("Add Selected"),
+                primary_action() {
+                    const chosen = [];
+                    d.$wrapper.find("input.cms-pick:checked").each(function () {
+                        chosen.push(available[parseInt($(this).data("i"), 10)]);
+                    });
+                    if (!chosen.length) return frappe.msgprint(__("Nothing selected"));
+                    d.hide();
+                    frm.call("add_boq_lines", { rows: chosen }).then(res => {
+                        frm.refresh_field("items");
+                        CMS.recalc(frm);
+                        frappe.show_alert({
+                            message: __("{0} line(s) added — enter the agreed rate for each",
+                                        [res.message || 0]),
+                            indicator: "green",
+                        });
+                    });
+                },
+            });
+            const rows = available.map((l, i) => `
+                <tr>
+                  <td><input type="checkbox" class="cms-pick" data-i="${i}"></td>
+                  <td>${frappe.utils.escape_html(l.boq_item_no || "")}</td>
+                  <td>${frappe.utils.escape_html(l.description || l.item_code || "")}</td>
+                  <td class="text-right">${format_number(l.qty, null, 2)} ${frappe.utils.escape_html(l.uom || "")}</td>
+                  <td class="text-right">${format_currency(l.boq_cost_rate, frm.doc.currency)}</td>
+                </tr>`).join("");
+            d.fields_dict.lines.$wrapper.html(`
+                <div style="max-height:380px; overflow:auto">
+                  <table class="table table-sm">
+                    <thead><tr>
+                      <th style="width:30px"><input type="checkbox" class="cms-all"></th>
+                      <th>${__("Item")}</th><th>${__("Description")}</th>
+                      <th class="text-right">${__("Qty")}</th>
+                      <th class="text-right">${__("Costed At")}</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                  </table>
+                </div>`);
+            d.$wrapper.find("input.cms-all").on("change", function () {
+                d.$wrapper.find("input.cms-pick").prop("checked", this.checked);
+            });
+            d.show();
+        },
+    });
+}

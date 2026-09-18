@@ -4,7 +4,7 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from construction_management_suite.utils.accounting import get_cost_center
-from construction_management_suite.utils.settings import cms_setting
+from construction_management_suite.utils.settings import action_for, cms_setting, enforce
 from construction_management_suite.utils.validations import validate_project_company
 from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
@@ -35,6 +35,7 @@ class SubcontractAgreement(Document):
         self.set_missing_defaults()
         validate_project_company(self)
         self.calculate_items()
+        self.check_against_boq()
         self.calculate_advance()
         self.fetch_payment_summary()
         self.calculate_document_taxes()
@@ -43,6 +44,57 @@ class SubcontractAgreement(Document):
         """Taxes on the agreed value, passed through to the document this raises."""
         tax = calculate_document_taxes(self, self.subcontract_value)
         self.total_with_taxes = flt(self.subcontract_value) + tax
+
+    @frappe.whitelist()
+    def add_boq_lines(self, rows):
+        """Append the chosen contract lines for this trade to price."""
+        import json as _json
+
+        if isinstance(rows, str):
+            rows = _json.loads(rows)
+        existing = {i.boq_ref for i in self.items if i.boq_ref}
+        added = 0
+        for row in rows:
+            if row.get("boq_ref") in existing:
+                continue
+            self.append("items", row)
+            added += 1
+        return added
+
+    def check_against_boq(self):
+        """Flag paying a trade more than the bill was priced to build the work for.
+
+        Not an error — a trade rate can beat your own gang, or a specialist may
+        simply cost more than the estimate assumed — but engaging someone above
+        the costed rate is the moment a line stops making money, and nothing
+        said so before.
+
+        The BOQ itself is never rewritten. It holds the rates it was signed at,
+        and a frozen bill moving because a subcontract was placed months later
+        is exactly what the build-up snapshots exist to prevent. The comparison
+        is reported here and in the cost variance report instead.
+        """
+        action = action_for("subcontract_above_cost_action")
+        if action == "Ignore":
+            return
+        over = []
+        for row in self.items:
+            if not row.boq_ref or not flt(row.boq_cost_rate):
+                continue
+            if flt(row.rate) > flt(row.boq_cost_rate) + 0.005:
+                over.append(row)
+        if not over:
+            return
+        enforce(
+            action,
+            "<br>".join(
+                _("Row {0} ({1}): agreed at {2}, the bill was priced at {3}").format(
+                    r.idx, r.boq_item_no or r.item_code, flt(r.rate), flt(r.boq_cost_rate)
+                )
+                for r in over[:10]
+            ),
+            title=_("{0} line(s) above the costed rate").format(len(over)),
+        )
 
     def calculate_items(self):
         for row in self.items:

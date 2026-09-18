@@ -56,7 +56,26 @@ class SubcontractorPaymentCertificate(Document):
             - flt(self.other_deductions)
         )
 
+    def check_advance(self):
+        """The advance you paid this trade, recovered from their certificates."""
+        from construction_management_suite.utils.billing import check_advance_recovery
+
+        if not self.subcontract_agreement:
+            return
+        sca = frappe.db.get_value("Subcontract Agreement", self.subcontract_agreement,
+                                  ["advance_amount", "subcontract_value"], as_dict=True)
+        if not sca or not flt(sca.advance_amount):
+            return
+        recovered = flt(frappe.db.sql(
+            """SELECT SUM(advance_recovery) FROM `tabSubcontractor Payment Certificate`
+               WHERE subcontract_agreement = %(a)s AND docstatus = 1 AND name != %(n)s""",
+            {"a": self.subcontract_agreement, "n": self.name or ""})[0][0]) + flt(self.advance_recovery)
+        billed = flt(self.previous_amount_certified) + flt(self.certified_amount)
+        check_advance_recovery(self, sca.advance_amount, recovered, billed,
+                               sca.subcontract_value, self.subcontractor)
+
     def before_submit(self):
+        self.check_advance()
         self.submitted_by = frappe.session.user
         self.submission_date = nowdate()
         self.status = "Submitted"
