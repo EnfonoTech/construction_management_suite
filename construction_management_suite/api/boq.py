@@ -357,52 +357,44 @@ def _previously_claimed_by_line(project, exclude_ipc=None):
 
 @frappe.whitelist()
 def get_agreement_lines(agreement, work_order=None):
-    """The agreed scope, with how much of each line is already instructed.
+    """The agreed scope, with how much each line has been instructed elsewhere.
 
-    A work order releases part of an agreement to start. Retyping the schedule
-    is how the instruction ends up saying something the contract does not.
+    Quantities already on the order being edited are NOT netted off here: the
+    form sends its in-memory document, so the caller knows what is on screen and
+    the database does not. Reading them back here meant reducing a pulled
+    quantity and pulling again reported the agreement as fully instructed.
     """
     doc = frappe.get_doc("Subcontract Agreement", agreement)
     if doc.docstatus != 1:
         frappe.throw(_("Only a signed agreement can be released to a work order"))
 
-    # Count what other orders have instructed BY ROW; fall back to the
-    # description for orders written before the reference existed, otherwise
-    # their quantity is invisible and the agreement looks wholly uninstructed.
+    # Submitted orders only — a draft is a proposal, not an instruction. Counted
+    # by row, falling back to the description for orders written before the
+    # reference existed, whose quantity would otherwise be invisible.
     instructed = frappe.db.sql(
         """
-        SELECT i.agreement_item_ref AS ref, i.description AS d, SUM(i.contract_qty) AS qty
+        SELECT i.agreement_item_ref AS ref, i.description AS d,
+               SUM(i.contract_qty) AS qty, GROUP_CONCAT(DISTINCT w.name) AS orders
         FROM `tabSubcontractor Work Order Item` i
         JOIN `tabSubcontractor Work Order` w ON w.name = i.parent
-        WHERE w.subcontract_agreement = %(a)s AND w.docstatus < 2 AND w.name != %(w)s
+        WHERE w.subcontract_agreement = %(a)s AND w.docstatus = 1 AND w.name != %(w)s
         GROUP BY i.agreement_item_ref, i.description
         """,
         {"a": agreement, "w": work_order or ""},
         as_dict=True,
     )
-    done, by_text = {}, {}
+    done, by_text, where = {}, {}, {}
     for r in instructed:
-        if r.ref:
-            done[r.ref] = done.get(r.ref, 0) + flt(r.qty)
+        key = r.ref or None
+        if key:
+            done[key] = done.get(key, 0) + flt(r.qty)
+            where.setdefault(key, set()).update((r.orders or "").split(","))
         else:
             by_text[r.d] = by_text.get(r.d, 0) + flt(r.qty)
 
-    # Quantities already on the order being edited, so a second pull tops it up
-    # rather than reporting the agreement as fully instructed.
-    here = {}
-    if work_order and frappe.db.exists("Subcontractor Work Order", work_order):
-        for r in frappe.get_all("Subcontractor Work Order Item",
-                                filters={"parent": work_order},
-                                fields=["agreement_item_ref", "contract_qty"]):
-            if r.agreement_item_ref:
-                here[r.agreement_item_ref] = here.get(r.agreement_item_ref, 0) + flt(r.contract_qty)
-
     lines = []
     for row in doc.items:
-        already = flt(done.get(row.name)) + flt(by_text.get(row.description))
-        remaining = flt(row.qty) - already - flt(here.get(row.name))
-        if remaining <= 0.0001:
-            continue
+        elsewhere = flt(done.get(row.name)) + flt(by_text.get(row.description))
         lines.append({
             "agreement_item_ref": row.name,
             "item_code": row.item_code,
@@ -410,11 +402,11 @@ def get_agreement_lines(agreement, work_order=None):
             "boq_item_no": row.boq_item_no,
             "description": row.description,
             "uom": row.uom,
-            "contract_qty": remaining,
+            "agreed_qty": flt(row.qty),
+            "instructed_elsewhere": elsewhere,
             "contract_rate": flt(row.rate),
             "completed_qty": 0,
-            "_agreed_qty": flt(row.qty),
-            "_instructed": already,
+            "instructed_on": sorted(o for o in where.get(row.name, set()) if o),
         })
     return lines
 

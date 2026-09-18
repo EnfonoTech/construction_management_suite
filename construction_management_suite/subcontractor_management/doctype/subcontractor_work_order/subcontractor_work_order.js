@@ -14,12 +14,24 @@ frappe.ui.form.on("Subcontractor Work Order", {
                     const m = r.message || {};
                     const parts = [];
                     if (m.added) parts.push(__("{0} line(s) added", [m.added]));
-                    if (m.topped_up) parts.push(__("{0} topped up to the remaining quantity",
-                                                   [m.topped_up]));
-                    frappe.show_alert(parts.length
-                        ? { message: parts.join(", "), indicator: "green" }
-                        : { message: __("Nothing left to instruct — the agreement's quantities are fully covered by this and the other orders"),
-                            indicator: "orange" });
+                    if (m.topped_up) parts.push(__("{0} topped up", [m.topped_up]));
+                    if (parts.length) {
+                        return frappe.show_alert({ message: parts.join(", "), indicator: "green" });
+                    }
+                    // Say where the quantity went, not just that there is none.
+                    const covered = m.covered_by || [];
+                    if (!covered.length) {
+                        return frappe.msgprint(__("This agreement has no lines to instruct."));
+                    }
+                    frappe.msgprint({
+                        title: __("Nothing left to instruct"),
+                        indicator: "orange",
+                        message: __("Every line is already covered:") + "<br>" +
+                            covered.map(c => `${frappe.utils.escape_html(c.description)} — ${
+                                c.orders.map(o =>
+                                    `<a href="/app/subcontractor-work-order/${encodeURIComponent(o)}">${o}</a>`
+                                ).join(", ")}`).join("<br>"),
+                    });
                 });
             });
         }

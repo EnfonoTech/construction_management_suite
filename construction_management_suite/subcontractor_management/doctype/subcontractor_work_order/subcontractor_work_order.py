@@ -22,27 +22,61 @@ class SubcontractorWorkOrder(Document):
 
     @frappe.whitelist()
     def get_scope_from_agreement(self):
-        """Pull the part of the agreement not yet instructed."""
+        """Pull the part of the agreement not yet instructed.
+
+        What is already on THIS order is netted off from `self.items` rather
+        than from the database, because the form sends its in-memory document
+        and the rows on screen are the ones that matter.
+        """
         from construction_management_suite.api.boq import get_agreement_lines
 
         if not self.subcontract_agreement:
             frappe.throw(_("Choose the agreement this order releases"))
-        existing = {i.agreement_item_ref: i for i in self.items if i.agreement_item_ref}
+
+        mine = {}
+        for row in self.items:
+            if row.agreement_item_ref:
+                mine[row.agreement_item_ref] = mine.get(row.agreement_item_ref, 0) + flt(row.contract_qty)
+        rows = {r.agreement_item_ref: r for r in self.items if r.agreement_item_ref}
+
         added = topped = 0
+        covered = []
         for line in get_agreement_lines(self.subcontract_agreement, work_order=self.name):
-            for key in ("_agreed_qty", "_instructed"):
-                line.pop(key, None)
-            row = existing.get(line["agreement_item_ref"])
+            ref = line["agreement_item_ref"]
+            remaining = (
+                flt(line["agreed_qty"])
+                - flt(line["instructed_elsewhere"])
+                - flt(mine.get(ref))
+            )
+            if remaining <= 0.0001:
+                if line["instructed_on"]:
+                    covered.append((line["description"], line["instructed_on"]))
+                continue
+            row = rows.get(ref)
             if row:
-                # The remaining quantity is what get_agreement_lines returned,
-                # already net of what is on this order — so add it rather than
-                # reporting the agreement as fully instructed.
-                row.contract_qty = flt(row.contract_qty) + flt(line["contract_qty"])
+                row.contract_qty = flt(row.contract_qty) + remaining
                 topped += 1
             else:
-                self.append("items", line)
+                self.append("items", {
+                    "agreement_item_ref": ref,
+                    "item_code": line["item_code"],
+                    "boq_ref": line["boq_ref"],
+                    "boq_item_no": line["boq_item_no"],
+                    "description": line["description"],
+                    "uom": line["uom"],
+                    "contract_qty": remaining,
+                    "contract_rate": line["contract_rate"],
+                    "completed_qty": 0,
+                })
                 added += 1
-        return {"added": added, "topped_up": topped}
+        return {
+            "added": added,
+            "topped_up": topped,
+            # Say WHERE the quantity went, rather than only that there is none.
+            "covered_by": [
+                {"description": d, "orders": o} for d, o in covered
+            ],
+        }
 
     def calculate_totals(self):
         total_contract = 0
