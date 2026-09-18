@@ -4,10 +4,13 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
+  "item_code",
   "description",
   "work_order_ref",
   "uom",
   "column_break_1",
+  "boq_item_no",
+  "boq_ref",
   "qty_completed",
   "contract_rate",
   "amount_claimed",
@@ -27,9 +30,7 @@
    "fieldname": "work_order_ref",
    "fieldtype": "Link",
    "label": "Work Order Ref",
-   "options": "Subcontractor Work Order",
-   "in_list_view": 1,
-   "columns": 2
+   "options": "Subcontractor Work Order"
   },
   {
    "fieldname": "uom",
@@ -53,7 +54,7 @@
    "fieldtype": "Currency",
    "label": "Contract Rate",
    "in_list_view": 1,
-   "columns": 2
+   "columns": 1
   },
   {
    "fieldname": "amount_claimed",
@@ -77,6 +78,33 @@
    "print_hide": 1,
    "search_index": 1,
    "description": "Row name of the Subcontractor Work Order Item this comes from"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "boq_item_no",
+   "fieldtype": "Data",
+   "label": "BOQ Item",
+   "read_only": 1,
+   "description": "The contract line this delivers",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "boq_ref",
+   "fieldtype": "Data",
+   "label": "BOQ Line",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1
   }
  ],
  "istable": 1,

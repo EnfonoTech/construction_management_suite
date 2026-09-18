@@ -388,6 +388,9 @@ def get_agreement_lines(agreement, work_order=None):
             continue
         lines.append({
             "agreement_item_ref": row.name,
+            "item_code": row.item_code,
+            "boq_ref": row.boq_ref,
+            "boq_item_no": row.boq_item_no,
             "description": row.description,
             "uom": row.uom,
             "contract_qty": remaining,
@@ -408,7 +411,8 @@ def get_completed_work(agreement, certificate=None):
     """
     rows = frappe.db.sql(
         """
-        SELECT i.name AS ref, i.description AS d, i.uom AS uom,
+        SELECT i.name AS ref, i.description AS d, i.uom AS uom, i.item_code AS item_code,
+               i.boq_ref AS boq_ref, i.boq_item_no AS boq_item_no,
                i.contract_rate AS rate, i.completed_qty AS done
         FROM `tabSubcontractor Work Order Item` i
         JOIN `tabSubcontractor Work Order` w ON w.name = i.parent
@@ -438,6 +442,9 @@ def get_completed_work(agreement, certificate=None):
             continue
         lines.append({
             "work_order_item_ref": r.ref,
+            "item_code": r.item_code,
+            "boq_ref": r.boq_ref,
+            "boq_item_no": r.boq_item_no,
             "description": r.d,
             "uom": r.uom,
             "qty_completed": outstanding,

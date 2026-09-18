@@ -4,9 +4,12 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
+  "item_code",
   "description",
   "uom",
   "column_break_1",
+  "boq_item_no",
+  "boq_ref",
   "contract_qty",
   "contract_rate",
   "contract_amount",
@@ -52,9 +55,7 @@
    "fieldname": "contract_amount",
    "fieldtype": "Currency",
    "label": "Contract Amount",
-   "read_only": 1,
-   "in_list_view": 1,
-   "columns": 2
+   "read_only": 1
   },
   {
    "fieldname": "completed_qty",
@@ -87,6 +88,31 @@
    "print_hide": 1,
    "search_index": 1,
    "description": "Row name of the Subcontract Item this comes from"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "boq_item_no",
+   "fieldtype": "Data",
+   "label": "BOQ Item",
+   "read_only": 1,
+   "description": "The contract line this delivers"
+  },
+  {
+   "fieldname": "boq_ref",
+   "fieldtype": "Data",
+   "label": "BOQ Line",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1
   }
  ],
  "istable": 1,
