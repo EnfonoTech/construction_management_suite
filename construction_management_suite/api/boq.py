@@ -366,24 +366,41 @@ def get_agreement_lines(agreement, work_order=None):
     if doc.docstatus != 1:
         frappe.throw(_("Only a signed agreement can be released to a work order"))
 
+    # Count what other orders have instructed BY ROW; fall back to the
+    # description for orders written before the reference existed, otherwise
+    # their quantity is invisible and the agreement looks wholly uninstructed.
     instructed = frappe.db.sql(
         """
-        SELECT i.agreement_item_ref AS d, SUM(i.contract_qty) AS qty
+        SELECT i.agreement_item_ref AS ref, i.description AS d, SUM(i.contract_qty) AS qty
         FROM `tabSubcontractor Work Order Item` i
         JOIN `tabSubcontractor Work Order` w ON w.name = i.parent
-        WHERE w.subcontract_agreement = %(a)s AND w.docstatus = 1 AND w.name != %(w)s
-          AND i.agreement_item_ref IS NOT NULL AND i.agreement_item_ref != ''
-        GROUP BY i.agreement_item_ref
+        WHERE w.subcontract_agreement = %(a)s AND w.docstatus < 2 AND w.name != %(w)s
+        GROUP BY i.agreement_item_ref, i.description
         """,
         {"a": agreement, "w": work_order or ""},
         as_dict=True,
     )
-    done = {r.d: flt(r.qty) for r in instructed}
+    done, by_text = {}, {}
+    for r in instructed:
+        if r.ref:
+            done[r.ref] = done.get(r.ref, 0) + flt(r.qty)
+        else:
+            by_text[r.d] = by_text.get(r.d, 0) + flt(r.qty)
+
+    # Quantities already on the order being edited, so a second pull tops it up
+    # rather than reporting the agreement as fully instructed.
+    here = {}
+    if work_order and frappe.db.exists("Subcontractor Work Order", work_order):
+        for r in frappe.get_all("Subcontractor Work Order Item",
+                                filters={"parent": work_order},
+                                fields=["agreement_item_ref", "contract_qty"]):
+            if r.agreement_item_ref:
+                here[r.agreement_item_ref] = here.get(r.agreement_item_ref, 0) + flt(r.contract_qty)
 
     lines = []
     for row in doc.items:
-        already = flt(done.get(row.name))
-        remaining = flt(row.qty) - already
+        already = flt(done.get(row.name)) + flt(by_text.get(row.description))
+        remaining = flt(row.qty) - already - flt(here.get(row.name))
         if remaining <= 0.0001:
             continue
         lines.append({

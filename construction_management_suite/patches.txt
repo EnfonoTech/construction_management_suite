@@ -7,3 +7,4 @@
 # Reads and writes columns this release adds, so it must run after the schema sync.
 construction_management_suite.patches.v1_1.link_ipc_lines_and_derive_margin
 construction_management_suite.patches.v1_1.tender_sum_and_item_numbers
+construction_management_suite.patches.v1_1.link_subcontract_chain

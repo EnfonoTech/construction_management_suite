@@ -27,16 +27,22 @@ class SubcontractorWorkOrder(Document):
 
         if not self.subcontract_agreement:
             frappe.throw(_("Choose the agreement this order releases"))
-        existing = {i.agreement_item_ref for i in self.items if i.agreement_item_ref}
-        added = 0
+        existing = {i.agreement_item_ref: i for i in self.items if i.agreement_item_ref}
+        added = topped = 0
         for line in get_agreement_lines(self.subcontract_agreement, work_order=self.name):
-            if line["agreement_item_ref"] in existing:
-                continue
             for key in ("_agreed_qty", "_instructed"):
                 line.pop(key, None)
-            self.append("items", line)
-            added += 1
-        return added
+            row = existing.get(line["agreement_item_ref"])
+            if row:
+                # The remaining quantity is what get_agreement_lines returned,
+                # already net of what is on this order — so add it rather than
+                # reporting the agreement as fully instructed.
+                row.contract_qty = flt(row.contract_qty) + flt(line["contract_qty"])
+                topped += 1
+            else:
+                self.append("items", line)
+                added += 1
+        return {"added": added, "topped_up": topped}
 
     def calculate_totals(self):
         total_contract = 0

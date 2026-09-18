@@ -11,9 +11,14 @@ frappe.ui.form.on("Subcontractor Work Order", {
                 frm.call("get_scope_from_agreement").then(r => {
                     frm.refresh_field("items");
                     CMS.recalc(frm);
-                    frappe.show_alert(r.message
-                        ? { message: __("{0} line(s) added", [r.message]), indicator: "green" }
-                        : { message: __("Every line of the agreement is already instructed"),
+                    const m = r.message || {};
+                    const parts = [];
+                    if (m.added) parts.push(__("{0} line(s) added", [m.added]));
+                    if (m.topped_up) parts.push(__("{0} topped up to the remaining quantity",
+                                                   [m.topped_up]));
+                    frappe.show_alert(parts.length
+                        ? { message: parts.join(", "), indicator: "green" }
+                        : { message: __("Nothing left to instruct — the agreement's quantities are fully covered by this and the other orders"),
                             indicator: "orange" });
                 });
             });
