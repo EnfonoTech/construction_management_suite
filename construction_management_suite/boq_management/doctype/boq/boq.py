@@ -2,7 +2,6 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate
-from construction_management_suite.utils.accounting import ensure_project_cost_center
 from construction_management_suite.utils.settings import (
     action_for,
     cms_setting,
@@ -351,9 +350,6 @@ class BOQ(Document):
             "cms_client_po": self.client_po,
         })
         project.insert(ignore_permissions=True)
-        # One cost centre per project, so concurrent jobs stay separated in
-        # every account report rather than piling into the company default.
-        ensure_project_cost_center(project.name, self.company)
 
         # db_set, not save: the BOQ may already be submitted — winning the work
         # is not a change to the priced content.

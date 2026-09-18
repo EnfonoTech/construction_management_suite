@@ -3,9 +3,9 @@
 A field's `default` is applied when a document is created. Construction Settings
 was created before these fields existed, so they were added as empty columns and
 the defaults never ran — and for a Check, 0 is indistinguishable from unset, so
-no fallback can recover it either. `auto_create_project_cost_center` therefore
-read 0 while claiming to default to 1, and every posting kept landing in the
-company cost centre.
+no fallback can recover it either. A Check reading 0 while
+claiming to default to 1 is the sharpest case, since nothing can tell the two
+apart afterwards.
 
 Applied once, and never over a value someone has already chosen: a setting the
 user has saved is left alone because the Single carries a modified timestamp
@@ -16,7 +16,6 @@ import frappe
 
 # fieldname -> value the field declares as its default
 DEFAULTS = {
-    "auto_create_project_cost_center": 1,
     "advance_recovery_threshold_percent": 75,
     "default_subcontract_retention_percent": 10,
     "purchase_rate_tolerance_percent": 10,

@@ -5,7 +5,6 @@ from frappe.utils import flt
 
 from construction_management_suite.utils.accounting import (
     consumption_account,
-    ensure_project_cost_center,
     get_cost_center,
 )
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
@@ -117,7 +116,6 @@ class MaterialConsumptionEntry(Document):
         se.posting_date = self.posting_date
         se.project = self.project
         se.cms_consumption_ref = self.name
-        ensure_project_cost_center(self.project, self.company)
         cost_center = get_cost_center(self.project, self.company)
         expense = consumption_account(self.company)
         for item in self.items:

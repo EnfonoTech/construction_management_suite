@@ -36,7 +36,6 @@
   "purchase_taxes_template",
   "section_stock",
   "consumption_expense_account",
-  "auto_create_project_cost_center",
   "section_site",
   "consumption_over_takeoff_action",
   "column_break_site",
@@ -233,12 +232,6 @@
    "label": "Material Consumption Account",
    "options": "Account",
    "description": "Where material issued to site is charged"
-  },
-  {
-   "fieldname": "auto_create_project_cost_center",
-   "fieldtype": "Check",
-   "label": "Create A Cost Centre Per Project",
-   "default": "1"
   },
   {
    "fieldname": "section_site",

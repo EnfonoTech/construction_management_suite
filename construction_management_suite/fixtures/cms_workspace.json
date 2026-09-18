@@ -10,7 +10,7 @@
   "is_standard": 1,
   "public": 1,
   "sequence_id": 20.0,
-  "content": "[{\"id\": \"cmsHdrKpi\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Contract Position</b></span>\", \"col\": 12}}, {\"id\": \"cmsNC0\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"CMS Contract Value\", \"col\": 3}}, {\"id\": \"cmsNC1\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"CMS Approved Variations\", \"col\": 3}}, {\"id\": \"cmsNC2\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"CMS Billed To Date\", \"col\": 3}}, {\"id\": \"cmsNC3\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"CMS Retention Held\", \"col\": 3}}, {\"id\": \"cmsNC4\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"CMS Actual Cost\", \"col\": 3}}, {\"id\": \"cmsNC5\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"CMS Subcontract Committed\", \"col\": 3}}, {\"id\": \"cmsNC6\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"CMS Certificates In Draft\", \"col\": 3}}, {\"id\": \"cmsNC7\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"CMS Safety Incidents\", \"col\": 3}}, {\"id\": \"cmsHdrSc\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Jump To</b></span>\", \"col\": 12}}, {\"id\": \"cmsSC0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Projects\", \"col\": 3}}, {\"id\": \"cmsSC1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"BOQ\", \"col\": 3}}, {\"id\": \"cmsSC2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Certificates\", \"col\": 3}}, {\"id\": \"cmsSC3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Variation Orders\", \"col\": 3}}, {\"id\": \"cmsSC4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Daily Site Report\", \"col\": 3}}, {\"id\": \"cmsSC5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Subcontracts\", \"col\": 3}}, {\"id\": \"cmsSC6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"BOQ Summary\", \"col\": 3}}, {\"id\": \"cmsSC7\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Project Cost Variance\", \"col\": 3}}, {\"id\": \"cmsHdrDocs\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Documents</b></span>\", \"col\": 12}}, {\"id\": \"cmsCard0\", \"type\": \"card\", \"data\": {\"card_name\": \"BOQ Management\", \"col\": 4}}, {\"id\": \"cmsCard1\", \"type\": \"card\", \"data\": {\"card_name\": \"Estimation\", \"col\": 4}}, {\"id\": \"cmsCard2\", \"type\": \"card\", \"data\": {\"card_name\": \"Project Costing\", \"col\": 4}}, {\"id\": \"cmsCard3\", \"type\": \"card\", \"data\": {\"card_name\": \"Site Management\", \"col\": 4}}, {\"id\": \"cmsCard4\", \"type\": \"card\", \"data\": {\"card_name\": \"Progress Billing\", \"col\": 4}}, {\"id\": \"cmsCard5\", \"type\": \"card\", \"data\": {\"card_name\": \"Subcontractor Management\", \"col\": 4}}, {\"id\": \"cmsCard6\", \"type\": \"card\", \"data\": {\"card_name\": \"Material Planning\", \"col\": 4}}, {\"id\": \"cmsCard7\", \"type\": \"card\", \"data\": {\"card_name\": \"Project & Delivery\", \"col\": 4}}, {\"id\": \"cmsCard8\", \"type\": \"card\", \"data\": {\"card_name\": \"Procurement & Stock\", \"col\": 4}}, {\"id\": \"cmsCard9\", \"type\": \"card\", \"data\": {\"card_name\": \"Client Billing\", \"col\": 4}}, {\"id\": \"cmsCard10\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}]",
+  "content": "[{\"id\": \"cmsHdrKpi\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Contract Position</b></span>\", \"col\": 12}}, {\"id\": \"cmsNC0\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Contract Value\", \"col\": 3}}, {\"id\": \"cmsNC1\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Approved Variations\", \"col\": 3}}, {\"id\": \"cmsNC2\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Billed to Date\", \"col\": 3}}, {\"id\": \"cmsNC3\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Retention Held\", \"col\": 3}}, {\"id\": \"cmsNC4\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Actual Cost\", \"col\": 3}}, {\"id\": \"cmsNC5\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Subcontracted\", \"col\": 3}}, {\"id\": \"cmsNC6\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Certificates Awaiting\", \"col\": 3}}, {\"id\": \"cmsNC7\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Safety Incidents\", \"col\": 3}}, {\"id\": \"cmsHdrSc\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Jump To</b></span>\", \"col\": 12}}, {\"id\": \"cmsSC0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Projects\", \"col\": 3}}, {\"id\": \"cmsSC1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"BOQ\", \"col\": 3}}, {\"id\": \"cmsSC2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Certificates\", \"col\": 3}}, {\"id\": \"cmsSC3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Variation Orders\", \"col\": 3}}, {\"id\": \"cmsSC4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Daily Site Report\", \"col\": 3}}, {\"id\": \"cmsSC5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Subcontracts\", \"col\": 3}}, {\"id\": \"cmsSC6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"BOQ Summary\", \"col\": 3}}, {\"id\": \"cmsSC7\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Project Cost Variance\", \"col\": 3}}, {\"id\": \"cmsHdrDocs\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Documents</b></span>\", \"col\": 12}}, {\"id\": \"cmsCard0\", \"type\": \"card\", \"data\": {\"card_name\": \"BOQ Management\", \"col\": 4}}, {\"id\": \"cmsCard1\", \"type\": \"card\", \"data\": {\"card_name\": \"Estimation\", \"col\": 4}}, {\"id\": \"cmsCard2\", \"type\": \"card\", \"data\": {\"card_name\": \"Project Costing\", \"col\": 4}}, {\"id\": \"cmsCard3\", \"type\": \"card\", \"data\": {\"card_name\": \"Site Management\", \"col\": 4}}, {\"id\": \"cmsCard4\", \"type\": \"card\", \"data\": {\"card_name\": \"Progress Billing\", \"col\": 4}}, {\"id\": \"cmsCard5\", \"type\": \"card\", \"data\": {\"card_name\": \"Subcontractor Management\", \"col\": 4}}, {\"id\": \"cmsCard6\", \"type\": \"card\", \"data\": {\"card_name\": \"Material Planning\", \"col\": 4}}, {\"id\": \"cmsCard7\", \"type\": \"card\", \"data\": {\"card_name\": \"Project & Delivery\", \"col\": 4}}, {\"id\": \"cmsCard8\", \"type\": \"card\", \"data\": {\"card_name\": \"Procurement & Stock\", \"col\": 4}}, {\"id\": \"cmsCard9\", \"type\": \"card\", \"data\": {\"card_name\": \"Client Billing\", \"col\": 4}}, {\"id\": \"cmsCard10\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}]",
   "number_cards": [
    {
     "number_card_name": "Contract Value",
@@ -110,7 +110,7 @@
     "label": "BOQ Management",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 3,
     "onboard": 0
    },
    {
@@ -148,7 +148,7 @@
     "label": "Estimation",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 2,
     "onboard": 0
    },
    {
@@ -176,7 +176,7 @@
     "label": "Project Costing",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 2,
     "onboard": 0
    },
    {
@@ -204,7 +204,7 @@
     "label": "Site Management",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 2,
     "onboard": 0
    },
    {
@@ -232,7 +232,7 @@
     "label": "Progress Billing",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 2,
     "onboard": 0
    },
    {
@@ -260,7 +260,7 @@
     "label": "Subcontractor Management",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 3,
     "onboard": 0
    },
    {
@@ -298,7 +298,7 @@
     "label": "Material Planning",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 3,
     "onboard": 0
    },
    {
@@ -336,7 +336,7 @@
     "label": "Project & Delivery",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 4,
     "onboard": 0
    },
    {
@@ -384,7 +384,7 @@
     "label": "Procurement & Stock",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 6,
     "onboard": 0
    },
    {
@@ -452,7 +452,7 @@
     "label": "Client Billing",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 3,
     "onboard": 0
    },
    {
@@ -490,7 +490,7 @@
     "label": "Reports",
     "hidden": 0,
     "is_query_report": 0,
-    "link_count": 0,
+    "link_count": 11,
     "onboard": 0
    },
    {
@@ -514,17 +514,6 @@
     "is_query_report": 1,
     "link_count": 0,
     "report_ref_doctype": "BOQ"
-   },
-   {
-    "type": "Link",
-    "label": "BOQ Resource Analysis",
-    "link_to": "BOQ Resource Analysis",
-    "link_type": "Report",
-    "report_ref_doctype": "BOQ",
-    "onboard": 0,
-    "hidden": 0,
-    "is_query_report": 1,
-    "link_count": 0
    },
    {
     "type": "Link",
@@ -613,8 +602,18 @@
     "is_query_report": 1,
     "link_count": 0,
     "report_ref_doctype": "Stock Ledger Entry"
+   },
+   {
+    "hidden": 0,
+    "is_query_report": 1,
+    "label": "Material Position",
+    "link_count": 0,
+    "link_to": "Material Position",
+    "link_type": "Report",
+    "onboard": 0,
+    "type": "Link"
    }
   ],
-  "modified": "2026-09-17 00:00:00.000000"
+  "modified": "2026-09-18 20:00:00.000000"
  }
 ]

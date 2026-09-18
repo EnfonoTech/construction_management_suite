@@ -3,10 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
-from construction_management_suite.utils.accounting import (
-    ensure_project_cost_center,
-    get_cost_center,
-)
+from construction_management_suite.utils.accounting import get_cost_center
 from construction_management_suite.utils.validations import validate_project_company
 
 
@@ -44,8 +41,6 @@ class SiteTransfer(Document):
         se.cms_site_ref = self.name
         if self.to_project:
             se.project = self.to_project
-        if self.to_project:
-            ensure_project_cost_center(self.to_project, self.company)
         cost_center = get_cost_center(self.to_project, self.company)
         for item in self.items:
             se.append("items", {
