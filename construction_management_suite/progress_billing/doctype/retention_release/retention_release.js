@@ -41,7 +41,10 @@ function fetch_retention(frm) {
             frm.dashboard.clear_headline();
             const cur = frm.doc.currency || frappe.defaults.get_default("currency");
             frm.dashboard.set_headline(
-                __("Held {0} &nbsp;·&nbsp; already released {1} &nbsp;·&nbsp; outstanding {2}", [
+                // Plain text, no entities: Frappe's show_message only treats a
+                // string as HTML when it contains TAGS, so &nbsp; here was
+                // rendered literally by the .text() path.
+                __("Held {0}   ·   already released {1}   ·   outstanding {2}", [
                     format_currency(r.message.total_held, cur),
                     format_currency(r.message.total_released, cur),
                     format_currency(r.message.net_retention, cur),
