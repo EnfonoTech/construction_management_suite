@@ -11,7 +11,8 @@
   "qty_completed",
   "contract_rate",
   "amount_claimed",
-  "remarks"
+  "remarks",
+  "work_order_item_ref"
  ],
  "fields": [
   {
@@ -65,6 +66,17 @@
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
+  },
+  {
+   "fieldname": "work_order_item_ref",
+   "fieldtype": "Data",
+   "label": "Work Order Line",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1,
+   "description": "Row name of the Subcontractor Work Order Item this comes from"
   }
  ],
  "istable": 1,

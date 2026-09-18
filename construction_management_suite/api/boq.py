@@ -356,6 +356,98 @@ def _previously_claimed_by_line(project, exclude_ipc=None):
 
 
 @frappe.whitelist()
+def get_agreement_lines(agreement, work_order=None):
+    """The agreed scope, with how much of each line is already instructed.
+
+    A work order releases part of an agreement to start. Retyping the schedule
+    is how the instruction ends up saying something the contract does not.
+    """
+    doc = frappe.get_doc("Subcontract Agreement", agreement)
+    if doc.docstatus != 1:
+        frappe.throw(_("Only a signed agreement can be released to a work order"))
+
+    instructed = frappe.db.sql(
+        """
+        SELECT i.agreement_item_ref AS d, SUM(i.contract_qty) AS qty
+        FROM `tabSubcontractor Work Order Item` i
+        JOIN `tabSubcontractor Work Order` w ON w.name = i.parent
+        WHERE w.subcontract_agreement = %(a)s AND w.docstatus = 1 AND w.name != %(w)s
+          AND i.agreement_item_ref IS NOT NULL AND i.agreement_item_ref != ''
+        GROUP BY i.agreement_item_ref
+        """,
+        {"a": agreement, "w": work_order or ""},
+        as_dict=True,
+    )
+    done = {r.d: flt(r.qty) for r in instructed}
+
+    lines = []
+    for row in doc.items:
+        already = flt(done.get(row.name))
+        remaining = flt(row.qty) - already
+        if remaining <= 0.0001:
+            continue
+        lines.append({
+            "agreement_item_ref": row.name,
+            "description": row.description,
+            "uom": row.uom,
+            "contract_qty": remaining,
+            "contract_rate": flt(row.rate),
+            "completed_qty": 0,
+            "_agreed_qty": flt(row.qty),
+            "_instructed": already,
+        })
+    return lines
+
+
+@frappe.whitelist()
+def get_completed_work(agreement, certificate=None):
+    """What the work orders say is built, less what has already been claimed.
+
+    The certificate used to be typed from scratch, so a subcontractor could be
+    paid for work no order records as complete.
+    """
+    rows = frappe.db.sql(
+        """
+        SELECT i.name AS ref, i.description AS d, i.uom AS uom,
+               i.contract_rate AS rate, i.completed_qty AS done
+        FROM `tabSubcontractor Work Order Item` i
+        JOIN `tabSubcontractor Work Order` w ON w.name = i.parent
+        WHERE w.subcontract_agreement = %s AND w.docstatus = 1
+        """,
+        agreement,
+        as_dict=True,
+    )
+    claimed = frappe.db.sql(
+        """
+        SELECT i.work_order_item_ref AS d, SUM(i.qty_completed) AS qty
+        FROM `tabSubcontractor Payment Item` i
+        JOIN `tabSubcontractor Payment Certificate` c ON c.name = i.parent
+        WHERE c.subcontract_agreement = %(a)s AND c.docstatus = 1 AND c.name != %(c)s
+          AND i.work_order_item_ref IS NOT NULL AND i.work_order_item_ref != ''
+        GROUP BY i.work_order_item_ref
+        """,
+        {"a": agreement, "c": certificate or ""},
+        as_dict=True,
+    )
+    already = {r.d: flt(r.qty) for r in claimed}
+
+    lines = []
+    for r in rows:
+        outstanding = flt(r.done) - flt(already.get(r.ref))
+        if outstanding <= 0.0001:
+            continue
+        lines.append({
+            "work_order_item_ref": r.ref,
+            "description": r.d,
+            "uom": r.uom,
+            "qty_completed": outstanding,
+            "contract_rate": flt(r.rate),
+            "amount_claimed": outstanding * flt(r.rate),
+        })
+    return lines
+
+
+@frappe.whitelist()
 def get_boq_lines_for_subcontract(boq):
     """Contract lines a trade could be engaged to deliver.
 

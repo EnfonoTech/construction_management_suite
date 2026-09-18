@@ -29,6 +29,7 @@
   "default_subcontract_retention_percent",
   "section_billing_items",
   "progress_billing_item",
+  "retention_release_item",
   "column_break_items",
   "subcontract_billing_item",
   "sales_taxes_template",
@@ -183,6 +184,12 @@
    "label": "Progress Billing Item",
    "options": "Item",
    "description": "Used when a certified line names no item"
+  },
+  {
+   "fieldname": "retention_release_item",
+   "fieldtype": "Link",
+   "label": "Retention Release Item",
+   "options": "Item"
   },
   {
    "fieldname": "column_break_items",

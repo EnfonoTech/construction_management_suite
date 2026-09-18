@@ -17,6 +17,7 @@ frappe.ui.form.on("Subcontract Agreement", {
         CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
         CMS.linkButton(frm, __("Purchase Order"), "Purchase Order", frm.doc.purchase_order_ref);
+        show_position(frm);
 
         if (frm.doc.docstatus === 1 && frm.doc.status !== "Terminated") {
             frm.add_custom_button(__("Payment Certificate"), () => {
@@ -123,4 +124,21 @@ function pick_boq_lines(frm) {
             d.show();
         },
     });
+}
+
+
+/** Where this agreement stands: certified, paid, and what is still to come. */
+function show_position(frm) {
+    if (frm.is_new() || frm.doc.docstatus !== 1 || !flt(frm.doc.subcontract_value)) return;
+    const fmt = v => format_currency(v, frm.doc.currency);
+    const pct = Math.min(flt(frm.doc.total_certified) / flt(frm.doc.subcontract_value) * 100, 100);
+    const colour = pct >= 100 ? "green" : pct >= 50 ? "blue" : "orange";
+    if (frm.dashboard.progress_area) frm.dashboard.progress_area.body.empty();
+    frm.dashboard.add_progress(
+        __("{0} of {1} certified   ·   {2} paid   ·   {3} still to come", [
+            fmt(frm.doc.total_certified), fmt(frm.doc.subcontract_value),
+            fmt(frm.doc.total_paid), fmt(frm.doc.balance_due),
+        ]),
+        [{ title: `${pct.toFixed(1)}%`, width: `${pct}%`, progress_class: `progress-bar-${colour}` }]
+    );
 }

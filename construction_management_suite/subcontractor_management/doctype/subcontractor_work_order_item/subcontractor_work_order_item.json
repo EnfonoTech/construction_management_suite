@@ -12,7 +12,8 @@
   "contract_amount",
   "completed_qty",
   "completed_amount",
-  "completion_percent"
+  "completion_percent",
+  "agreement_item_ref"
  ],
  "fields": [
   {
@@ -75,6 +76,17 @@
    "read_only": 1,
    "in_list_view": 1,
    "columns": 2
+  },
+  {
+   "fieldname": "agreement_item_ref",
+   "fieldtype": "Data",
+   "label": "Agreement Line",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1,
+   "description": "Row name of the Subcontract Item this comes from"
   }
  ],
  "istable": 1,

@@ -23,6 +23,10 @@ from construction_management_suite.utils.settings import cms_setting
 # install; a site can point the settings at its own instead.
 DEFAULT_ITEMS = {
     "progress_billing_item": ("SRV-PROGRESS-BILLING", "Progress Billing"),
+    # Its own item, not progress billing: releasing retention is returning money
+    # already earned and withheld, not billing new work, and an income report
+    # that cannot tell the two apart overstates the period it lands in.
+    "retention_release_item": ("SRV-RETENTION-RELEASE", "Retention Release"),
     "subcontract_billing_item": ("SRV-SUBCONTRACT", "Subcontract Work"),
 }
 

@@ -46,6 +46,22 @@ class SubcontractorPaymentCertificate(Document):
         tax = calculate_document_taxes(self, self.net_payable)
         self.total_payable = flt(self.net_payable) + tax
 
+    @frappe.whitelist()
+    def get_completed_from_work_orders(self):
+        """Claim what the work orders record as built and not yet certified."""
+        from construction_management_suite.api.boq import get_completed_work
+
+        if not self.subcontract_agreement:
+            frappe.throw(_("Choose the agreement this certificate is against"))
+        existing = {i.work_order_item_ref for i in self.items if i.work_order_item_ref}
+        added = 0
+        for line in get_completed_work(self.subcontract_agreement, certificate=self.name):
+            if line["work_order_item_ref"] in existing:
+                continue
+            self.append("items", line)
+            added += 1
+        return added
+
     def calculate_totals(self):
         self.gross_amount_claimed = sum(flt(i.amount_claimed) for i in self.items)
         self.retention_deduction = flt(self.certified_amount) * flt(self.retention_percent) / 100

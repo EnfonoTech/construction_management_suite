@@ -123,7 +123,7 @@ class RetentionRelease(Document):
         cost_center = get_cost_center(self.project, self.company)
         add_line(
             si,
-            billing_item("progress_billing_item"),
+            billing_item("retention_release_item"),
             _("Release of retention held on {0} — {1}").format(
                 project_label(self.project), self.release_type
             ),
