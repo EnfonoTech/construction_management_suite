@@ -373,24 +373,30 @@ def get_agreement_lines(agreement, work_order=None):
     # reference existed, whose quantity would otherwise be invisible.
     instructed = frappe.db.sql(
         """
-        SELECT i.agreement_item_ref AS ref, i.description AS d,
-               SUM(i.contract_qty) AS qty, GROUP_CONCAT(DISTINCT w.name) AS orders
+        SELECT i.agreement_item_ref AS ref, i.description AS d, w.name AS wo,
+               w.status AS status, i.contract_qty AS qty, i.completed_qty AS done
         FROM `tabSubcontractor Work Order Item` i
         JOIN `tabSubcontractor Work Order` w ON w.name = i.parent
         WHERE w.subcontract_agreement = %(a)s AND w.docstatus = 1 AND w.name != %(w)s
-        GROUP BY i.agreement_item_ref, i.description
         """,
         {"a": agreement, "w": work_order or ""},
         as_dict=True,
     )
     done, by_text, where = {}, {}, {}
     for r in instructed:
+        # A closed order only holds what it actually delivered; the rest is free
+        # to be instructed again, because that order will never deliver it.
+        held = flt(r.done) if r.status == "Completed" else flt(r.qty)
+        if held <= 0:
+            continue
         key = r.ref or None
         if key:
-            done[key] = done.get(key, 0) + flt(r.qty)
-            where.setdefault(key, set()).update((r.orders or "").split(","))
+            done[key] = done.get(key, 0) + held
+            where.setdefault(key, {})[r.wo] = {
+                "instructed": flt(r.qty), "completed": flt(r.done), "status": r.status,
+            }
         else:
-            by_text[r.d] = by_text.get(r.d, 0) + flt(r.qty)
+            by_text[r.d] = by_text.get(r.d, 0) + held
 
     lines = []
     for row in doc.items:
@@ -406,7 +412,9 @@ def get_agreement_lines(agreement, work_order=None):
             "instructed_elsewhere": elsewhere,
             "contract_rate": flt(row.rate),
             "completed_qty": 0,
-            "instructed_on": sorted(o for o in where.get(row.name, set()) if o),
+            "instructed_on": [
+                dict(order=k, **v) for k, v in sorted((where.get(row.name) or {}).items())
+            ],
         })
     return lines
 

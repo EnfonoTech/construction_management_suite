@@ -2,15 +2,21 @@ from frappe import _
 
 
 def get_data():
-    """The order placed against this agreement.
+    """Everything raised against this agreement.
 
-    The generated document points back here with a Link; this document holds
-    only its name as text. Linking both ways made us a dependency of the
-    document we created, so cancelling the invoice cancelled the certificate.
+    The Purchase Order links back with `cms_subcontract_ref`; the orders and
+    certificates use their own `subcontract_agreement` field, which is what
+    non_standard_fieldnames is for.
     """
     return {
         "fieldname": "cms_subcontract_ref",
+        "non_standard_fieldnames": {
+            "Subcontractor Work Order": "subcontract_agreement",
+            "Subcontractor Payment Certificate": "subcontract_agreement",
+        },
         "transactions": [
-            {"label": _("Commitment"), "items": ['Purchase Order']},
+            {"label": _("Delivery"), "items": ["Subcontractor Work Order"]},
+            {"label": _("Payment"), "items": ["Subcontractor Payment Certificate"]},
+            {"label": _("Commitment"), "items": ["Purchase Order"]},
         ],
     }

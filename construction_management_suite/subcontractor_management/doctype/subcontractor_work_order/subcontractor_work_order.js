@@ -18,19 +18,30 @@ frappe.ui.form.on("Subcontractor Work Order", {
                     if (parts.length) {
                         return frappe.show_alert({ message: parts.join(", "), indicator: "green" });
                     }
-                    // Say where the quantity went, not just that there is none.
+                    // Show the numbers, so it is obvious the work is not lost:
+                    // instructed in full on an open order is not the same as built.
                     const covered = m.covered_by || [];
                     if (!covered.length) {
                         return frappe.msgprint(__("This agreement has no lines to instruct."));
                     }
+                    const rows = covered.map(c => c.orders.map(o => `
+                        <tr>
+                          <td>${frappe.utils.escape_html(c.description)}</td>
+                          <td><a href="/app/subcontractor-work-order/${encodeURIComponent(o.order)}">${o.order}</a></td>
+                          <td>${frappe.utils.escape_html(o.status || "")}</td>
+                          <td class="text-right">${format_number(o.instructed, null, 2)}</td>
+                          <td class="text-right">${format_number(o.completed, null, 2)}</td>
+                        </tr>`).join("")).join("");
                     frappe.msgprint({
-                        title: __("Nothing left to instruct"),
+                        title: __("Already instructed in full"),
                         indicator: "orange",
-                        message: __("Every line is already covered:") + "<br>" +
-                            covered.map(c => `${frappe.utils.escape_html(c.description)} — ${
-                                c.orders.map(o =>
-                                    `<a href="/app/subcontractor-work-order/${encodeURIComponent(o)}">${o}</a>`
-                                ).join(", ")}`).join("<br>"),
+                        message: `<p>${__("Every line is covered by an open order. Record progress on that order rather than issuing another — the outstanding quantity is already under it.")}</p>
+                            <table class="table table-sm">
+                              <thead><tr><th>${__("Line")}</th><th>${__("Order")}</th>
+                                <th>${__("Status")}</th><th class="text-right">${__("Instructed")}</th>
+                                <th class="text-right">${__("Built")}</th></tr></thead>
+                              <tbody>${rows}</tbody>
+                            </table>`,
                     });
                 });
             });

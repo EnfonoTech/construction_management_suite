@@ -95,7 +95,8 @@
    "options": "Draft\nIssued\nIn Progress\nCompleted\nCancelled",
    "default": "Draft",
    "in_list_view": 1,
-   "no_copy": 1
+   "no_copy": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "section_schedule",
@@ -119,12 +120,14 @@
   {
    "fieldname": "actual_start_date",
    "fieldtype": "Date",
-   "label": "Actual Start"
+   "label": "Actual Start",
+   "allow_on_submit": 1
   },
   {
    "fieldname": "actual_end_date",
    "fieldtype": "Date",
-   "label": "Actual End"
+   "label": "Actual End",
+   "allow_on_submit": 1
   },
   {
    "fieldname": "section_items",
@@ -154,13 +157,15 @@
    "fieldtype": "Currency",
    "label": "Total Completed Value",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "completion_percent",
    "fieldtype": "Percent",
    "label": "Completion %",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "section_notes",
@@ -175,7 +180,8 @@
   {
    "fieldname": "notes",
    "fieldtype": "Text",
-   "label": "Notes"
+   "label": "Notes",
+   "allow_on_submit": 1
   },
   {
    "fieldname": "amended_from",
