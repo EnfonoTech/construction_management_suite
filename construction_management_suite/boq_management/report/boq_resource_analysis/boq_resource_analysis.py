@@ -38,6 +38,11 @@ GROUP_BY_FIELD = {
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
+	# The checkbox defaults to on in the .js, but a server-side run — a script,
+	# an export, a scheduled job — passes no filters at all and was silently
+	# getting the unexploded bill.
+	if "show_resources" not in filters:
+		filters.show_resources = 1
 	columns = get_columns(filters)
 	rows = get_rows(filters)
 

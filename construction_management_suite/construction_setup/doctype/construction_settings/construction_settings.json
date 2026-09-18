@@ -26,11 +26,8 @@
   "default_subcontract_retention_percent",
   "section_billing_items",
   "progress_billing_item",
-  "subcontract_billing_item",
   "column_break_items",
-  "retention_account",
-  "advance_recovery_account",
-  "other_deductions_account",
+  "subcontract_billing_item",
   "sales_taxes_template",
   "purchase_taxes_template",
   "section_site",
@@ -173,23 +170,10 @@
    "options": "Item"
   },
   {
-   "fieldname": "retention_account",
-   "fieldtype": "Link",
-   "label": "Retention Account",
-   "options": "Account",
-   "description": "Asset account holding retention until release"
-  },
-  {
-   "fieldname": "advance_recovery_account",
-   "fieldtype": "Link",
-   "label": "Advance Recovery Account",
-   "options": "Account"
-  },
-  {
-   "fieldname": "other_deductions_account",
-   "fieldtype": "Link",
-   "label": "Other Deductions Account",
-   "options": "Account"
+   "fieldname": "default_subcontract_retention_percent",
+   "fieldtype": "Percent",
+   "label": "Default Subcontract Retention %",
+   "default": "10"
   },
   {
    "fieldname": "sales_taxes_template",
@@ -202,12 +186,6 @@
    "fieldtype": "Link",
    "label": "Purchase Taxes Template",
    "options": "Purchase Taxes and Charges Template"
-  },
-  {
-   "fieldname": "default_subcontract_retention_percent",
-   "fieldtype": "Percent",
-   "label": "Default Subcontract Retention %",
-   "default": "10"
   },
   {
    "fieldname": "section_site",

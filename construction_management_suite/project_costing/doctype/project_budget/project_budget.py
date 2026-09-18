@@ -3,10 +3,16 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.titles import (
+    month_of,
+    project_label,
+    set_auto_title,
+)
 
 
 class ProjectBudget(Document):
     def validate(self):
+        set_auto_title(self, "budget_title", [_("Budget"), project_label(self.project), self.fiscal_year if self.get("fiscal_year") else None])
         validate_project_company(self)
         self.fetch_actual_costs()
         self.fetch_committed_costs()

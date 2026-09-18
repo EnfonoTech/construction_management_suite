@@ -6,6 +6,16 @@ from frappe.utils import flt
 from construction_management_suite.utils.accounting import get_cost_center
 from construction_management_suite.utils.settings import cms_setting
 from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.billing import (
+    calculate_taxes as calculate_document_taxes,
+    carry_taxes,
+    company_setting,
+)
+from construction_management_suite.utils.titles import (
+    month_of,
+    project_label,
+    set_auto_title,
+)
 
 
 class SubcontractAgreement(Document):
@@ -17,15 +27,29 @@ class SubcontractAgreement(Document):
             )
 
     def validate(self):
+        if not self.taxes_and_charges and not self.taxes:
+            self.taxes_and_charges = company_setting(self.company, "purchase_taxes_template")
+        set_auto_title(self, "agreement_title", [self.subcontractor, project_label(self.project), self.scope_summary if self.get("scope_summary") else None])
         self.set_missing_defaults()
         validate_project_company(self)
         self.calculate_items()
         self.calculate_advance()
         self.fetch_payment_summary()
+        self.calculate_document_taxes()
+
+    def calculate_document_taxes(self):
+        """Taxes on the agreed value, passed through to the document this raises."""
+        tax = calculate_document_taxes(self, self.subcontract_value)
+        self.total_with_taxes = flt(self.subcontract_value) + tax
 
     def calculate_items(self):
         for row in self.items:
             row.amount = flt(row.qty) * flt(row.rate)
+        # The value was typed by hand while a priced schedule sat right above
+        # it, so the two could disagree and nothing said so. A lump-sum
+        # agreement with no schedule can still state its own value.
+        if self.items:
+            self.subcontract_value = sum(flt(r.amount) for r in self.items)
 
     def calculate_advance(self):
         self.advance_amount = flt(self.subcontract_value) * flt(self.advance_percent) / 100

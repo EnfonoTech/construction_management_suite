@@ -2,15 +2,15 @@
 
 Every generated invoice used to be a single line carrying an `item_name` and no
 `item_code` — nothing to report on, nothing to tax, and the client could not see
-what they were paying for. The work is now invoiced line by line against real
-Items, and the deductions ride as charge rows rather than item lines.
+what they were paying for. The work is now invoiced against a real Item named in
+Construction Settings, and the deductions ride as charge rows rather than item
+lines.
 
-Why deductions are charges, not negative item lines: ERPNext refuses to SUBMIT a
-Sales Invoice containing a negative rate unless `Allow Negative rates for Items`
-is switched on for the whole site. The accounting is also better this way — a
-negative line would understate revenue, whereas a charge row credits Sales with
-the full certified value and parks the withheld amount in its own account, which
-is what retention actually is: money earned, owed to you, not yet due.
+Retention and the recoveries are not lines on the invoice at all: they have
+already come off by the time it is raised, so the invoice is for what is due and
+the certificate carries the breakdown showing how it got there. Never as negative
+item lines — ERPNext refuses to SUBMIT a Sales Invoice with a negative rate
+unless `Allow Negative rates for Items` is on for the whole site.
 """
 
 import frappe
@@ -54,35 +54,28 @@ def add_line(doc, item_code, description, amount, cost_center=None, qty=1, rate=
     doc.append("items", line)
 
 
-def add_deduction(doc, setting_name, description, amount, company, cost_center=None):
-    """Withhold an amount on the face of the invoice, against its own account.
+def company_setting(company, fieldname):
+    """An account or tax template from Construction Settings, checked against
+    the document's company.
 
-    Returns what it could not apply, so the caller can say so rather than
-    silently issuing an invoice for more than the certificate allows.
+    One global value, because this site runs a single construction company. An
+    Account and a tax template both belong to a Company in ERPNext, so if a
+    second one is ever added the callers report the setting as unusable rather
+    than posting to the wrong books — see add_deduction and apply_taxes.
     """
-    amount = flt(amount)
-    if not amount:
-        return 0
-    account = cms_setting(setting_name)
-    if not account or not frappe.db.exists("Account", account):
-        return amount
-    if frappe.db.get_value("Account", account, "company") != company:
-        return amount
-
-    doc.append("taxes", {
-        "charge_type": "Actual",
-        "account_head": account,
-        "description": description,
-        # Negative: a deduction reduces what is due without touching revenue.
-        "tax_amount": -amount,
-        "cost_center": cost_center,
-    })
-    return 0
+    value = cms_setting(fieldname)
+    if not value or not company:
+        return value or None
+    doctype = "Account" if fieldname.endswith("_account") else (
+        "Sales Taxes and Charges Template" if fieldname.startswith("sales")
+        else "Purchase Taxes and Charges Template")
+    owner = frappe.db.get_value(doctype, value, "company")
+    return value if not owner or owner == company else None
 
 
-def apply_taxes(doc, setting_name):
-    """Attach the configured tax template, if the site has named one."""
-    template = cms_setting(setting_name)
+def apply_taxes(doc, setting_name, company=None):
+    """Attach the configured tax template, if the company has named one."""
+    template = company_setting(company or doc.get("company"), setting_name)
     if not template:
         return
     field = doc.meta.get_field("taxes_and_charges")
@@ -94,20 +87,6 @@ def apply_taxes(doc, setting_name):
         for key in ("name", "parent", "parenttype", "parentfield", "creation", "modified", "owner", "modified_by", "idx"):
             row.pop(key, None)
         doc.append("taxes", row)
-
-
-def warn_unapplied(doc, unapplied):
-    """Say plainly when a deduction could not be posted."""
-    missing = [label for label, amount in unapplied if flt(amount)]
-    if not missing:
-        return
-    frappe.msgprint(
-        _("{0} could not be deducted on {1} — no account is set for it in "
-          "<b>Construction Settings</b>, so the invoice is for the full value.")
-        .format(", ".join(missing), doc.doctype),
-        title=_("Deduction not applied"),
-        indicator="orange",
-    )
 
 
 def create_service_items():
@@ -132,3 +111,64 @@ def create_service_items():
         if not cms_setting(setting_name):
             frappe.db.set_single_value("Construction Settings", setting_name, code)
     return created
+
+
+def calculate_taxes(doc, base_amount, net_field="total_payable"):
+    """Apply a taxes table to a base amount, ERPNext's way.
+
+    Follows `calculate_taxes` in erpnext's taxes_and_totals so a certificate and
+    the document it raises reach the same figure. On Item Quantity throws rather
+    than guessing: it needs per-item tax handling these documents do not have,
+    and a figure nobody can explain is worse than a refusal.
+    """
+    base_amount = flt(base_amount)
+    running = base_amount
+    for row in doc.get("taxes") or []:
+        if row.charge_type == "Actual":
+            amount = flt(row.tax_amount)
+        elif row.charge_type == "On Net Total":
+            amount = base_amount * flt(row.rate) / 100
+        elif row.charge_type in ("On Previous Row Amount", "On Previous Row Total"):
+            field = "tax_amount" if row.charge_type == "On Previous Row Amount" else "total"
+            amount = flt(_previous_row(doc, row, field)) * flt(row.rate) / 100
+        else:
+            frappe.throw(
+                _("Row {0}: charge type {1} is not supported on a {2}").format(
+                    row.idx, row.charge_type, _(doc.doctype)
+                )
+            )
+        row.tax_amount = amount
+        running += amount
+        row.total = running
+
+    doc.total_taxes_and_charges = sum(flt(r.tax_amount) for r in doc.get("taxes") or [])
+    return flt(doc.total_taxes_and_charges)
+
+
+def _previous_row(doc, row, fieldname):
+    if not row.row_id:
+        frappe.throw(_("Row {0}: set the row it is charged on").format(row.idx))
+    idx = int(row.row_id)
+    if idx >= row.idx:
+        frappe.throw(_("Row {0} can only refer to a row above it").format(row.idx))
+    return doc.taxes[idx - 1].get(fieldname)
+
+
+def carry_taxes(source, target, cost_center=None):
+    """Copy a document's tax rows onto the ERPNext document it raises.
+
+    The certificate is the source: whatever was agreed and taxed there is what
+    gets invoiced, so the two cannot say different things.
+    """
+    target.taxes_and_charges = source.taxes_and_charges
+    for row in source.get("taxes") or []:
+        target.append("taxes", {
+            "charge_type": row.charge_type,
+            "account_head": row.account_head,
+            "description": row.description,
+            "rate": row.rate,
+            "tax_amount": row.tax_amount,
+            "row_id": row.row_id,
+            "cost_center": row.cost_center or cost_center,
+            "included_in_print_rate": row.included_in_print_rate,
+        })

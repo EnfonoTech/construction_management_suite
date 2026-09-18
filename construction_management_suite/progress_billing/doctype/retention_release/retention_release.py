@@ -6,6 +6,11 @@ from frappe.utils import flt, nowdate
 from construction_management_suite.utils.accounting import get_cost_center
 from construction_management_suite.utils.billing import add_line, apply_taxes, billing_item
 from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.billing import (
+    calculate_taxes as calculate_document_taxes,
+    carry_taxes,
+    company_setting,
+)
 
 
 class RetentionRelease(Document):
@@ -19,9 +24,17 @@ class RetentionRelease(Document):
     """
 
     def validate(self):
+        if not self.taxes_and_charges and not self.taxes:
+            self.taxes_and_charges = company_setting(self.company, "sales_taxes_template")
         validate_project_company(self)
         self.set_retention_position()
         self.validate_release_amount()
+        self.calculate_document_taxes()
+
+    def calculate_document_taxes(self):
+        """Taxes on the agreed value, passed through to the document this raises."""
+        tax = calculate_document_taxes(self, self.release_amount)
+        self.total_payable = flt(self.release_amount) + tax
 
     def before_submit(self):
         self.status = "Approved"
@@ -95,14 +108,17 @@ class RetentionRelease(Document):
         si.project = self.project
         si.company = self.company
         si.currency = self.currency
+        cost_center = get_cost_center(self.project, self.company)
         add_line(
             si,
-            billing_item("retention_item"),
-            _("Release of retention held on {0} — {1}").format(self.project, self.release_type),
+            billing_item("progress_billing_item"),
+            _("Release of retention held on {0} — {1}").format(
+                project_label(self.project), self.release_type
+            ),
             self.release_amount,
-            cost_center=get_cost_center(self.project, self.company),
+            cost_center=cost_center,
         )
-        apply_taxes(si, "sales_taxes_template")
+        carry_taxes(self, si, cost_center)
         si.insert(ignore_permissions=True)
         self.db_set("sales_invoice_ref", si.name)
         self.db_set("status", "Invoiced")

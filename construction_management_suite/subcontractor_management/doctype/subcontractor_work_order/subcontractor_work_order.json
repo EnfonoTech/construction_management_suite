@@ -16,7 +16,7 @@
  ],
  "fields": [
   {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "SWO-.YYYY.-.####", "reqd": 1},
-  {"fieldname": "work_order_title", "fieldtype": "Data", "label": "Work Order Title", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "work_order_title", "fieldtype": "Data", "label": "Work Order Title", "in_list_view": 1, "description": "Auto-filled if left blank"},
   {"fieldname": "subcontract_agreement", "fieldtype": "Link", "label": "Subcontract Agreement", "options": "Subcontract Agreement", "reqd": 1, "in_list_view": 1},
   {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "fetch_from": "subcontract_agreement.project"},
   {"fieldname": "column_break_1", "fieldtype": "Column Break"},

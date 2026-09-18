@@ -4,10 +4,16 @@ from frappe.model.document import Document
 from frappe.utils import flt
 from construction_management_suite.utils.settings import cms_setting
 from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.titles import (
+    month_of,
+    project_label,
+    set_auto_title,
+)
 
 
 class CostEstimation(Document):
     def validate(self):
+        set_auto_title(self, "estimation_title", [_("Estimate"), project_label(self.project), month_of(self.estimation_date)])
         validate_project_company(self)
         self.set_missing_defaults()
         self.pull_costs_from_rate_analysis()

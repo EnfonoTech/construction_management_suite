@@ -108,6 +108,9 @@ function show_progress(frm) {
     const colour = pct >= 100 ? "green" : pct >= 50 ? "blue" : "orange";
     const fmt = v => format_currency(v, frm.doc.currency);
 
+    // add_progress APPENDS a chart every call and refresh fires more than once,
+    // so the bars stacked up. Empty the area first.
+    if (frm.dashboard.progress_area) frm.dashboard.progress_area.body.empty();
     // The bar carries the figures; a paragraph under it would only repeat them.
     frm.dashboard.add_progress(
         __("{0} of {1} certified", [fmt(p.cumulative_amount), fmt(p.contract_value)]),

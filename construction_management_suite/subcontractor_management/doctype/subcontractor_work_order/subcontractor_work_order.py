@@ -1,11 +1,18 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.titles import (
+    month_of,
+    project_label,
+    set_auto_title,
+)
 
 
 class SubcontractorWorkOrder(Document):
     def validate(self):
+        set_auto_title(self, "work_order_title", [_("Work Order"), self.subcontractor, project_label(self.project)])
         validate_project_company(self)
         self.calculate_totals()
 

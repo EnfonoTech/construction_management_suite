@@ -1,11 +1,18 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.titles import (
+    month_of,
+    project_label,
+    set_auto_title,
+)
 
 
 class MaterialForecast(Document):
     def validate(self):
+        set_auto_title(self, "forecast_title", [_("Forecast"), project_label(self.project), month_of(self.forecast_date) if self.get("forecast_date") else None])
         validate_project_company(self)
         self.recalculate()
 

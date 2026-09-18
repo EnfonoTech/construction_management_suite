@@ -71,9 +71,7 @@
    "fieldname": "boq_title",
    "fieldtype": "Data",
    "label": "BOQ Title",
-   "reqd": 1,
-   "in_list_view": 1
-  },
+      "in_list_view": 1, "description": "Auto-filled if left blank"},
   {
    "fieldname": "status",
    "fieldtype": "Select",

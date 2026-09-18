@@ -9,6 +9,11 @@ from construction_management_suite.utils.settings import (
     enforce_setting,
 )
 from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.titles import (
+    month_of,
+    project_label,
+    set_auto_title,
+)
 
 
 COMPONENT_RATES = (
@@ -20,6 +25,7 @@ class BOQ(Document):
     # ----- Lifecycle -----
 
     def validate(self):
+        set_auto_title(self, "boq_title", [_("BOQ"), project_label(self.project) or self.client, self.client_po, _("Rev {0}").format(self.revision_no) if self.revision_no else None])
         validate_project_company(self)
         self.set_rate_source()
         self.set_currency_from_project()

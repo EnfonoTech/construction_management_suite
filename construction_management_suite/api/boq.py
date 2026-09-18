@@ -71,9 +71,9 @@ def get_project_cost_dashboard(project):
             SUM(net_payable_this_period) AS total_net_billed,
             COUNT(*) AS ipc_count
         FROM `tabInterim Payment Certificate`
-        WHERE project = %s AND docstatus = 1
+        WHERE project = %(project)s AND docstatus = 1 AND name != %(exclude)s
         """,
-        project,
+        {"project": project, "exclude": exclude_ipc or ""},
         as_dict=True,
     )[0] or {}
 
@@ -151,9 +151,9 @@ def get_retention_summary(project):
         """
         SELECT SUM(retention_amount) AS total_held
         FROM `tabInterim Payment Certificate`
-        WHERE project = %s AND docstatus = 1
+        WHERE project = %(project)s AND docstatus = 1 AND name != %(exclude)s
         """,
-        project,
+        {"project": project, "exclude": exclude_ipc or ""},
         as_dict=True,
     )[0].get("total_held") or 0
 
@@ -161,9 +161,9 @@ def get_retention_summary(project):
         """
         SELECT SUM(release_amount) AS total_released
         FROM `tabRetention Release`
-        WHERE project = %s AND docstatus = 1
+        WHERE project = %(project)s AND docstatus = 1 AND name != %(exclude)s
         """,
-        project,
+        {"project": project, "exclude": exclude_ipc or ""},
         as_dict=True,
     )[0].get("total_released") or 0
 
@@ -175,7 +175,7 @@ def get_retention_summary(project):
 
 
 @frappe.whitelist()
-def get_previous_ipc_position(project):
+def get_previous_ipc_position(project, exclude_ipc=None):
     """Where the last certificate on this project left off.
 
     Saves the billing officer looking up the previous certificate by hand —
@@ -187,9 +187,9 @@ def get_previous_ipc_position(project):
                MAX(ipc_number) AS last_ipc_number,
                COUNT(*) AS certificates
         FROM `tabInterim Payment Certificate`
-        WHERE project = %s AND docstatus = 1
+        WHERE project = %(project)s AND docstatus = 1 AND name != %(exclude)s
         """,
-        project,
+        {"project": project, "exclude": exclude_ipc or ""},
         as_dict=True,
     )[0]
     return {
@@ -211,6 +211,7 @@ def make_cost_estimation(source_name, target_doc=None):
     from frappe.model.mapper import get_mapped_doc
 
     def postprocess(source, target):
+        _own_naming_series(target)
         target.estimation_title = _("Estimate for {0}").format(source.boq_title)
         target.boq_ref = source.name
         target.selling_price = flt(source.grand_total)
@@ -262,6 +263,7 @@ def make_interim_payment_certificate(source_name, target_doc=None):
         )
 
     def postprocess(source, target):
+        _own_naming_series(target)
         target.ipc_title = _("Payment Certificate — {0}").format(source.boq_title)
         target.boq_ref = source.name
         target.contract_value = flt(source.grand_total)
@@ -318,6 +320,19 @@ def make_interim_payment_certificate(source_name, target_doc=None):
     )
 
 
+def _own_naming_series(target):
+    """Keep the target's own series.
+
+    get_mapped_doc copies every field the two doctypes share, and
+    `naming_series` is one of them — so a Cost Estimation raised from a BOQ came
+    out named BOQ-2026-0009.
+    """
+    meta = frappe.get_meta(target.doctype)
+    field = meta.get_field("naming_series")
+    if field and field.options:
+        target.naming_series = field.options.split("\n")[0]
+
+
 def _previously_claimed_by_line(project, exclude_ipc=None):
     """Quantity already certified per BOQ line on this project.
 
@@ -338,6 +353,32 @@ def _previously_claimed_by_line(project, exclude_ipc=None):
         as_dict=True,
     )
     return {r.ref: flt(r.qty) for r in rows}
+
+
+@frappe.whitelist()
+def get_boq_lines_for_variation(boq):
+    """Every line of a bill, so a variation can be built against the real rows.
+
+    A variation usually omits or re-rates work already in the contract, and the
+    row it refers to is what ties the two together — `boq_item_ref` held free
+    text before, which identified nothing.
+    """
+    doc = frappe.get_doc("BOQ", boq)
+    if doc.docstatus != 1:
+        frappe.throw(_("Only a submitted BOQ can be varied"))
+    return [
+        {
+            "boq_item_ref": row.name,
+            "item_no": row.item_no,
+            "item_code": row.item_code,
+            "description": row.description or row.item_code,
+            "uom": row.uom,
+            "qty": flt(row.qty),
+            "rate": flt(row.rate),
+            "work_category": row.work_category,
+        }
+        for row in doc.items
+    ]
 
 
 @frappe.whitelist()

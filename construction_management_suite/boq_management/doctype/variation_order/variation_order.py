@@ -3,6 +3,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate
 from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.titles import (
+    month_of,
+    project_label,
+    set_auto_title,
+)
 
 
 class VariationOrder(Document):
@@ -15,9 +20,43 @@ class VariationOrder(Document):
 
     def validate(self):
         validate_project_company(self)
+        self.set_vo_number()
+        set_auto_title(self, "vo_title", [_("VO #{0}").format(self.vo_number) if self.vo_number else _("Variation"), project_label(self.project), self.variation_type])
         self.calculate_items()
         self.calculate_totals()
         self.set_contract_position()
+
+    @frappe.whitelist()
+    def add_boq_lines(self, rows):
+        """Append the chosen BOQ lines, linked to the rows they vary."""
+        import json as _json
+
+        if isinstance(rows, str):
+            rows = _json.loads(rows)
+        existing = {i.boq_item_ref for i in self.items if i.boq_item_ref}
+        added = 0
+        for row in rows:
+            if row.get("boq_item_ref") in existing:
+                continue
+            row.setdefault("nature", "Omission")
+            self.append("items", row)
+            added += 1
+        return added
+
+    def set_vo_number(self):
+        """Number variations in sequence per project.
+
+        Typed by hand it drifts, and the number is what both sides quote in
+        correspondence for the life of the contract.
+        """
+        if self.vo_number or not self.project:
+            return
+        last = frappe.db.sql(
+            """SELECT MAX(vo_number) FROM `tabVariation Order`
+               WHERE project = %s AND docstatus < 2 AND name != %s""",
+            (self.project, self.name or ""),
+        )
+        self.vo_number = int(flt(last[0][0])) + 1 if last and last[0][0] else 1
 
     def before_submit(self):
         self.status = "Approved"
