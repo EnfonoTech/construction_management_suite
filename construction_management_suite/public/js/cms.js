@@ -259,6 +259,72 @@ CMS.defaultTaxTemplate = function (frm, setting) {
     });
 };
 
+/* ── Item pickers follow the form's company ──
+ *
+ * `Item.company` is a Custom Field this app does not own — another app on the
+ * site adds it — so every line below is a no-op where it is absent, and the
+ * check is made once per session against Item's own meta rather than against a
+ * list of sites or apps.
+ *
+ * Items with no company are shared stock and stay visible everywhere. A blank
+ * in the `in` list is what lets them through: Frappe's query builder compares
+ * `coalesce(company, '')`, so `''` matches a NULL as well as an empty string.
+ *
+ * Fields are found from the meta on each form rather than listed here, so a
+ * new document or a new Item field is covered the day it is added.
+ */
+
+// From modules.txt. Identifies this app's forms — not the fields to filter,
+// which are discovered below.
+CMS.APP_MODULES = [
+    "BOQ Management", "Estimation", "Project Costing", "Site Management",
+    "Progress Billing", "Subcontractor Management", "Material Planning",
+    "Construction Setup",
+];
+
+CMS.itemHasCompany = function () {
+    if (!CMS._item_company) {
+        // with_doctype resolves immediately once Item's meta is in locals.
+        CMS._item_company = frappe.model
+            .with_doctype("Item")
+            .then(() => Boolean(frappe.meta.has_field("Item", "company")));
+    }
+    return CMS._item_company;
+};
+
+/** The company scope for an Item picker, read off the form at search time. */
+CMS.itemCompanyFilter = function (doc) {
+    // Nothing to scope to — a template or a settings page has no company.
+    if (!doc || !doc.company) return {};
+    return { filters: [["company", "in", [doc.company, ""]]] };
+};
+
+/** Point every Item link on this form, and in its grids, at the same scope. */
+CMS.scopeItemPickers = function (frm) {
+    if (!frm || !frm.meta || !CMS.APP_MODULES.includes(frm.meta.module)) return;
+    const fields = frm.meta.fields || [];
+    if (!fields.some(df => df.fieldname === "company")) return;
+
+    CMS.itemHasCompany().then((scoped) => {
+        if (!scoped) return;
+        fields.forEach((df) => {
+            if (df.fieldtype === "Link" && df.options === "Item") {
+                frm.set_query(df.fieldname, CMS.itemCompanyFilter);
+            } else if (df.fieldtype === "Table" && frm.fields_dict[df.fieldname]) {
+                const child = frappe.get_meta(df.options);
+                ((child && child.fields) || []).forEach((cdf) => {
+                    if (cdf.fieldtype === "Link" && cdf.options === "Item") {
+                        frm.set_query(cdf.fieldname, df.fieldname, CMS.itemCompanyFilter);
+                    }
+                });
+            }
+        });
+    });
+};
+
+// Every form, without a handler per doctype: form.js triggers this on render.
+$(document).on("form-refresh", (e, frm) => CMS.scopeItemPickers(frm));
+
 /** Restrict a link field to the document's own project. */
 CMS.filterByProject = function (frm, fieldname, extra) {
     frm.set_query(fieldname, () => ({
