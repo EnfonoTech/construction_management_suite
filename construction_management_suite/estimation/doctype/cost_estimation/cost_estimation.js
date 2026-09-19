@@ -6,6 +6,18 @@ frappe.ui.form.on("Cost Estimation", {
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
         CMS.filterProjects(frm);
 
+        // The analysis stays editable after approval so an unpriced line can
+        // still reach the take-off; the scope itself must not move.
+        if (frm.doc.docstatus === 1 && frm.fields_dict.items) {
+            frm.fields_dict.items.grid.cannot_add_rows = true;
+            frm.fields_dict.items.grid.cannot_delete_rows = true;
+            // Editable only while this estimate says so, so the grid matches
+            // what the server will accept.
+            frm.fields_dict.items.grid.toggle_enable(
+                "rate_analysis_ref", Boolean(frm.doc.allow_pricing_after_approval)
+            );
+        }
+
         if (frm.doc.docstatus === 1 && frm.doc.project) {
             frappe.db.get_value("Project Budget",
                 { project: frm.doc.project, docstatus: ["<", 2] }, "name"
@@ -16,6 +28,8 @@ frappe.ui.form.on("Cost Estimation", {
             });
         }
     },
+
+    allow_pricing_after_approval(frm) { frm.refresh(); },
 
     project(frm) {
         CMS.fillFromProject(frm, { company: "company" });

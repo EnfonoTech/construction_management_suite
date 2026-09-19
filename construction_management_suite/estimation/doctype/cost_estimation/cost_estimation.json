@@ -15,6 +15,7 @@
   "currency",
   "estimation_date",
   "status",
+  "allow_pricing_after_approval",
   "section_items",
   "items",
   "section_totals",
@@ -103,6 +104,15 @@
    "no_copy": 1
   },
   {
+   "fieldname": "allow_pricing_after_approval",
+   "fieldtype": "Check",
+   "label": "Allow Pricing After Approval",
+   "default": "0",
+   "allow_on_submit": 1,
+   "no_copy": 1,
+   "description": "Lets a Rate Analysis be set on an approved line"
+  },
+  {
    "fieldname": "section_items",
    "fieldtype": "Section Break",
    "label": "Estimation Items"
@@ -111,7 +121,8 @@
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Items",
-   "options": "Cost Estimation Item"
+   "options": "Cost Estimation Item",
+   "allow_on_submit": 1
   },
   {
    "fieldname": "section_totals",
@@ -123,28 +134,32 @@
    "fieldtype": "Currency",
    "label": "Material Cost",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "estimated_labour_cost",
    "fieldtype": "Currency",
    "label": "Labour Cost",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "estimated_equipment_cost",
    "fieldtype": "Currency",
    "label": "Equipment Cost",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "estimated_subcontract_cost",
    "fieldtype": "Currency",
    "label": "Estimated Subcontract Cost",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "column_break_2",
@@ -155,7 +170,8 @@
    "fieldtype": "Currency",
    "label": "Overhead Cost",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "contingency_percent",
@@ -167,7 +183,8 @@
    "fieldtype": "Currency",
    "label": "Contingency Amount",
    "options": "currency",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "total_estimated_cost",
@@ -175,7 +192,8 @@
    "label": "Total Estimated Cost",
    "options": "currency",
    "read_only": 1,
-   "bold": 1
+   "bold": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "selling_price",
@@ -187,7 +205,8 @@
    "fieldname": "margin_percent",
    "fieldtype": "Percent",
    "label": "Margin %",
-   "read_only": 1
+   "read_only": 1,
+   "allow_on_submit": 1
   },
   {
    "fieldname": "section_approvals",
