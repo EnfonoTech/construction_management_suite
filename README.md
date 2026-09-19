@@ -8,9 +8,18 @@ A production-ready, modular **Construction Management Suite** built as a Frappe/
 
 ---
 
+## Documentation
+
+| Guide | For | Read |
+| --- | --- | --- |
+| [User Guide](docs/user-guide.md) | Site teams, QS, billing — how to run a job through the system | [published page](https://claude.ai/artifact/X316c1N75nHD6eJF2z5r9z) |
+| [Developer Guide](docs/developer-guide.md) | Consultants and developers — architecture, hooks, controllers, extension recipes | [published page](https://claude.ai/artifact/TRdnQDrLhp4xwzkp5FSHUu) |
+
+---
+
 ## Overview
 
-Construction Management Suite (CMS) extends ERPNext with 7 specialized modules covering the full construction project lifecycle from Bill of Quantities and cost estimation through site operations, progress billing, subcontractor management, and material planning.
+Construction Management Suite (CMS) extends ERPNext with 8 modules covering the full construction project lifecycle from Bill of Quantities and cost estimation through site operations, progress billing, subcontractor management, and material planning.
 
 ---
 
@@ -25,8 +34,7 @@ Construction Management Suite (CMS) extends ERPNext with 7 specialized modules c
 | **Progress Billing** | Interim Payment Certificate, Retention Release | IPC billing, retention handling |
 | **Subcontractor Management** | Subcontract Agreement, Work Order, Payment Certificate | Subcontract lifecycle, work orders, payment certs |
 | **Material Planning** | Material Forecast, Site Transfer, Consumption Entry | Procurement planning, forecasting, site-to-site transfers |
-
----
+| **Construction Setup** | Construction Settings | Site-wide policy: defaults, billing items, tax templates, and the Ignore/Warn/Stop blockers |
 
 ---
 
