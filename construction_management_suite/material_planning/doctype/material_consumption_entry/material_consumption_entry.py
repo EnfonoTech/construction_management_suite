@@ -1,3 +1,5 @@
+import json
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -22,26 +24,51 @@ class MaterialConsumptionEntry(Document):
     def get_items_from_forecast(self):
         """Bring in what this project is expected to consume, not yet used.
 
+        One row per bill line rather than per material: the same cement is
+        under the concrete, the mortar and the plaster, and an issue that only
+        names the item can never say which of them burnt it. The line comes
+        across on the row, so the take-off can be read back afterwards.
+
         Typing an issue from memory is how a site records cement against the
         wrong job, or a quantity nobody planned for.
         """
         if not self.project:
             frappe.throw(_("Choose the project this issue is for"))
-        allowed = take_off_by_item(self.project)
-        used = consumed_by_item(self.project, exclude=self.name)
-        existing = {i.item_code for i in self.items if i.item_code}
+
+        lines = take_off_by_line(self.project)
+        attributed, loose = consumed_by_line(self.project, exclude=self.name)
+
+        on_form = {(i.item_code, i.boq_item_ref) for i in self.items if i.item_code}
+        # A row that names the item but no line covers that item on its own —
+        # splitting it now would double the quantity offered.
+        unsplit = {i.item_code for i in self.items if i.item_code and not i.boq_item_ref}
+
         added = 0
-        for code, budget in sorted(allowed.items()):
-            if code in existing:
+        for entry in sorted(
+            lines.values(),
+            key=lambda e: (e["item_code"], bill_order(e["boq_item_no"]), e["boq_item_ref"]),
+        ):
+            code, ref = entry["item_code"], entry["boq_item_ref"]
+            outstanding = flt(entry["qty"]) - flt(attributed.get((code, ref)))
+
+            # Issues made before the line was recorded belong to this job but to
+            # no line in particular. Draw them down in bill order, so the total
+            # offered still matches what the material has left overall.
+            if outstanding > 0 and flt(loose.get(code)):
+                absorbed = min(outstanding, flt(loose[code]))
+                outstanding -= absorbed
+                loose[code] -= absorbed
+
+            if outstanding <= 0.0001 or code in unsplit or (code, ref) in on_form:
                 continue
-            outstanding = flt(budget) - flt(used.get(code))
-            if outstanding <= 0.0001:
-                continue
+
             self.append("items", {
                 "item_code": code,
-                "uom": frappe.db.get_value("Item", code, "stock_uom"),
+                "uom": entry["uom"],
                 "qty": 0,
                 "valuation_rate": flt(frappe.db.get_value("Item", code, "valuation_rate")),
+                "boq_item_ref": ref,
+                "boq_item_no": entry["boq_item_no"],
             })
             added += 1
         return added
@@ -54,6 +81,10 @@ class MaterialConsumptionEntry(Document):
         consumes per unit, waste included. Going past it is not an error — a
         variation adds work and breakage happens — but it is the moment a job
         starts eating its margin, and nothing said so before.
+
+        Measured per material across the whole entry, not per row: the picker
+        now writes a row per bill line, and three rows of cement under the
+        allowance each would pass while the bag count went well past it.
         """
         action = action_for("consumption_over_takeoff_action")
         if action == "Ignore" or not self.project:
@@ -65,25 +96,30 @@ class MaterialConsumptionEntry(Document):
             return
         consumed = consumed_by_item(self.project, exclude=self.name)
 
-        over = []
+        this_entry = {}
         for item in self.items:
-            budget = flt(allowed.get(item.item_code))
+            if item.item_code:
+                this_entry[item.item_code] = flt(this_entry.get(item.item_code)) + flt(item.qty)
+
+        over = []
+        for code, qty in sorted(this_entry.items()):
+            budget = flt(allowed.get(code))
             if not budget:
                 continue
-            total = flt(consumed.get(item.item_code)) + flt(item.qty)
+            total = flt(consumed.get(code)) + qty
             if total <= budget * (1 + tolerance / 100):
                 continue
-            over.append((item, total, budget))
+            over.append((code, total, budget))
 
         if not over:
             return
         enforce(
             action,
             "<br>".join(
-                _("Row {0} ({1}): {2} used against a take-off of {3}").format(
-                    i.idx, i.item_code, flt(total, 3), flt(budget, 3)
+                _("{0}: {1} used against a take-off of {2}").format(
+                    code, flt(total, 3), flt(budget, 3)
                 )
-                for i, total, budget in over[:10]
+                for code, total, budget in over[:10]
             ),
             title=_("{0} material(s) past the take-off").format(len(over)),
         )
@@ -139,26 +175,56 @@ class MaterialConsumptionEntry(Document):
         frappe.msgprint(_("Stock Entry {0} submitted for material consumption").format(se.name))
 
 
-def take_off_detail(project, boq=None):
-    """Every material a project's bills are priced to consume, with its unit and rate.
+def take_off_source(project):
+    """Which document says what this job consumes.
 
-    The same frozen build-ups the BOQ Resource Analysis report reads, so a
-    forecast, a consumption entry and that report cannot disagree about what the
-    job is supposed to use.
+    The Cost Estimation is the cost plan — what the work is expected to take —
+    and that is what procurement and the site work to. The BOQ is the sales
+    side: what the client is sold and billed. Where a project is priced both
+    ways the estimate wins; where it has no estimate the bill is all there is,
+    so it stands in rather than leaving the project with no plan at all.
     """
-    import json
+    if frappe.db.exists("Cost Estimation", {"project": project, "docstatus": 1}):
+        return "Cost Estimation"
+    return "BOQ"
 
-    detail = {}
-    conditions = "b.project = %(project)s AND b.docstatus = 1"
+
+# Both sources carry the same four columns the walk needs, under their own names.
+_SOURCES = {
+    "Cost Estimation": ("Cost Estimation Item", "Cost Estimation"),
+    "BOQ": ("BOQ Item", "BOQ"),
+}
+
+
+def _take_off_rows(project, boq=None, source=None):
+    """Walk a project's priced lines and yield the resources under each.
+
+    Frozen `rate_build_up` where a line has one, the live analysis otherwise —
+    the same precedence the BOQ Resource Analysis report uses. Everything that
+    answers "what is this job supposed to consume" reads through here, so the
+    forecast, the consumption check and that report cannot disagree.
+
+    Yields (line, resource, per_unit), where per_unit is the resource quantity
+    for one unit of the line.
+    """
+    source = source or take_off_source(project)
+    child, parent = _SOURCES[source]
+
+    conditions = "p.project = %(project)s AND p.docstatus = 1"
     params = {"project": project, "boq": boq or ""}
+    # `boq` narrows an estimate through the bill line it was mapped from, so the
+    # same filter works whichever document is being read.
     if boq:
-        conditions += " AND b.name = %(boq)s"
+        conditions += (
+            " AND p.name = %(boq)s" if source == "BOQ"
+            else " AND i.boq_item_ref IN (SELECT name FROM `tabBOQ Item` WHERE parent = %(boq)s)"
+        )
     rows = frappe.db.sql(
         f"""
-        SELECT i.qty, i.rate_analysis_ref, i.rate_build_up, i.item_code AS boq_item,
-               i.item_no AS boq_item_no, i.name AS boq_item_ref
-        FROM `tabBOQ Item` i
-        JOIN `tabBOQ` b ON b.name = i.parent
+        SELECT i.qty, i.rate_analysis_ref, i.rate_build_up, i.item_code AS line_item,
+               i.name AS line_ref, {_label_column(source)}
+        FROM `tab{child}` i
+        JOIN `tab{parent}` p ON p.name = i.parent
         WHERE {conditions}
         """,
         params,
@@ -185,73 +251,71 @@ def take_off_detail(project, boq=None):
                 for r in ra.resources
             ]
         for res in resources:
-            code = res.get("resource_item")
-            if not code:
+            if not res.get("resource_item"):
                 continue
-            per_unit = flt(res.get("qty")) / output
-            qty = flt(row.qty) * per_unit
-            entry = detail.setdefault(code, {
-                "item_code": code,
-                "uom": res.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
-                "boq_qty": 0.0,
-                "waste_factor": flt(res.get("waste_factor")),
-                "estimated_rate": flt(res.get("rate")),
-                "boq_items": [],
-            })
-            entry["boq_qty"] += qty
-            label = row.boq_item_no or row.boq_item
-            if label and label not in entry["boq_items"]:
-                entry["boq_items"].append(label)
+            yield row, res, flt(res.get("qty")) / output
+
+
+def _label_column(source):
+    """The bill's item number, whichever document is being read."""
+    return "i.item_no AS line_no" if source == "BOQ" else "i.boq_item_no AS line_no"
+
+
+def take_off_detail(project, boq=None, source=None):
+    """Every material a project's bills are priced to consume, with its unit and rate.
+
+    Waste is left off `boq_qty` and reported beside it: the forecast applies it
+    itself, and showing both lets a user see where the allowance came from.
+    """
+    detail = {}
+    for row, res, per_unit in _take_off_rows(project, boq, source):
+        code = res.get("resource_item")
+        entry = detail.setdefault(code, {
+            "item_code": code,
+            "uom": res.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
+            "boq_qty": 0.0,
+            "waste_factor": flt(res.get("waste_factor")),
+            "estimated_rate": flt(res.get("rate")),
+            "boq_items": [],
+        })
+        entry["boq_qty"] += flt(row.qty) * per_unit
+        label = row.line_no or row.line_item
+        if label and label not in entry["boq_items"]:
+            entry["boq_items"].append(label)
     return list(detail.values())
 
 
 def take_off_by_item(project):
-    """How much of each material the project's bills were priced to consume.
-
-    Frozen build-up where a line has one, live analysis otherwise — the same
-    precedence as the BOQ Resource Analysis report, so the two can never
-    disagree about what was allowed.
-    """
-    import json
-
+    """How much of each material the project's bills were priced to consume, waste included."""
     allowed = {}
-    rows = frappe.db.sql(
-        """
-        SELECT i.qty, i.rate_analysis_ref, i.rate_build_up
-        FROM `tabBOQ Item` i
-        JOIN `tabBOQ` b ON b.name = i.parent
-        WHERE b.project = %s AND b.docstatus = 1
-        """,
-        project,
-        as_dict=True,
-    )
-    for row in rows:
-        resources, output = [], 1
-        if row.rate_build_up:
-            try:
-                frozen = json.loads(row.rate_build_up)
-            except (ValueError, TypeError):
-                frozen = None
-            if frozen and frozen.get("resources"):
-                resources = frozen["resources"]
-                output = flt(frozen.get("output_qty")) or 1
-        if not resources and row.rate_analysis_ref:
-            if not frappe.db.exists("Rate Analysis", row.rate_analysis_ref):
-                continue
-            ra = frappe.get_cached_doc("Rate Analysis", row.rate_analysis_ref)
-            output = flt(ra.output_qty) or 1
-            resources = [
-                {"resource_item": r.resource_item, "qty": r.qty, "waste_factor": r.waste_factor}
-                for r in ra.resources
-            ]
-        for res in resources:
-            item_code = res.get("resource_item")
-            if not item_code:
-                continue
-            per_unit = flt(res.get("qty")) / output
-            allowed[item_code] = allowed.get(item_code, 0) + (
-                flt(row.qty) * per_unit * (1 + flt(res.get("waste_factor")) / 100)
-            )
+    for row, res, per_unit in _take_off_rows(project):
+        code = res.get("resource_item")
+        allowed[code] = allowed.get(code, 0) + (
+            flt(row.qty) * per_unit * (1 + flt(res.get("waste_factor")) / 100)
+        )
+    return allowed
+
+
+def take_off_by_line(project):
+    """The same allowance, split by the bill line that asks for it.
+
+    Cement sits under concrete, under blockwork mortar and under plaster. Summed
+    per item nobody can say which of those a bag was burnt on; keyed by line
+    they can. Waste included, so it matches `take_off_by_item` when summed.
+    """
+    allowed = {}
+    for row, res, per_unit in _take_off_rows(project):
+        code = res.get("resource_item")
+        key = (code, row.line_ref)
+        entry = allowed.setdefault(key, {
+            "item_code": code,
+            "boq_item_ref": row.line_ref,
+            "boq_item_no": row.line_no or row.line_item,
+            "uom": res.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
+            "estimated_rate": flt(res.get("rate")),
+            "qty": 0.0,
+        })
+        entry["qty"] += flt(row.qty) * per_unit * (1 + flt(res.get("waste_factor")) / 100)
     return allowed
 
 
@@ -269,3 +333,38 @@ def consumed_by_item(project, exclude=None):
         as_dict=True,
     )
     return {r.item_code: flt(r.qty) for r in rows}
+
+
+def consumed_by_line(project, exclude=None):
+    """Issued quantity split into what names a bill line and what does not.
+
+    Entries made before the picker carried the reference, and anything typed by
+    hand, have no line against them. They are still consumption and still have
+    to be netted off, so they come back separately rather than being dropped.
+    """
+    rows = frappe.db.sql(
+        """
+        SELECT i.item_code, i.boq_item_ref, SUM(i.qty) AS qty
+        FROM `tabMaterial Consumption Item` i
+        JOIN `tabMaterial Consumption Entry` e ON e.name = i.parent
+        WHERE e.project = %(project)s AND e.docstatus = 1 AND e.name != %(exclude)s
+        GROUP BY i.item_code, i.boq_item_ref
+        """,
+        {"project": project, "exclude": exclude or ""},
+        as_dict=True,
+    )
+    attributed, loose = {}, {}
+    for r in rows:
+        if r.boq_item_ref:
+            attributed[(r.item_code, r.boq_item_ref)] = flt(r.qty)
+        else:
+            loose[r.item_code] = loose.get(r.item_code, 0) + flt(r.qty)
+    return attributed, loose
+
+
+def bill_order(item_no):
+    """Sort 1.9 before 1.10 — a bill numbers its items, it does not name them."""
+    parts = []
+    for chunk in (item_no or "").split("."):
+        parts.append((0, int(chunk)) if chunk.isdigit() else (1, chunk))
+    return parts

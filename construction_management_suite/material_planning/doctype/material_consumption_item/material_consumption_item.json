@@ -5,6 +5,7 @@
  "engine": "InnoDB",
  "field_order": [
   "item_code",
+  "boq_item_no",
   "item_name",
   "uom",
   "column_break_1",
@@ -13,8 +14,7 @@
   "valuation_rate",
   "amount",
   "batch_no",
-  "boq_item_ref",
-  "boq_item_no"
+  "boq_item_ref"
  ],
  "fields": [
   {
@@ -27,13 +27,21 @@
    "columns": 2
   },
   {
+   "fieldname": "boq_item_no",
+   "fieldtype": "Data",
+   "label": "BOQ Line",
+   "read_only": 1,
+   "description": "The contract line this is for",
+   "in_list_view": 1,
+   "columns": 2
+  },
+  {
    "fieldname": "item_name",
    "fieldtype": "Data",
    "label": "Item Name",
    "fetch_from": "item_code.item_name",
    "read_only": 1,
-   "in_list_view": 1,
-   "columns": 2
+   "in_list_view": 0
   },
   {
    "fieldname": "uom",
@@ -93,13 +101,6 @@
    "print_hide": 1,
    "search_index": 1,
    "description": "Row name of the BOQ line this is for"
-  },
-  {
-   "fieldname": "boq_item_no",
-   "fieldtype": "Data",
-   "label": "BOQ Item",
-   "read_only": 1,
-   "description": "The contract line this is for"
   }
  ],
  "istable": 1,

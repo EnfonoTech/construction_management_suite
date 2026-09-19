@@ -34,10 +34,20 @@ def execute(filters=None):
 def build_rows(filters):
 	from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
 		take_off_detail,
+		take_off_source,
 	)
 
 	project = filters.project
 	take_off = {d["item_code"]: d for d in take_off_detail(project, boq=filters.get("boq"))}
+	# What the bill was sold at, beside what the estimate plans to consume. Where
+	# the estimate is the source the two can differ — that difference is the
+	# point of the column. Where the bill is the source they are the same figure.
+	sold = {}
+	if take_off_source(project) != "BOQ":
+		sold = {
+			d["item_code"]: flt(d["boq_qty"]) * (1 + flt(d["waste_factor"]) / 100)
+			for d in take_off_detail(project, boq=filters.get("boq"), source="BOQ")
+		}
 	forecast = _sum("""
 		SELECT i.item_code AS code, SUM(i.net_qty_required) AS qty
 		FROM `tabMaterial Forecast Item` i JOIN `tabMaterial Forecast` f ON f.name = i.parent
@@ -84,6 +94,7 @@ def build_rows(filters):
 			"uom": detail.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
 			"boq_items": ", ".join(detail.get("boq_items") or []),
 			"required": required,
+			"boq_qty": flt(sold.get(code)) if sold else required,
 			"forecast": flt(forecast.get(code)),
 			"requested": flt(requested.get(code)),
 			"ordered": flt(ordered.get(code)),
@@ -126,6 +137,7 @@ def get_columns():
 		col("UOM", "uom", "Link", 90, options="UOM"),
 		col("For BOQ Items", "boq_items", "Data", 120),
 		col("Required", "required", precision=2, width=110),
+		col("BOQ Qty", "boq_qty", precision=2, width=100),
 		col("Forecast", "forecast", precision=2),
 		col("Requested", "requested", precision=2),
 		col("Ordered", "ordered", precision=2),

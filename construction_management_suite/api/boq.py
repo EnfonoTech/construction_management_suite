@@ -267,6 +267,11 @@ def make_cost_estimation(source_name, target_doc=None):
                     "subcontract_rate": "subcontract_cost",
                     "overhead_rate": "overhead_cost",
                     "rate_analysis_ref": "rate_analysis_ref",
+                    # The bill line each estimate line came from: what lets the
+                    # take-off, the reports and a subcontract read one against
+                    # the other rather than guessing by item code.
+                    "name": "boq_item_ref",
+                    "item_no": "boq_item_no",
                 },
             },
         },
