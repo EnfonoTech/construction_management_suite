@@ -78,7 +78,7 @@ class MaterialConsumptionEntry(Document):
 
         The take-off is the figure the BOQ Resource Analysis report shows: every
         submitted BOQ line's quantity times what its analysis says the line
-        consumes per unit, waste included. Going past it is not an error — a
+        consumes per unit. Going past it is not an error — a
         variation adds work and breakage happens — but it is the moment a job
         starts eating its margin, and nothing said so before.
 
@@ -247,7 +247,7 @@ def _take_off_rows(project, boq=None, source=None):
             output = flt(ra.output_qty) or 1
             resources = [
                 {"resource_item": r.resource_item, "qty": r.qty, "uom": r.uom,
-                 "rate": r.rate, "waste_factor": r.waste_factor}
+                 "rate": r.rate}
                 for r in ra.resources
             ]
         for res in resources:
@@ -264,8 +264,8 @@ def _label_column(source):
 def take_off_detail(project, boq=None, source=None):
     """Every material a project's bills are priced to consume, with its unit and rate.
 
-    Waste is left off `boq_qty` and reported beside it: the forecast applies it
-    itself, and showing both lets a user see where the allowance came from.
+    Quantities carry whatever allowance the measurer built into them; there is
+    no separate waste factor to apply on top.
     """
     detail = {}
     for row, res, per_unit in _take_off_rows(project, boq, source):
@@ -274,7 +274,6 @@ def take_off_detail(project, boq=None, source=None):
             "item_code": code,
             "uom": res.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
             "boq_qty": 0.0,
-            "waste_factor": flt(res.get("waste_factor")),
             "estimated_rate": flt(res.get("rate")),
             "boq_items": [],
         })
@@ -286,13 +285,11 @@ def take_off_detail(project, boq=None, source=None):
 
 
 def take_off_by_item(project):
-    """How much of each material the project's bills were priced to consume, waste included."""
+    """How much of each material the project is priced to consume."""
     allowed = {}
     for row, res, per_unit in _take_off_rows(project):
         code = res.get("resource_item")
-        allowed[code] = allowed.get(code, 0) + (
-            flt(row.qty) * per_unit * (1 + flt(res.get("waste_factor")) / 100)
-        )
+        allowed[code] = allowed.get(code, 0) + flt(row.qty) * per_unit
     return allowed
 
 
@@ -301,7 +298,7 @@ def take_off_by_line(project):
 
     Cement sits under concrete, under blockwork mortar and under plaster. Summed
     per item nobody can say which of those a bag was burnt on; keyed by line
-    they can. Waste included, so it matches `take_off_by_item` when summed.
+    they can. Sums back to `take_off_by_item` exactly.
     """
     allowed = {}
     for row, res, per_unit in _take_off_rows(project):
@@ -315,7 +312,7 @@ def take_off_by_line(project):
             "estimated_rate": flt(res.get("rate")),
             "qty": 0.0,
         })
-        entry["qty"] += flt(row.qty) * per_unit * (1 + flt(res.get("waste_factor")) / 100)
+        entry["qty"] += flt(row.qty) * per_unit
     return allowed
 
 

@@ -30,27 +30,28 @@ MATERIALS = [
     ("CMS-BLOCK-200", "200mm hollow block", "Nos", 0.42),
 ]
 
-# item, uom, output qty, [(type, item_or_none, description, qty, rate, waste)]
+# item, uom, output qty, [(type, item_or_none, description, qty, rate)]
+# Quantities carry their own allowance; there is no separate waste factor.
 ANALYSES = [
     ("CMS-RCC-M30", "Cubic Meter", 10, [
-        ("Material", "CMS-CEMENT-OPC", "Cement", 70, 2.10, 5),
-        ("Material", "CMS-AGG-20", "Aggregate", 8.5, 8.50, 5),
-        ("Material", "CMS-SAND", "Sand", 4.5, 6.00, 5),
-        ("Labour", None, "Concrete gang", 6, 12.00, 0),
-        ("Equipment", None, "Mixer and vibrator", 2.5, 25.00, 0),
-        ("Overhead", None, "Site overhead", 1, 35.00, 0),
+        ("Material", "CMS-CEMENT-OPC", "Cement", 73.5, 2.10),
+        ("Material", "CMS-AGG-20", "Aggregate", 8.925, 8.50),
+        ("Material", "CMS-SAND", "Sand", 4.725, 6.00),
+        ("Labour", None, "Concrete gang", 6, 12.00),
+        ("Equipment", None, "Mixer and vibrator", 2.5, 25.00),
+        ("Overhead", None, "Site overhead", 1, 35.00),
     ]),
     ("CMS-BLK-200", "Square Meter", 100, [
-        ("Material", "CMS-BLOCK-200", "200mm blocks", 1250, 0.42, 3),
-        ("Material", "CMS-CEMENT-OPC", "Mortar cement", 42, 2.10, 5),
-        ("Material", "CMS-SAND", "Mortar sand", 3.2, 6.00, 5),
-        ("Labour", None, "Mason and helper", 34, 12.00, 0),
-        ("Overhead", None, "Site overhead", 1, 40.00, 0),
+        ("Material", "CMS-BLOCK-200", "200mm blocks", 1287.5, 0.42),
+        ("Material", "CMS-CEMENT-OPC", "Mortar cement", 44.1, 2.10),
+        ("Material", "CMS-SAND", "Mortar sand", 3.36, 6.00),
+        ("Labour", None, "Mason and helper", 34, 12.00),
+        ("Overhead", None, "Site overhead", 1, 40.00),
     ]),
     ("CMS-PLASTER", "Square Meter", 100, [
-        ("Material", "CMS-CEMENT-OPC", "Plaster cement", 26, 2.10, 5),
-        ("Material", "CMS-SAND", "Plaster sand", 2.6, 6.00, 5),
-        ("Labour", None, "Plasterer", 22, 12.00, 0),
+        ("Material", "CMS-CEMENT-OPC", "Plaster cement", 27.3, 2.10),
+        ("Material", "CMS-SAND", "Plaster sand", 2.73, 6.00),
+        ("Labour", None, "Plasterer", 22, 12.00),
     ]),
 ]
 
@@ -173,10 +174,10 @@ def _rate_analyses():
             "item_code": item, "uom": uom, "company": COMPANY, "currency": CURRENCY,
             "date": START, "output_qty": output, "status": "Draft", "rate_basis": "Manual",
         })
-        for rtype, ritem, desc, qty, rate, waste in resources:
+        for rtype, ritem, desc, qty, rate in resources:
             doc.append("resources", {
                 "resource_type": rtype, "resource_item": ritem, "description": desc,
-                "qty": qty, "rate": rate, "waste_factor": waste,
+                "qty": qty, "rate": rate,
             })
         doc.insert()
         doc.status = "Approved"

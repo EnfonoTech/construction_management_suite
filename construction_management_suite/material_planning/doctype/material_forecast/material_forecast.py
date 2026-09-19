@@ -25,9 +25,10 @@ class MaterialForecast(Document):
     def get_items_from_boq(self):
         """Build the forecast from what the bills are priced to consume.
 
-        Every figure here — quantity, waste, rate — is already computed by the
-        take-off that the BOQ Resource Analysis report and the consumption check
-        read. Retyping it was three places to disagree.
+        Every figure here — quantity, rate — is already computed by the take-off
+        that the BOQ Resource Analysis report and the consumption check read.
+        Retyping it was three places to disagree. The quantity it proposes stays
+        editable: a take-off is a starting point, not a verdict.
         """
         from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
             take_off_detail,
@@ -55,18 +56,14 @@ class MaterialForecast(Document):
         rows = {i.item_code: i for i in self.items if i.item_code}
         added = updated = skipped = 0
         for line in take_off_detail(self.project, boq=self.boq_ref):
-            # net_qty_required is boq_qty plus waste, so take the already
-            # planned quantity off the base before waste is applied again.
-            waste = 1 + flt(line["waste_factor"]) / 100
-            outstanding = flt(line["boq_qty"]) - (flt(elsewhere.get(line["item_code"])) / waste)
+            outstanding = flt(line["boq_qty"]) - flt(elsewhere.get(line["item_code"]))
             if outstanding <= 0.0001:
                 skipped += 1
                 continue
             row = rows.get(line["item_code"])
             values = {
                 "uom": line["uom"],
-                "boq_qty": outstanding,
-                "waste_factor": line["waste_factor"],
+                "net_qty_required": outstanding,
                 "estimated_rate": line["estimated_rate"],
                 "boq_items": ", ".join(line["boq_items"])[:140],
             }
@@ -91,9 +88,10 @@ class MaterialForecast(Document):
                 item.uom and frappe.db.get_value("UOM", item.uom, "must_be_whole_number")
             ) else 0
             item.already_ordered_qty = self._ordered_qty(item.item_code)
-            item.net_qty_required = flt(item.boq_qty) * (1 + flt(item.waste_factor) / 100)
+            # net_qty_required is left as it stands: the take-off proposes it and
+            # the planner may have changed it.
             # What you can actually place on an order — a whole-number UOM will
-            # not accept the fraction a waste factor produces.
+            # not accept a fraction.
             item.qty_to_order = orderable_qty(
                 max(0, flt(item.net_qty_required) - flt(item.already_ordered_qty)), item.uom
             )

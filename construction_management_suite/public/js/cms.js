@@ -420,8 +420,8 @@ CMS.calc["Rate Analysis"] = function (doc) {
     const t = { Material: 0, Labour: 0, Equipment: 0, Subcontract: 0, Overhead: 0 };
     (doc.resources || []).forEach(r => {
         r.amount = flt(r.qty) * flt(r.rate);
-        r.net_amount = flt(r.amount) * (1 + flt(r.waste_factor) / 100);
-        if (r.resource_type in t) t[r.resource_type] += flt(r.net_amount);
+        // Waste belongs in the quantity, put there by whoever measured it.
+        if (r.resource_type in t) t[r.resource_type] += flt(r.amount);
     });
     doc.total_material_cost = t.Material;
     doc.total_labour_cost = t.Labour;
@@ -567,7 +567,6 @@ CMS.calc["Subcontractor Work Order"] = function (doc) {
 
 CMS.calc["Material Forecast"] = function (doc) {
     (doc.items || []).forEach(r => {
-        r.net_qty_required = flt(r.boq_qty) * (1 + flt(r.waste_factor) / 100);
         // Rounded UP for a whole-number UOM, never down: ordering 8,059 of the
         // 8,059.8 a take-off asks for leaves the job short by design.
         const outstanding = Math.max(0, flt(r.net_qty_required) - flt(r.already_ordered_qty));
@@ -739,8 +738,7 @@ function render_build_up(frm, data) {
         html += `<tr><td>${r.type || ""}</td><td>${frappe.utils.escape_html(r.description || "")}</td>
           <td>${r.uom || ""}</td><td class="text-right">${r.qty}</td>
           <td class="text-right">${money(r.rate)}</td>
-          <td class="text-right">${r.waste_factor ? r.waste_factor + "%" : "—"}</td>
-          <td class="text-right">${money(r.net_amount)}</td></tr>`;
+          <td class="text-right">${money(r.amount || r.net_amount)}</td></tr>`;
     });
     html += `</tbody><tfoot>`;
     Object.entries(f.buckets || {}).forEach(([k, v]) => {

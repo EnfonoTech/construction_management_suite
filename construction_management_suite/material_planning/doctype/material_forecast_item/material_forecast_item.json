@@ -9,8 +9,6 @@
   "uom",
   "column_break_1",
   "boq_items",
-  "boq_qty",
-  "waste_factor",
   "net_qty_required",
   "already_ordered_qty",
   "qty_to_order",
@@ -50,23 +48,12 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "boq_qty",
-   "fieldtype": "Float",
-   "label": "BOQ Qty"
-  },
-  {
-   "fieldname": "waste_factor",
-   "fieldtype": "Percent",
-   "label": "Waste %",
-   "default": "5"
-  },
-  {
    "fieldname": "net_qty_required",
    "fieldtype": "Float",
-   "label": "Net Qty Required",
-   "read_only": 1,
+   "label": "Qty Required",
    "in_list_view": 1,
-   "columns": 2
+   "columns": 2,
+   "description": "From the take-off; edit as needed"
   },
   {
    "fieldname": "already_ordered_qty",

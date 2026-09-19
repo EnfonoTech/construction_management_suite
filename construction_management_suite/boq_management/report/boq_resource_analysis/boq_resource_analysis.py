@@ -4,7 +4,7 @@ A BOQ says "180 m³ of concrete at 62.500". This report says what that is made
 of and, more usefully, how much of each thing the whole bill needs — the
 material take-off. The column that does that work is `total_qty`:
 
-    total_qty = boq_qty x qty_per_unit x (1 + waste_factor/100)
+    total_qty = boq_qty x qty_per_unit
 
 Rates are read from the frozen `rate_build_up` on the BOQ line wherever one
 exists, so the report shows what the line was actually priced at rather than
@@ -82,7 +82,6 @@ def get_columns(filters):
 		{"label": _("Resource"), "fieldname": "resource_description", "fieldtype": "Data", "width": 200},
 		{"label": _("Res. UOM"), "fieldname": "resource_uom", "fieldtype": "Link", "options": "UOM", "width": 80},
 		{"label": _("Qty / Unit"), "fieldname": "qty_per_unit", "fieldtype": "Float", "precision": 4, "width": 90},
-		{"label": _("Waste %"), "fieldname": "waste_factor", "fieldtype": "Percent", "width": 80},
 		{"label": _("Total Qty"), "fieldname": "total_qty", "fieldtype": "Float", "precision": 3, "width": 110},
 		{"label": _("Rate"), "fieldname": "resource_rate", "fieldtype": "Currency", "options": "currency", "width": 100},
 		{"label": _("Amount"), "fieldname": "resource_amount", "fieldtype": "Currency", "options": "currency", "width": 120},
@@ -192,7 +191,6 @@ def get_resources_for_line(line):
 			"uom": r.uom,
 			"qty": flt(r.qty),
 			"rate": flt(r.rate),
-			"waste_factor": flt(r.waste_factor),
 			"_source": LIVE,
 			"_output_qty": output_qty,
 		}
@@ -214,8 +212,7 @@ def build_row(line, res):
 	# so bring them back to one unit before scaling by the BOQ quantity.
 	output_qty = flt(res.get("_output_qty")) or 1
 	qty_per_unit = flt(res.get("qty")) / output_qty
-	waste = flt(res.get("waste_factor"))
-	total_qty = flt(line.get("boq_qty")) * qty_per_unit * (1 + waste / 100)
+	total_qty = flt(line.get("boq_qty")) * qty_per_unit
 
 	row.update(
 		{
@@ -225,7 +222,6 @@ def build_row(line, res):
 			"resource_description": res.get("description"),
 			"resource_uom": res.get("uom"),
 			"qty_per_unit": qty_per_unit,
-			"waste_factor": waste,
 			"total_qty": total_qty,
 			"resource_rate": flt(res.get("rate")),
 			"resource_amount": total_qty * flt(res.get("rate")),

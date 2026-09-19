@@ -157,9 +157,9 @@ def get_consumption_position(project):
 
     detail = {d["item_code"]: d for d in take_off_detail(project)}
     used = consumed_by_item(project)
-    allowed_qty = sum(flt(d["boq_qty"]) * (1 + flt(d["waste_factor"]) / 100) for d in detail.values())
+    allowed_qty = sum(flt(d["boq_qty"]) for d in detail.values())
     allowed_value = sum(
-        flt(d["boq_qty"]) * (1 + flt(d["waste_factor"]) / 100) * flt(d["estimated_rate"])
+        flt(d["boq_qty"]) * flt(d["estimated_rate"])
         for d in detail.values()
     )
     used_value = sum(
@@ -1019,8 +1019,7 @@ def snapshot_rate_analysis(ra):
                     "uom": r.uom,
                     "qty": flt(r.qty),
                     "rate": flt(r.rate),
-                    "waste_factor": flt(r.waste_factor),
-                    "net_amount": flt(r.net_amount),
+                    "amount": flt(r.amount),
                 }
                 for r in ra.resources
             ],

@@ -20,7 +20,7 @@ LOCKED_FIELDS = ("item_code", "uom", "company", "currency", "output_qty")
 # fetch_if_empty, so Frappe re-fetches them on every save. Renaming an Item
 # would otherwise make an analysis permanently unsaveable, with no way out
 # through the UI.
-RESOURCE_COSTED_FIELDS = ("resource_type", "resource_item", "qty", "rate", "waste_factor")
+RESOURCE_COSTED_FIELDS = ("resource_type", "resource_item", "qty", "rate")
 
 LEFT_DRAFT = ("Approved", "Obsolete")
 
@@ -53,15 +53,15 @@ class RateAnalysis(Document):
 
 	def calculate_resources(self):
 		for res in self.resources:
+			# Waste belongs in the quantity, put there by whoever measured it.
 			res.amount = flt(res.qty) * flt(res.rate)
-			res.net_amount = flt(res.amount) * (1 + flt(res.waste_factor) / 100)
 
 	def calculate_totals(self):
 		totals = {"Material": 0, "Labour": 0, "Equipment": 0, "Subcontract": 0, "Overhead": 0}
 		for res in self.resources:
 			rt = res.resource_type
 			if rt in totals:
-				totals[rt] += flt(res.net_amount)
+				totals[rt] += flt(res.amount)
 
 		self.total_material_cost = totals["Material"]
 		self.total_labour_cost = totals["Labour"]

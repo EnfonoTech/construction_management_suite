@@ -40,7 +40,7 @@ frappe.ui.form.on("Rate Analysis", {
     resources_remove(frm) { CMS.recalc(frm); },
 });
 
-CMS.liveRows("Rate Analysis Resource", ["resource_type", "qty", "rate", "waste_factor"]);
+CMS.liveRows("Rate Analysis Resource", ["resource_type", "qty", "rate"]);
 
 frappe.ui.form.on("Rate Analysis Resource", {
     resource_item(frm, cdt, cdn) {

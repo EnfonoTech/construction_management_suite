@@ -6,7 +6,7 @@ not be answered anywhere: the take-off is per BOQ line, the forecast is per
 forecast, purchases are per order and consumption is per issue. This adds them
 up per item and puts the estimated rate next to what was actually paid.
 
-    required    what the priced bills explode into, waste included
+    required    what the priced lines explode into
     forecast    what has been planned for ordering
     requested   on submitted material requests
     ordered     on submitted purchase orders
@@ -45,7 +45,7 @@ def build_rows(filters):
 	sold = {}
 	if take_off_source(project) != "BOQ":
 		sold = {
-			d["item_code"]: flt(d["boq_qty"]) * (1 + flt(d["waste_factor"]) / 100)
+			d["item_code"]: flt(d["boq_qty"])
 			for d in take_off_detail(project, boq=filters.get("boq"), source="BOQ")
 		}
 	forecast = _sum("""
@@ -80,7 +80,7 @@ def build_rows(filters):
 		if group_filter and item_group != group_filter:
 			continue
 
-		required = flt(detail.get("boq_qty")) * (1 + flt(detail.get("waste_factor")) / 100)
+		required = flt(detail.get("boq_qty"))
 		est_rate = flt(detail.get("estimated_rate"))
 		used = flt(consumed.get(code))
 		# What was actually paid, from receipts where there are any, else orders.

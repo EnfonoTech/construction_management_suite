@@ -61,7 +61,7 @@ frappe.ui.form.on("Material Forecast", {
 
 });
 
-CMS.liveRows("Material Forecast Item", ["boq_qty", "waste_factor", "already_ordered_qty", "estimated_rate"]);
+CMS.liveRows("Material Forecast Item", ["net_qty_required", "already_ordered_qty", "estimated_rate"]);
 
 frappe.ui.form.on("Material Forecast Item", {
     item_code(frm, cdt, cdn) {
