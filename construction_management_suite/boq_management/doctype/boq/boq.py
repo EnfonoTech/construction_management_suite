@@ -52,8 +52,26 @@ class BOQ(Document):
     def on_cancel(self):
         self._update_project_boq_link()
 
+    # Recomputed after submission; nothing here is editable from the desk, so
+    # these only move when a certificate or an API call writes to the bill.
+    TOTAL_FIELDS = (
+        "total_material_amount", "total_labour_amount", "total_equipment_amount",
+        "total_subcontract_amount", "total_overhead_amount", "total_amount",
+        "total_cost_amount", "effective_margin_percent", "grand_total",
+    )
+
     def on_update_after_submit(self):
+        """Keep the bill's totals true to its lines after submission.
+
+        This ran already and threw its answer away: `db_update()` happens before
+        post-save methods, so recomputing into memory here changed nothing in
+        the table. Anything derived has to be written explicitly.
+        """
         self.calculate_totals()
+        stored = frappe.db.get_value("BOQ", self.name, self.TOTAL_FIELDS, as_dict=True) or {}
+        for field in self.TOTAL_FIELDS:
+            if flt(stored.get(field)) != flt(self.get(field)):
+                self.db_set(field, self.get(field), update_modified=False)
 
     def before_save(self):
         if not self.prepared_by:
