@@ -306,21 +306,6 @@
    "permlevel": 1,
    "read": 1,
    "write": 1
-  },
-  {
-   "role": "Construction Project Manager",
-   "permlevel": 1,
-   "read": 1
-  },
-  {
-   "role": "Construction Quantity Surveyor",
-   "permlevel": 1,
-   "read": 1
-  },
-  {
-   "role": "Construction Viewer",
-   "permlevel": 1,
-   "read": 1
   }
  ],
  "title_field": "estimation_title",

@@ -75,8 +75,9 @@ class CostEstimation(Document):
         if not changed:
             return
         frappe.throw(
-            _("Tick <b>Allow Pricing After Approval</b> on this estimate to set a "
-              "Rate Analysis on row {0}.").format(", ".join(str(i.idx) for i in changed[:5])),
+            _("An administrator has to allow pricing on this approved estimate "
+              "before a Rate Analysis can be set on row {0}.")
+            .format(", ".join(str(i.idx) for i in changed[:5])),
             title=_("Approved estimate"),
         )
 
