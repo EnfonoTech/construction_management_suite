@@ -110,8 +110,9 @@
    "default": "0",
    "allow_on_submit": 1,
    "no_copy": 1,
-   "description": "Only an administrator can open an approved estimate",
-   "permlevel": 1
+   "description": "Administrator only",
+   "permlevel": 1,
+   "depends_on": "eval:doc.docstatus==1"
   },
   {
    "fieldname": "section_items",
