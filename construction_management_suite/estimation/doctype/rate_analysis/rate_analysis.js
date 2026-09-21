@@ -22,6 +22,7 @@ frappe.ui.form.on("Rate Analysis", {
         if (!frm.is_new() && frm.doc.status === "Approved") {
             frm.add_custom_button(__("Apply to BOQ Items"), () => apply_to_boq(frm), __("Actions"));
         }
+        flag_unlinked_materials(frm);
     },
 
     rate_basis(frm) {
@@ -52,6 +53,27 @@ frappe.ui.form.on("Rate Analysis Resource", {
         });
     },
 });
+
+/**
+ * A material row with no Item never reaches the take-off.
+ *
+ * Everything downstream — the forecast, Material Position, the consumption
+ * check — explodes a priced line through `resource_item`. A row that names
+ * only a description costs money correctly and plans nothing, and the first
+ * sign of it is a report that comes back empty three documents later. Said
+ * here, where it can be fixed.
+ *
+ * Labour, equipment, overhead and subcontract are not stock and are not
+ * counted.
+ */
+function flag_unlinked_materials(frm) {
+    const unlinked = (frm.doc.resources || [])
+        .filter(r => r.resource_type === "Material" && !r.resource_item).length;
+    if (!unlinked) return;
+    frm.dashboard.add_indicator(
+        __("{0} material row(s) with no Item — not in the take-off", [unlinked]), "orange"
+    );
+}
 
 /** Read-only the costed content. The Used In tab names what relies on it. */
 function apply_lock(frm, lock) {
