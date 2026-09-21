@@ -21,6 +21,20 @@ frappe.ui.form.on("Material Consumption Entry", {
                 });
             });
         }
+
+        if (frm.doc.docstatus === 0 && frm.doc.daily_site_report_ref) {
+            frm.add_custom_button(__("Get from Site Report"), () => {
+                frm.call("get_items_from_site_report").then(r => {
+                    frm.refresh_field("items");
+                    CMS.recalc(frm);
+                    frappe.show_alert(r.message
+                        ? { message: __("{0} material(s) brought across from the site report",
+                                        [r.message]), indicator: "green" }
+                        : { message: __("That site report records no material, or it is already here"),
+                            indicator: "orange" });
+                });
+            });
+        }
     },
     project(frm) { CMS.fillFromProject(frm, { company: "company" }); },
     company(frm) {

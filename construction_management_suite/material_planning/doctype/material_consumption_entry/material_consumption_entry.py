@@ -73,6 +73,49 @@ class MaterialConsumptionEntry(Document):
             added += 1
         return added
 
+    @frappe.whitelist()
+    def get_items_from_site_report(self):
+        """Bring across what the day's site report says was used.
+
+        The report already records the item, the quantity, the batch and the
+        store. Retyping it into the issue is how the two disagree, and the
+        reference between them existed with nothing reading it.
+
+        A row is attributed to a bill line only where the material serves
+        exactly one — cement under three lines cannot be split by a site diary
+        that never named one.
+        """
+        if not self.daily_site_report_ref:
+            frappe.throw(_("Choose the site report this issue comes from"))
+
+        lines = take_off_by_line(self.project) if self.project else {}
+        single = {}
+        for (code, ref), entry in lines.items():
+            single[code] = None if code in single else (ref, entry["boq_item_no"])
+
+        on_form = {i.item_code for i in self.items if i.item_code}
+        added = 0
+        for row in frappe.get_all(
+            "Site Report Material",
+            filters={"parent": self.daily_site_report_ref},
+            fields=["item_code", "uom", "qty_used", "batch_no"],
+            order_by="idx asc",
+        ):
+            if not row.item_code or row.item_code in on_form or flt(row.qty_used) <= 0:
+                continue
+            attribution = single.get(row.item_code)
+            self.append("items", {
+                "item_code": row.item_code,
+                "uom": row.uom or frappe.db.get_value("Item", row.item_code, "stock_uom"),
+                "qty": flt(row.qty_used),
+                "batch_no": row.batch_no,
+                "valuation_rate": flt(frappe.db.get_value("Item", row.item_code, "valuation_rate")),
+                "boq_item_ref": attribution[0] if attribution else None,
+                "boq_item_no": attribution[1] if attribution else None,
+            })
+            added += 1
+        return added
+
     def check_against_take_off(self):
         """Flag consuming more of a material than the bill was priced to need.
 

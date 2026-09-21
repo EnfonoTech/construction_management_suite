@@ -58,10 +58,11 @@
   {
    "fieldname": "already_ordered_qty",
    "fieldtype": "Float",
-   "label": "Already Ordered",
+   "label": "Already Covered",
    "read_only": 1,
    "in_list_view": 1,
-   "columns": 1
+   "columns": 1,
+   "description": "On open requests and orders"
   },
   {
    "fieldname": "qty_to_order",

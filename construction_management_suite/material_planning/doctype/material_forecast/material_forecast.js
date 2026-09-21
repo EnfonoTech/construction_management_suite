@@ -36,7 +36,9 @@ frappe.ui.form.on("Material Forecast", {
         }
 
         // This endpoint existed with no way to reach it from the desk.
-        if (frm.doc.docstatus === 1) {
+        // Hidden once one exists: raising a second asks for the same material
+        // twice, and the server refuses it anyway.
+        if (frm.doc.docstatus === 1 && !frm.doc.material_request_ref) {
             frm.add_custom_button(__("Material Request"), () => {
                 frappe.call({
                     method: "construction_management_suite.api.boq.create_material_request_from_forecast",

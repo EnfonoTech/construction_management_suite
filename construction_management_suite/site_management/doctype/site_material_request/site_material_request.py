@@ -67,12 +67,28 @@ class SiteMaterialRequest(Document):
 
         mr.cms_site_request_ref = self.name
         mr.insert(ignore_permissions=True)
+        # Submitted, unlike the invoices and orders this app raises: those are
+        # accounting events a human signs off, a request is not. Left as a draft
+        # it sat in nobody's queue and counted in no report.
+        mr.submit()
         self.db_set("material_request_ref", mr.name)
-        frappe.msgprint(_("Material Request {0} created").format(mr.name))
+        frappe.msgprint(_("Material Request {0} submitted").format(mr.name))
 
     def _cancel_material_request(self):
+        """Take the request with it — cancelled if live, deleted if still a draft.
+
+        A draft was left behind and still linked, so the site request looked
+        cancelled while a request for the same material sat in the buyer's list.
+        """
         if not self.material_request_ref:
+            return
+        if not frappe.db.exists("Material Request", self.material_request_ref):
             return
         mr = frappe.get_doc("Material Request", self.material_request_ref)
         if mr.docstatus == 1:
             mr.cancel()
+            frappe.msgprint(_("Material Request {0} cancelled").format(mr.name))
+        elif mr.docstatus == 0:
+            mr.delete(ignore_permissions=True)
+            self.db_set("material_request_ref", None)
+            frappe.msgprint(_("Draft Material Request {0} deleted").format(mr.name))

@@ -87,7 +87,7 @@ class MaterialForecast(Document):
             item.uom_must_be_whole = 1 if (
                 item.uom and frappe.db.get_value("UOM", item.uom, "must_be_whole_number")
             ) else 0
-            item.already_ordered_qty = self._ordered_qty(item.item_code)
+            item.already_ordered_qty = self._covered_qty(item.item_code)
             # net_qty_required is left as it stands: the take-off proposes it and
             # the planner may have changed it.
             # What you can actually place on an order — a whole-number UOM will
@@ -98,21 +98,56 @@ class MaterialForecast(Document):
             item.estimated_value = flt(item.qty_to_order) * flt(item.estimated_rate)
         self.total_forecast_qty_value = sum(flt(i.estimated_value) for i in self.items)
 
-    def _ordered_qty(self, item_code):
-        """Quantity already on open Purchase Orders for this item on this project."""
+    def _covered_qty(self, item_code):
+        """What is already on its way for this item on this project.
+
+        Open Material Request quantity plus submitted Purchase Order quantity.
+        A request's own ordered_qty comes off, or a request and the order it
+        became are counted twice and the forecast asks for nothing.
+
+        Counting requests as well as orders is what stops the same forecast
+        being raised twice: netting on orders alone left qty_to_order untouched
+        until a buyer got round to the purchase order.
+
+        Scoped by required-by date when the forecast states a period — a
+        forecast for October should not net off what September needs — and to
+        the whole project when it does not. The date is the one on the line,
+        not the document: material is ordered ahead of when it is wanted.
+        """
         if not (item_code and self.project):
             return 0.0
-        ordered = frappe.db.sql(
-            """
-            SELECT SUM(poi.qty) AS total
-            FROM `tabPurchase Order Item` poi
-            JOIN `tabPurchase Order` po ON po.name = poi.parent
-            WHERE poi.item_code = %s
-              AND po.project = %s
-              AND po.docstatus = 1
-              AND po.status NOT IN ('Completed', 'Cancelled')
+
+        window = "" if not (self.from_date and self.to_date) else \
+            " AND i.schedule_date BETWEEN %(from_date)s AND %(to_date)s"
+        params = {
+            "item_code": item_code, "project": self.project,
+            "from_date": self.from_date, "to_date": self.to_date,
+        }
+
+        requested = frappe.db.sql(
+            f"""
+            SELECT SUM(GREATEST(i.qty - IFNULL(i.ordered_qty, 0), 0)) AS total
+            FROM `tabMaterial Request Item` i
+            JOIN `tabMaterial Request` m ON m.name = i.parent
+            WHERE i.item_code = %(item_code)s
+              AND i.project = %(project)s
+              AND m.docstatus = 1
+              AND m.status NOT IN ('Stopped', 'Cancelled')
+              {window}
             """,
-            (item_code, self.project),
-            as_dict=True,
+            params,
         )
-        return flt((ordered[0] or {}).get("total", 0))
+        ordered = frappe.db.sql(
+            f"""
+            SELECT SUM(i.qty) AS total
+            FROM `tabPurchase Order Item` i
+            JOIN `tabPurchase Order` o ON o.name = i.parent
+            WHERE i.item_code = %(item_code)s
+              AND i.project = %(project)s
+              AND o.docstatus = 1
+              AND o.status NOT IN ('Completed', 'Cancelled')
+              {window}
+            """,
+            params,
+        )
+        return flt(requested[0][0]) + flt(ordered[0][0])

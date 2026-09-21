@@ -117,6 +117,16 @@ def create_material_request_from_forecast(forecast_name):
     forecast = frappe.get_doc("Material Forecast", forecast_name)
     if forecast.docstatus != 1:
         frappe.throw(_("Material Forecast must be submitted first"))
+    if forecast.material_request_ref and frappe.db.exists(
+        "Material Request", forecast.material_request_ref
+    ):
+        # Nothing stopped a second one, and the coverage figure only counted
+        # purchase orders, so the same quantity was offered again.
+        frappe.throw(
+            _("This forecast already raised {0}. Cancel it before raising another.")
+            .format(frappe.utils.get_link_to_form("Material Request", forecast.material_request_ref)),
+            title=_("Already requested"),
+        )
 
     mr = frappe.new_doc("Material Request")
     mr.material_request_type = "Purchase"
@@ -141,9 +151,10 @@ def create_material_request_from_forecast(forecast_name):
 
     mr.cms_forecast_ref = forecast.name
     mr.insert(ignore_permissions=True)
+    mr.submit()
     frappe.db.set_value("Material Forecast", forecast.name, "material_request_ref", mr.name,
                         update_modified=False)
-    frappe.msgprint(_("Material Request {0} created").format(mr.name))
+    frappe.msgprint(_("Material Request {0} submitted").format(mr.name))
     return mr.name
 
 
