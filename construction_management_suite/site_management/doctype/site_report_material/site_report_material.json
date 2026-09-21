@@ -9,7 +9,6 @@
   "uom",
   "column_break_1",
   "qty_used",
-  "qty_wasted",
   "warehouse",
   "batch_no"
  ],
@@ -50,13 +49,6 @@
    "fieldtype": "Float",
    "label": "Qty Used",
    "reqd": 1,
-   "in_list_view": 1,
-   "columns": 1
-  },
-  {
-   "fieldname": "qty_wasted",
-   "fieldtype": "Float",
-   "label": "Qty Wasted / Lost",
    "in_list_view": 1,
    "columns": 1
   },

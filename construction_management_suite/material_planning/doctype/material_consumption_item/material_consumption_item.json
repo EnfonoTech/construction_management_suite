@@ -10,7 +10,6 @@
   "uom",
   "column_break_1",
   "qty",
-  "qty_wasted",
   "valuation_rate",
   "amount",
   "batch_no",
@@ -64,11 +63,6 @@
    "reqd": 1,
    "in_list_view": 1,
    "columns": 1
-  },
-  {
-   "fieldname": "qty_wasted",
-   "fieldtype": "Float",
-   "label": "Qty Wasted"
   },
   {
    "fieldname": "valuation_rate",

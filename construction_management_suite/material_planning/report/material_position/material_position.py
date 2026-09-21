@@ -64,13 +64,29 @@ def build_rows(filters):
 		SELECT i.item_code AS code, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Receipt Item` i JOIN `tabPurchase Receipt` r ON r.name = i.parent
 		WHERE i.project = %(p)s AND r.docstatus = 1 GROUP BY i.item_code""", project)
+	# Material also arrives by transfer, and the Received column read purchase
+	# receipts alone — so a store moved onto site showed as never delivered.
+	# Older entries carry the project on the header only, newer ones on the row.
+	transferred, transferred_value = _sum_value("""
+		SELECT i.item_code AS code, SUM(i.qty) AS qty, SUM(i.amount) AS value
+		FROM `tabStock Entry Detail` i
+		JOIN `tabStock Entry` e ON e.name = i.parent
+		LEFT JOIN `tabSite Transfer` t ON t.name = e.cms_site_ref
+		WHERE e.docstatus = 1
+		  AND e.purpose = 'Material Transfer'
+		  AND IFNULL(i.t_warehouse, '') != ''
+		  AND (i.project = %(p)s OR (IFNULL(i.project, '') = '' AND e.project = %(p)s))
+		  AND IFNULL(t.from_project, '') != %(p)s
+		GROUP BY i.item_code""", project)
+
 	consumed, consumed_value = _sum_value("""
 		SELECT i.item_code AS code, SUM(i.qty) AS qty, SUM(i.amount) AS value
 		FROM `tabMaterial Consumption Item` i
 		JOIN `tabMaterial Consumption Entry` e ON e.name = i.parent
 		WHERE e.project = %(p)s AND e.docstatus = 1 GROUP BY i.item_code""", project)
 
-	codes = set(take_off) | set(forecast) | set(requested) | set(ordered) | set(received) | set(consumed)
+	codes = (set(take_off) | set(forecast) | set(requested) | set(ordered)
+	         | set(received) | set(transferred) | set(consumed))
 	group_filter = filters.get("item_group")
 
 	rows = []
@@ -83,7 +99,10 @@ def build_rows(filters):
 		required = flt(detail.get("boq_qty"))
 		est_rate = flt(detail.get("estimated_rate"))
 		used = flt(consumed.get(code))
+		# Delivered is what was bought in plus what was moved in.
+		arrived = flt(received.get(code)) + flt(transferred.get(code))
 		# What was actually paid, from receipts where there are any, else orders.
+		# A transfer moves stock at valuation and buys nothing, so it is not a rate.
 		actual_qty = flt(received.get(code)) or flt(ordered.get(code))
 		actual_value = flt(received_value.get(code)) or flt(ordered_value.get(code))
 		actual_rate = (actual_value / actual_qty) if actual_qty else 0
@@ -98,7 +117,8 @@ def build_rows(filters):
 			"forecast": flt(forecast.get(code)),
 			"requested": flt(requested.get(code)),
 			"ordered": flt(ordered.get(code)),
-			"received": flt(received.get(code)),
+			"received": arrived,
+			"transferred_in": flt(transferred.get(code)),
 			"consumed": used,
 			"balance": required - used,
 			"est_rate": est_rate,
@@ -142,6 +162,7 @@ def get_columns():
 		col("Requested", "requested", precision=2),
 		col("Ordered", "ordered", precision=2),
 		col("Received", "received", precision=2),
+		col("Of Which Moved In", "transferred_in", precision=2, width=130),
 		col("Consumed", "consumed", precision=2, width=110),
 		col("Balance", "balance", precision=2, width=110),
 		col("Est. Rate", "est_rate", "Currency"),
