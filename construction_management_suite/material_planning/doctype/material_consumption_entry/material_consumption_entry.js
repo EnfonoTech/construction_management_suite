@@ -8,20 +8,6 @@ frappe.ui.form.on("Material Consumption Entry", {
         CMS.linkButton(frm, __("Stock Entry"), "Stock Entry", frm.doc.stock_entry_ref);
         show_against_takeoff(frm);
 
-        if (frm.doc.docstatus === 0 && frm.doc.project) {
-            frm.add_custom_button(__("Get Planned Materials"), () => {
-                frm.call("get_items_from_forecast").then(r => {
-                    frm.refresh_field("items");
-                    CMS.recalc(frm);
-                    frappe.show_alert(r.message
-                        ? { message: __("{0} material(s) added — enter the quantities issued",
-                                        [r.message]), indicator: "green" }
-                        : { message: __("Nothing outstanding against the take-off for this project"),
-                            indicator: "orange" });
-                });
-            });
-        }
-
         if (frm.doc.docstatus === 0 && frm.doc.daily_site_report_ref) {
             frm.add_custom_button(__("Get from Site Report"), () => {
                 frm.call("get_items_from_site_report").then(r => {

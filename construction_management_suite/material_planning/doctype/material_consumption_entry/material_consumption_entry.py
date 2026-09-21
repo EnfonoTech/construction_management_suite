@@ -21,59 +21,6 @@ class MaterialConsumptionEntry(Document):
         self.check_against_take_off()
 
     @frappe.whitelist()
-    def get_items_from_forecast(self):
-        """Bring in what this project is expected to consume, not yet used.
-
-        One row per bill line rather than per material: the same cement is
-        under the concrete, the mortar and the plaster, and an issue that only
-        names the item can never say which of them burnt it. The line comes
-        across on the row, so the take-off can be read back afterwards.
-
-        Typing an issue from memory is how a site records cement against the
-        wrong job, or a quantity nobody planned for.
-        """
-        if not self.project:
-            frappe.throw(_("Choose the project this issue is for"))
-
-        lines = take_off_by_line(self.project)
-        attributed, loose = consumed_by_line(self.project, exclude=self.name)
-
-        on_form = {(i.item_code, i.boq_item_ref) for i in self.items if i.item_code}
-        # A row that names the item but no line covers that item on its own —
-        # splitting it now would double the quantity offered.
-        unsplit = {i.item_code for i in self.items if i.item_code and not i.boq_item_ref}
-
-        added = 0
-        for entry in sorted(
-            lines.values(),
-            key=lambda e: (e["item_code"], bill_order(e["boq_item_no"]), e["boq_item_ref"]),
-        ):
-            code, ref = entry["item_code"], entry["boq_item_ref"]
-            outstanding = flt(entry["qty"]) - flt(attributed.get((code, ref)))
-
-            # Issues made before the line was recorded belong to this job but to
-            # no line in particular. Draw them down in bill order, so the total
-            # offered still matches what the material has left overall.
-            if outstanding > 0 and flt(loose.get(code)):
-                absorbed = min(outstanding, flt(loose[code]))
-                outstanding -= absorbed
-                loose[code] -= absorbed
-
-            if outstanding <= 0.0001 or code in unsplit or (code, ref) in on_form:
-                continue
-
-            self.append("items", {
-                "item_code": code,
-                "uom": entry["uom"],
-                "qty": 0,
-                "valuation_rate": flt(frappe.db.get_value("Item", code, "valuation_rate")),
-                "boq_item_ref": ref,
-                "boq_item_no": entry["boq_item_no"],
-            })
-            added += 1
-        return added
-
-    @frappe.whitelist()
     def get_items_from_site_report(self):
         """Bring across what the day's site report says was used.
 
@@ -375,36 +322,3 @@ def consumed_by_item(project, exclude=None):
     return {r.item_code: flt(r.qty) for r in rows}
 
 
-def consumed_by_line(project, exclude=None):
-    """Issued quantity split into what names a bill line and what does not.
-
-    Entries made before the picker carried the reference, and anything typed by
-    hand, have no line against them. They are still consumption and still have
-    to be netted off, so they come back separately rather than being dropped.
-    """
-    rows = frappe.db.sql(
-        """
-        SELECT i.item_code, i.boq_item_ref, SUM(i.qty) AS qty
-        FROM `tabMaterial Consumption Item` i
-        JOIN `tabMaterial Consumption Entry` e ON e.name = i.parent
-        WHERE e.project = %(project)s AND e.docstatus = 1 AND e.name != %(exclude)s
-        GROUP BY i.item_code, i.boq_item_ref
-        """,
-        {"project": project, "exclude": exclude or ""},
-        as_dict=True,
-    )
-    attributed, loose = {}, {}
-    for r in rows:
-        if r.boq_item_ref:
-            attributed[(r.item_code, r.boq_item_ref)] = flt(r.qty)
-        else:
-            loose[r.item_code] = loose.get(r.item_code, 0) + flt(r.qty)
-    return attributed, loose
-
-
-def bill_order(item_no):
-    """Sort 1.9 before 1.10 — a bill numbers its items, it does not name them."""
-    parts = []
-    for chunk in (item_no or "").split("."):
-        parts.append((0, int(chunk)) if chunk.isdigit() else (1, chunk))
-    return parts
