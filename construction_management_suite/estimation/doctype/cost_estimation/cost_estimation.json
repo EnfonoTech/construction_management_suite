@@ -110,7 +110,8 @@
    "default": "0",
    "allow_on_submit": 1,
    "no_copy": 1,
-   "description": "Lets a Rate Analysis be set on an approved line"
+   "description": "Only an administrator can open an approved estimate",
+   "permlevel": 1
   },
   {
    "fieldname": "section_items",
@@ -298,6 +299,27 @@
    "role": "Construction Viewer",
    "read": 1,
    "print": 1
+  },
+  {
+   "role": "Construction Admin",
+   "permlevel": 1,
+   "read": 1,
+   "write": 1
+  },
+  {
+   "role": "Construction Project Manager",
+   "permlevel": 1,
+   "read": 1
+  },
+  {
+   "role": "Construction Quantity Surveyor",
+   "permlevel": 1,
+   "read": 1
+  },
+  {
+   "role": "Construction Viewer",
+   "permlevel": 1,
+   "read": 1
   }
  ],
  "title_field": "estimation_title",
