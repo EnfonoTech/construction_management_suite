@@ -28,6 +28,12 @@ frappe.ui.form.on("Material Forecast", {
             });
         }
         if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__("Refresh Coverage"), () => {
+                frm.call("refresh_coverage").then(() => frm.reload_doc());
+            });
+        }
+
+        if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__("Site Material Request"), () => {
                 frappe.new_doc("Site Material Request", {
                     project: frm.doc.project, company: frm.doc.company,

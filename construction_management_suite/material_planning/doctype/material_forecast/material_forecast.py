@@ -12,6 +12,11 @@ from construction_management_suite.utils.titles import (
 
 
 class MaterialForecast(Document):
+    def before_submit(self):
+        # before, not on_submit: on_submit runs after the row is written.
+        # A submitted forecast read "Draft" because nothing set this.
+        self.status = "Approved"
+
     def before_cancel(self):
         # before, not on_cancel: on_cancel runs after the row is written.
         self.status = "Cancelled"
@@ -97,6 +102,44 @@ class MaterialForecast(Document):
             )
             item.estimated_value = flt(item.qty_to_order) * flt(item.estimated_rate)
         self.total_forecast_qty_value = sum(flt(i.estimated_value) for i in self.items)
+        self.set_procurement_status()
+
+    def set_procurement_status(self):
+        """Say how much of the plan has actually been asked for.
+
+        Partially Procured and Fully Procured were options nothing ever set, so
+        a list of forecasts could not tell a plan that had been acted on from
+        one nobody had touched.
+        """
+        if self.docstatus != 1 or self.status == "Cancelled":
+            return
+        outstanding = sum(flt(i.qty_to_order) for i in self.items)
+        covered = sum(flt(i.already_ordered_qty) for i in self.items)
+        if self.items and outstanding <= 0.0001:
+            self.status = "Fully Procured"
+        elif covered > 0.0001:
+            self.status = "Partially Procured"
+        else:
+            self.status = "Approved"
+
+    @frappe.whitelist()
+    def refresh_coverage(self):
+        """Recompute coverage on a forecast already submitted.
+
+        recalculate() runs in validate(), which Frappe skips on a submitted
+        document, so the figures on screen were whatever they were at
+        submission until the nightly job caught up. Written straight through,
+        the way Project Budget refreshes its actuals.
+        """
+        self.recalculate()
+        if self.docstatus == 1:
+            self.db_update()
+            for item in self.items:
+                item.db_update()
+        else:
+            self.save()
+        frappe.msgprint(_("Coverage refreshed"), alert=True)
+        return self.status
 
     def _covered_qty(self, item_code):
         """What is already on its way for this item on this project.
