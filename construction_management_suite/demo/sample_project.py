@@ -95,8 +95,9 @@ def build():
     made["sub_certificate"] = _sub_certificate(project, sub, agreement)
     made["ipcs"] = _certificates(project, client, boq)
     made["variation"] = _variation(project, client, boq)
-    made["forecast"] = _forecast(project, boq)
+    made["forecast"] = forecast = _forecast(project, boq)
     made["stock"] = _seed_stock(warehouse)
+    made.update(_procurement(project, forecast, warehouse, sub))
     made["consumption"] = _consumption(project, warehouse)
     made["site_reports"] = _site_reports(project)
 
@@ -329,12 +330,57 @@ def _sub_certificate(project, sub, agreement):
 
 
 def _forecast(project, boq):
+    """Planned from the take-off, a row per material per line of work."""
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        work_lines,
+    )
+
     doc = frappe.get_doc({
         "doctype": "Material Forecast", "project": project, "company": COMPANY,
-        "currency": CURRENCY, "from_project": project, "boq_ref": boq,
+        "currency": CURRENCY, "boq_ref": boq, "forecast_date": "2026-06-10",
+        "from_date": "2026-06-01", "to_date": "2026-12-31",
     })
     doc.insert()
+    doc.get_items_from_boq()
+    for row in doc.items:
+        row.warehouse = _warehouse()
+    doc.save()
+    doc.submit()
     return doc.name
+
+
+def _procurement(project, forecast, warehouse, supplier):
+    """Request, order, receive — the work reference riding along untouched."""
+    from construction_management_suite.api.boq import create_material_request_from_forecast
+    from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt
+    from erpnext.stock.doctype.material_request.material_request import make_purchase_order
+
+    request = create_material_request_from_forecast(forecast)
+    if not request:
+        return {}
+
+    order = make_purchase_order(request)
+    order.supplier = supplier
+    order.schedule_date = "2026-06-25"
+    for row in order.items:
+        row.warehouse = warehouse
+    order.insert()
+    order.submit()
+
+    # Part delivered, so the report has something still outstanding. Rounded
+    # down on a whole-number UOM — nobody delivers 2,822.4 blocks.
+    receipt = make_purchase_receipt(order.name)
+    receipt.posting_date = "2026-06-27"
+    receipt.set_posting_time = 1
+    for row in receipt.items:
+        part = flt(row.qty) * 0.6
+        if frappe.db.get_value("UOM", row.uom, "must_be_whole_number"):
+            part = int(part)
+        row.qty = part
+    receipt.insert()
+    receipt.submit()
+    return {"material_request": request, "purchase_order": order.name,
+            "purchase_receipt": receipt.name}
 
 
 def _seed_stock(warehouse):
@@ -357,21 +403,42 @@ def _receipt_qty(code):
 
 
 def _consumption(project, warehouse):
+    """Issued to site, each row naming the work it went into.
+
+    Cement appears against two different works on purpose: it is the case the
+    per-work reporting exists for, and the one a per-item figure cannot answer.
+    """
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        take_off_by_line,
+    )
+
+    works = {}
+    for (code, ref), entry in take_off_by_line(project).items():
+        works.setdefault(code, []).append((ref, entry["boq_item_no"]))
+    for rows in works.values():
+        rows.sort(key=lambda r: str(r[1]))
+
+    def against(code, nth):
+        rows = works.get(code) or []
+        return rows[nth % len(rows)] if rows else (None, None)
+
     made = []
     for date, rows in (
-        ("2026-06-28", [("CMS-CEMENT-OPC", 820), ("CMS-AGG-20", 96), ("CMS-SAND", 52)]),
-        ("2026-07-30", [("CMS-CEMENT-OPC", 1150), ("CMS-AGG-20", 128), ("CMS-BLOCK-200", 6400)]),
-        ("2026-08-29", [("CMS-CEMENT-OPC", 940), ("CMS-BLOCK-200", 5100), ("CMS-SAND", 44)]),
+        ("2026-06-28", [("CMS-CEMENT-OPC", 820, 0), ("CMS-AGG-20", 96, 0), ("CMS-SAND", 52, 0)]),
+        ("2026-07-30", [("CMS-CEMENT-OPC", 1150, 1), ("CMS-AGG-20", 128, 0), ("CMS-BLOCK-200", 6400, 0)]),
+        ("2026-08-29", [("CMS-CEMENT-OPC", 940, 2), ("CMS-BLOCK-200", 5100, 0), ("CMS-SAND", 44, 1)]),
     ):
         doc = frappe.get_doc({
             "doctype": "Material Consumption Entry", "project": project, "company": COMPANY,
             "warehouse": warehouse, "posting_date": date,
         })
-        for code, qty in rows:
+        for code, qty, nth in rows:
+            ref, no = against(code, nth)
             doc.append("items", {
                 "item_code": code, "qty": qty,
                 "uom": frappe.db.get_value("Item", code, "stock_uom"),
                 "valuation_rate": dict((m[0], m[3]) for m in MATERIALS).get(code, 0),
+                "boq_item_ref": ref, "boq_item_no": no,
             })
         doc.insert()
         doc.submit()
@@ -380,6 +447,12 @@ def _consumption(project, warehouse):
 
 
 def _site_reports(project):
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        work_lines,
+    )
+
+    lines = work_lines(project)
+    blockwork = next((l for l in lines if "BLK" in (l.item_code or "")), lines[0] if lines else None)
     made = []
     for i, date in enumerate(("2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17")):
         doc = frappe.get_doc({
@@ -397,11 +470,15 @@ def _site_reports(project):
                                  "idle_hours": 2, "hourly_rate": 14})
         doc.append("equipment", {"equipment_type": "Concrete pump", "hours_worked": 4,
                                  "idle_hours": 1 if i == 2 else 0, "hourly_rate": 22})
-        doc.append("activities", {
-            "activity_description": "200mm blockwork, second floor",
-            "location": "Grid A-F", "planned_qty": 90, "actual_qty": 82 + i * 3,
-            "uom": "Square Meter",
-        })
+        # Against the priced line, so the percentage means something and
+        # accumulates across the four days rather than restarting.
+        if blockwork:
+            doc.append("activities", {
+                "activity_description": "200mm blockwork, second floor",
+                "boq_item_ref": blockwork.ref, "boq_item_no": blockwork.line_no,
+                "location": "Grid A-F", "planned_qty": 90, "actual_qty": 82 + i * 3,
+                "uom": blockwork.uom or "Square Meter",
+            })
         doc.insert()
         doc.submit()
         made.append(doc.name)
