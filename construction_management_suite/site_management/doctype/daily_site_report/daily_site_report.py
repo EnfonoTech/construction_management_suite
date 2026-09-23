@@ -7,6 +7,7 @@ from construction_management_suite.utils.validations import validate_project_com
 
 class DailySiteReport(Document):
     def validate(self):
+        self.set_activity_progress()
         validate_project_company(self)
         self.validate_date()
         self.validate_one_per_day()
@@ -61,6 +62,76 @@ class DailySiteReport(Document):
         """Idle plant still costs — it is on hire whether it turns or not."""
         for row in self.equipment:
             row.cost = (flt(row.hours_worked) + flt(row.idle_hours)) * flt(row.hourly_rate)
+
+    @frappe.whitelist()
+    def get_activities_from_works(self):
+        """List the priced work of this project, for the site to report against.
+
+        The activity table already had a place for the work reference and it was
+        filled on no row, so progress was a sentence in a diary and nothing
+        could be measured against the plan. The list comes from whichever
+        document prices the job, so the site reports against the same lines the
+        materials were planned from.
+        """
+        from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+            work_lines,
+        )
+
+        if not self.project:
+            frappe.throw(_("Choose the project this report is for"))
+        on_form = {a.boq_item_ref for a in self.activities if a.boq_item_ref}
+        added = 0
+        for line in work_lines(self.project):
+            if line.ref in on_form:
+                continue
+            self.append("activities", {
+                "activity_description": (line.description or line.item_code or "")[:140],
+                "boq_item_ref": line.ref,
+                "boq_item_no": line.line_no or line.item_code,
+                "uom": line.uom,
+            })
+            added += 1
+        self.set_activity_progress()
+        return added
+
+    def set_activity_progress(self):
+        """How far each line of work has got, counting every report before this.
+
+        Per row this is cumulative, not today's share: a foreman reporting 40 m2
+        of plaster wants to know the wall is 62% done, not that today was 4%.
+        """
+        if not self.project:
+            return
+        refs = [a.boq_item_ref for a in self.activities if a.boq_item_ref]
+        if not refs:
+            return
+
+        done, total = {}, {}
+        for row in frappe.db.sql(
+            """
+            SELECT a.boq_item_ref AS ref, SUM(a.actual_qty) AS qty
+            FROM `tabSite Report Activity` a
+            JOIN `tabDaily Site Report` d ON d.name = a.parent
+            WHERE d.project = %(p)s AND d.docstatus = 1 AND d.name != %(n)s
+              AND a.boq_item_ref IN %(refs)s
+            GROUP BY a.boq_item_ref
+            """,
+            {"p": self.project, "n": self.name or "", "refs": refs},
+            as_dict=True,
+        ):
+            done[row.ref] = flt(row.qty)
+
+        source = "Cost Estimation Item" if frappe.db.exists(
+            "Cost Estimation", {"project": self.project, "docstatus": 1}) else "BOQ Item"
+        for ref in refs:
+            total[ref] = flt(frappe.db.get_value(source, ref, "qty"))
+
+        for activity in self.activities:
+            ref = activity.boq_item_ref
+            if not ref or not flt(total.get(ref)):
+                continue
+            cumulative = flt(done.get(ref)) + flt(activity.actual_qty)
+            activity.percent_complete = cumulative / flt(total[ref]) * 100
 
     def before_submit(self):
         self.status = "Submitted"

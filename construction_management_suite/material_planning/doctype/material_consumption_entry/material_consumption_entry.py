@@ -186,7 +186,37 @@ _SOURCES = {
 }
 
 
-def _take_off_rows(project, boq=None, source=None):
+# Only what a store issues. Labour, plant, overhead and work let to a trade are
+# real costs and belong in the estimate, but nobody buys them into a warehouse,
+# and offering them as material to order is how a subcontracted package gets
+# bought twice.
+STOCK_TYPES = ("Material",)
+
+
+def work_lines(project):
+    """Every priced line of work on a project, from whichever document prices it.
+
+    The same precedence the take-off uses — the cost estimate where there is
+    one, the bill otherwise — so what the site reports progress against is the
+    same list the materials were planned from.
+    """
+    child, parent = _SOURCES[take_off_source(project)]
+    label = "i.item_no" if child == "BOQ Item" else "i.boq_item_no"
+    return frappe.db.sql(
+        f"""
+        SELECT i.name AS ref, {label} AS line_no, i.item_code, i.description,
+               i.qty, i.uom
+        FROM `tab{child}` i
+        JOIN `tab{parent}` p ON p.name = i.parent
+        WHERE p.project = %s AND p.docstatus = 1
+        ORDER BY i.idx
+        """,
+        project,
+        as_dict=True,
+    )
+
+
+def _take_off_rows(project, boq=None, source=None, types=STOCK_TYPES):
     """Walk a project's priced lines and yield the resources under each.
 
     Frozen `rate_build_up` where a line has one, the live analysis otherwise —
@@ -237,11 +267,16 @@ def _take_off_rows(project, boq=None, source=None):
             output = flt(ra.output_qty) or 1
             resources = [
                 {"resource_item": r.resource_item, "qty": r.qty, "uom": r.uom,
-                 "rate": r.rate}
+                 "rate": r.rate, "resource_type": r.resource_type}
                 for r in ra.resources
             ]
         for res in resources:
             if not res.get("resource_item"):
+                continue
+            # A frozen build-up stores the type under "type"; a live analysis
+            # under "resource_type".
+            rtype = res.get("type") or res.get("resource_type")
+            if types and rtype and rtype not in types:
                 continue
             yield row, res, flt(res.get("qty")) / output
 
@@ -251,14 +286,14 @@ def _label_column(source):
     return "i.item_no AS line_no" if source == "BOQ" else "i.boq_item_no AS line_no"
 
 
-def take_off_detail(project, boq=None, source=None):
+def take_off_detail(project, boq=None, source=None, types=STOCK_TYPES):
     """Every material a project's bills are priced to consume, with its unit and rate.
 
     Quantities carry whatever allowance the measurer built into them; there is
     no separate waste factor to apply on top.
     """
     detail = {}
-    for row, res, per_unit in _take_off_rows(project, boq, source):
+    for row, res, per_unit in _take_off_rows(project, boq, source, types):
         code = res.get("resource_item")
         entry = detail.setdefault(code, {
             "item_code": code,
@@ -283,7 +318,7 @@ def take_off_by_item(project):
     return allowed
 
 
-def take_off_by_line(project):
+def take_off_by_line(project, boq=None):
     """The same allowance, split by the bill line that asks for it.
 
     Cement sits under concrete, under blockwork mortar and under plaster. Summed
@@ -291,7 +326,7 @@ def take_off_by_line(project):
     they can. Sums back to `take_off_by_item` exactly.
     """
     allowed = {}
-    for row, res, per_unit in _take_off_rows(project):
+    for row, res, per_unit in _take_off_rows(project, boq):
         code = res.get("resource_item")
         key = (code, row.line_ref)
         entry = allowed.setdefault(key, {

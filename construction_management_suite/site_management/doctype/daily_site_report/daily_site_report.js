@@ -4,6 +4,19 @@ frappe.ui.form.on("Daily Site Report", {
         CMS.filterProjects(frm);
         if (!frm.doc.report_date) frm.set_value("report_date", frappe.datetime.get_today());
 
+        if (frm.doc.docstatus === 0 && frm.doc.project) {
+            frm.add_custom_button(__("Get Work from the Estimate"), () => {
+                frm.call("get_activities_from_works").then(r => {
+                    frm.refresh_field("activities");
+                    frappe.show_alert(r.message
+                        ? { message: __("{0} line(s) of work added — enter what was done",
+                                        [r.message]), indicator: "green" }
+                        : { message: __("Every priced line is already on this report"),
+                            indicator: "orange" });
+                });
+            });
+        }
+
         if (frm.doc.docstatus === 1 && (frm.doc.materials_used || []).length) {
             frm.add_custom_button(__("Material Consumption"), () => {
                 frappe.new_doc("Material Consumption Entry", {

@@ -5,6 +5,7 @@
  "engine": "InnoDB",
  "field_order": [
   "activity_description",
+  "boq_item_no",
   "boq_item_ref",
   "location",
   "column_break_1",
@@ -24,9 +25,19 @@
    "columns": 3
   },
   {
+   "fieldname": "boq_item_no",
+   "fieldtype": "Data",
+   "label": "Work",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
    "fieldname": "boq_item_ref",
    "fieldtype": "Data",
-   "label": "BOQ Item Ref"
+   "label": "Work Ref",
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "location",
@@ -66,14 +77,15 @@
    "fieldtype": "Percent",
    "label": "% Complete",
    "in_list_view": 1,
-   "columns": 1
+   "columns": 1,
+   "read_only": 1,
+   "description": "Cumulative, across every report"
   },
   {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks",
-   "in_list_view": 1,
-   "columns": 2
+   "in_list_view": 0
   }
  ],
  "istable": 1,
