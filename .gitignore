@@ -10,3 +10,10 @@ build/
 *.sqlite
 .DS_Store
 Thumbs.db
+
+# Client data — commercial rates, subcontract prices, margins. This repo is a
+# fork with a public upstream; none of it belongs in a code history.
+*.xlsx
+*.xls
+*.csv
+~$*
