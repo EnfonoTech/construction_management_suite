@@ -158,6 +158,9 @@ class MaterialConsumptionEntry(Document):
                 # cost of the work.
                 "project": self.project,
                 "expense_account": expense,
+                # The movement says which work burnt it, not just which project.
+                "cms_work_ref": item.boq_item_ref,
+                "cms_work_no": item.boq_item_no,
             })
         se.insert(ignore_permissions=True)
         se.submit()

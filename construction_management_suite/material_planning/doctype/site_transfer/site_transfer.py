@@ -53,6 +53,8 @@ class SiteTransfer(Document):
                 "serial_no": item.serial_no,
                 "cost_center": cost_center,
                 "project": self.to_project,
+                "cms_work_ref": item.get("cms_work_ref"),
+                "cms_work_no": item.get("cms_work_no"),
             })
         se.insert(ignore_permissions=True)
         se.submit()

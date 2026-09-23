@@ -38,7 +38,21 @@ def build_rows(filters):
 	)
 
 	project = filters.project
-	take_off = {d["item_code"]: d for d in take_off_detail(project, boq=filters.get("boq"))}
+	by_work = bool(filters.get("by_work"))
+
+	if by_work:
+		from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+			take_off_by_line,
+		)
+		take_off = {
+			(e["item_code"], e["boq_item_ref"]): {
+				"item_code": e["item_code"], "uom": e["uom"], "boq_qty": e["qty"],
+				"estimated_rate": e["estimated_rate"], "boq_items": [e["boq_item_no"]],
+			}
+			for e in take_off_by_line(project, filters.get("boq")).values()
+		}
+	else:
+		take_off = {d["item_code"]: d for d in take_off_detail(project, boq=filters.get("boq"))}
 	# What the bill was sold at, beside what the estimate plans to consume. Where
 	# the estimate is the source the two can differ — that difference is the
 	# point of the column. Where the bill is the source they are the same figure.
@@ -49,42 +63,46 @@ def build_rows(filters):
 			for d in take_off_detail(project, boq=filters.get("boq"), source="BOQ")
 		}
 	forecast = _sum("""
-		SELECT i.item_code AS code, SUM(i.net_qty_required) AS qty
+		SELECT i.item_code AS code, i.boq_item_ref AS work, SUM(i.net_qty_required) AS qty
 		FROM `tabMaterial Forecast Item` i JOIN `tabMaterial Forecast` f ON f.name = i.parent
-		WHERE f.project = %(p)s AND f.docstatus = 1 GROUP BY i.item_code""", project)
+		WHERE f.project = %(p)s AND f.docstatus = 1
+		GROUP BY i.item_code, i.boq_item_ref""", project, by_work)
 	requested = _sum("""
-		SELECT i.item_code AS code, SUM(i.qty) AS qty
+		SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty
 		FROM `tabMaterial Request Item` i JOIN `tabMaterial Request` m ON m.name = i.parent
-		WHERE i.project = %(p)s AND m.docstatus = 1 GROUP BY i.item_code""", project)
+		WHERE i.project = %(p)s AND m.docstatus = 1
+		GROUP BY i.item_code, i.cms_work_ref""", project, by_work)
 	ordered, ordered_value = _sum_value("""
-		SELECT i.item_code AS code, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
+		SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Order Item` i JOIN `tabPurchase Order` o ON o.name = i.parent
-		WHERE i.project = %(p)s AND o.docstatus = 1 GROUP BY i.item_code""", project)
+		WHERE i.project = %(p)s AND o.docstatus = 1
+		GROUP BY i.item_code, i.cms_work_ref""", project, by_work)
 	# Stock comes in two ways: a Purchase Receipt, or a Purchase Invoice that
 	# updates stock — some purchases never get a receipt. ERPNext will not let
 	# an invoice update stock when any line came from a receipt, so the two
 	# cannot count the same delivery twice.
 	received, received_value = _sum_value("""
-		SELECT code, SUM(qty) AS qty, SUM(value) AS value FROM (
-			SELECT i.item_code AS code, i.qty AS qty, i.base_amount AS value
+		SELECT code, work, SUM(qty) AS qty, SUM(value) AS value FROM (
+			SELECT i.item_code AS code, i.cms_work_ref AS work, i.qty AS qty, i.base_amount AS value
 			FROM `tabPurchase Receipt Item` i JOIN `tabPurchase Receipt` r ON r.name = i.parent
 			WHERE i.project = %(p)s AND r.docstatus = 1
 			UNION ALL
-			SELECT i.item_code, i.qty, i.base_amount
+			SELECT i.item_code, i.cms_work_ref, i.qty, i.base_amount
 			FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
 			WHERE i.project = %(p)s AND v.docstatus = 1 AND v.update_stock = 1
-		) x GROUP BY code""", project)
+		) x GROUP BY code, work""", project, by_work)
 
 	# What the suppliers have actually billed, receipt or not.
 	invoiced, invoiced_value = _sum_value("""
-		SELECT i.item_code AS code, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
+		SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
-		WHERE i.project = %(p)s AND v.docstatus = 1 GROUP BY i.item_code""", project)
+		WHERE i.project = %(p)s AND v.docstatus = 1
+		GROUP BY i.item_code, i.cms_work_ref""", project, by_work)
 	# Material also arrives by transfer, and the Received column read purchase
 	# receipts alone — so a store moved onto site showed as never delivered.
 	# Older entries carry the project on the header only, newer ones on the row.
 	transferred, transferred_value = _sum_value("""
-		SELECT i.item_code AS code, SUM(i.qty) AS qty, SUM(i.amount) AS value
+		SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty, SUM(i.amount) AS value
 		FROM `tabStock Entry Detail` i
 		JOIN `tabStock Entry` e ON e.name = i.parent
 		LEFT JOIN `tabSite Transfer` t ON t.name = e.cms_site_ref
@@ -93,77 +111,93 @@ def build_rows(filters):
 		  AND IFNULL(i.t_warehouse, '') != ''
 		  AND (i.project = %(p)s OR (IFNULL(i.project, '') = '' AND e.project = %(p)s))
 		  AND IFNULL(t.from_project, '') != %(p)s
-		GROUP BY i.item_code""", project)
+		GROUP BY i.item_code, i.cms_work_ref""", project, by_work)
 
 	consumed, consumed_value = _sum_value("""
-		SELECT i.item_code AS code, SUM(i.qty) AS qty, SUM(i.amount) AS value
+		SELECT i.item_code AS code, i.boq_item_ref AS work, SUM(i.qty) AS qty, SUM(i.amount) AS value
 		FROM `tabMaterial Consumption Item` i
 		JOIN `tabMaterial Consumption Entry` e ON e.name = i.parent
-		WHERE e.project = %(p)s AND e.docstatus = 1 GROUP BY i.item_code""", project)
+		WHERE e.project = %(p)s AND e.docstatus = 1
+		GROUP BY i.item_code, i.boq_item_ref""", project, by_work)
 
 	codes = (set(take_off) | set(forecast) | set(requested) | set(ordered)
 	         | set(received) | set(transferred) | set(invoiced) | set(consumed))
 	group_filter = filters.get("item_group")
 
 	rows = []
-	for code in sorted(codes):
-		detail = take_off.get(code) or {}
+	for key in sorted(codes, key=lambda k: (k[0], str(k[1])) if by_work else (k, "")):
+		code = key[0] if by_work else key
+		work = key[1] if by_work else None
+		detail = take_off.get(key) or {}
 		item_group = frappe.db.get_value("Item", code, "item_group")
 		if group_filter and item_group != group_filter:
 			continue
 
 		required = flt(detail.get("boq_qty"))
 		est_rate = flt(detail.get("estimated_rate"))
-		used = flt(consumed.get(code))
+		used = flt(consumed.get(key))
 		# Delivered is what was bought in plus what was moved in.
-		arrived = flt(received.get(code)) + flt(transferred.get(code))
+		arrived = flt(received.get(key)) + flt(transferred.get(key))
 		# What was actually paid, from receipts where there are any, else orders.
 		# A transfer moves stock at valuation and buys nothing, so it is not a rate.
-		actual_qty = flt(received.get(code)) or flt(ordered.get(code))
-		actual_value = flt(received_value.get(code)) or flt(ordered_value.get(code))
+		actual_qty = flt(received.get(key)) or flt(ordered.get(key))
+		actual_value = flt(received_value.get(key)) or flt(ordered_value.get(key))
 		actual_rate = (actual_value / actual_qty) if actual_qty else 0
 
 		rows.append({
 			"item_code": code,
+			"work": (detail.get("boq_items") or [None])[0] if by_work else None,
 			"item_group": item_group,
 			"uom": detail.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
 			"boq_items": ", ".join(detail.get("boq_items") or []),
 			"required": required,
-			"boq_qty": flt(sold.get(code)) if sold else required,
-			"forecast": flt(forecast.get(code)),
-			"requested": flt(requested.get(code)),
-			"ordered": flt(ordered.get(code)),
-			"ordered_value": flt(ordered_value.get(code)),
+			"boq_qty": flt(sold.get(key)) if sold else required,
+			"forecast": flt(forecast.get(key)),
+			"requested": flt(requested.get(key)),
+			"ordered": flt(ordered.get(key)),
+			"ordered_value": flt(ordered_value.get(key)),
 			"received": arrived,
-			"transferred_in": flt(transferred.get(code)),
-			"received_value": flt(received_value.get(code)) + flt(transferred_value.get(code)),
-			"invoiced": flt(invoiced.get(code)),
-			"invoiced_value": flt(invoiced_value.get(code)),
+			"transferred_in": flt(transferred.get(key)),
+			"received_value": flt(received_value.get(key)) + flt(transferred_value.get(key)),
+			"invoiced": flt(invoiced.get(key)),
+			"invoiced_value": flt(invoiced_value.get(key)),
 			"consumed": used,
 			"balance": required - used,
 			"est_rate": est_rate,
 			"actual_rate": actual_rate,
 			"rate_variance_percent": ((actual_rate - est_rate) / est_rate * 100) if est_rate and actual_rate else 0,
 			"est_value": required * est_rate,
-			"consumed_value": flt(consumed_value.get(code)),
+			"consumed_value": flt(consumed_value.get(key)),
 			# Positive means the job is spending more on this material than the
 			# bill was priced for, pro-rata to what has been used.
-			"value_variance": flt(consumed_value.get(code)) - (used * est_rate),
+			"value_variance": flt(consumed_value.get(key)) - (used * est_rate),
 		})
 	return rows
 
 
-def _sum(sql, project):
-	return {r.code: flt(r.qty) for r in frappe.db.sql(sql, {"p": project}, as_dict=True) if r.code}
+def _key(row, by_work):
+	"""Item alone, or item and the line of work it was for."""
+	return (row.code, row.get("work") or None) if by_work else row.code
 
 
-def _sum_value(sql, project):
+def _sum(sql, project, by_work=False):
+	out = {}
+	for r in frappe.db.sql(sql, {"p": project}, as_dict=True):
+		if not r.code:
+			continue
+		k = _key(r, by_work)
+		out[k] = out.get(k, 0) + flt(r.qty)
+	return out
+
+
+def _sum_value(sql, project, by_work=False):
 	qty, value = {}, {}
 	for r in frappe.db.sql(sql, {"p": project}, as_dict=True):
 		if not r.code:
 			continue
-		qty[r.code] = flt(r.qty)
-		value[r.code] = flt(r.value)
+		k = _key(r, by_work)
+		qty[k] = qty.get(k, 0) + flt(r.qty)
+		value[k] = value.get(k, 0) + flt(r.value)
 	return qty, value
 
 
@@ -173,6 +207,7 @@ def get_columns():
 
 	return [
 		col("Item", "item_code", "Link", 140, options="Item"),
+		col("Work", "work", "Data", 80),
 		col("Item Group", "item_group", "Link", 120, options="Item Group"),
 		col("UOM", "uom", "Link", 90, options="UOM"),
 		col("For BOQ Items", "boq_items", "Data", 120),

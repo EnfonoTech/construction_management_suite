@@ -4,15 +4,29 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 def after_install():
     create_roles()
+    create_missing_uoms()
     create_custom_fields_on_erpnext()
     create_billing_items()
     frappe.db.commit()
 
 
 def after_migrate():
+    create_missing_uoms()
     create_custom_fields_on_erpnext()
     create_billing_items()
     frappe.db.commit()
+
+
+def create_missing_uoms():
+    """Units the trade writes on a bill that ERPNext does not ship.
+
+    A bill priced in bags, rolls and trips cannot be imported against a UOM
+    list that has none of them, and inventing an approximation silently
+    changes what was ordered.
+    """
+    for uom in ("Bag", "Roll", "Month", "Ls", "Trip", "Drum", "Qtn", "Ctn", "Pkt", "RM"):
+        if not frappe.db.exists("UOM", uom):
+            frappe.get_doc({"doctype": "UOM", "uom_name": uom}).insert(ignore_permissions=True)
 
 
 def create_billing_items():
@@ -53,6 +67,27 @@ def create_roles():
             frappe.get_doc({"doctype": "Role", "role_name": role, "desk_access": 1}).insert(
                 ignore_permissions=True
             )
+
+
+def _work_ref_fields(after):
+    """The work reference, as it appears on every buying document."""
+    return [
+        {
+            "fieldname": "cms_work_no",
+            "label": "For Work",
+            "fieldtype": "Data",
+            "read_only": 1,
+            "insert_after": after,
+        },
+        {
+            "fieldname": "cms_work_ref",
+            "label": "Work Ref",
+            "fieldtype": "Data",
+            "read_only": 1,
+            "hidden": 1,
+            "insert_after": "cms_work_no",
+        },
+    ]
 
 
 def create_custom_fields_on_erpnext():
@@ -127,6 +162,17 @@ def create_custom_fields_on_erpnext():
                 "insert_after": "title",
             },
         ],
+        # The line of work a purchase is for. Named the same on every buying
+        # document on purpose: frappe's mapper copies same-named fields, so the
+        # reference rides from request to order to receipt to invoice with no
+        # mapping code. Never no_copy, or it would stop at the first hop.
+        "Material Request Item": _work_ref_fields("item_code"),
+        "Purchase Order Item": _work_ref_fields("item_code"),
+        "Purchase Receipt Item": _work_ref_fields("item_code"),
+        "Purchase Invoice Item": _work_ref_fields("item_code"),
+        # The stock entries a transfer or a consumption entry posts, so the
+        # movement itself says which work it was for.
+        "Stock Entry Detail": _work_ref_fields("item_code"),
         "Material Request": [
             {
                 "fieldname": "cms_forecast_ref",

@@ -143,6 +143,10 @@ def create_material_request_from_forecast(forecast_name):
                 "warehouse": item.warehouse,
                 "project": forecast.project,
                 "schedule_date": item.required_by_date or mr.schedule_date,
+                # Rides on to the order, the receipt and the invoice by itself:
+                # frappe's mapper copies fields of the same name.
+                "cms_work_ref": item.boq_item_ref,
+                "cms_work_no": item.boq_item_no,
             })
 
     if not mr.items:

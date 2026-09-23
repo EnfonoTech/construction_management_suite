@@ -15,6 +15,7 @@ frappe.query_reports["Material Position"] = {
             }),
         },
         { fieldname: "item_group", label: __("Item Group"), fieldtype: "Link", options: "Item Group" },
+        { fieldname: "by_work", label: __("Split by work"), fieldtype: "Check" },
         { fieldname: "only_over", label: __("Over-consumed only"), fieldtype: "Check" },
     ],
 
