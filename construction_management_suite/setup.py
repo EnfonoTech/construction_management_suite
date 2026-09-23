@@ -76,7 +76,9 @@ def _work_ref_fields(after):
             "fieldname": "cms_work_no",
             "label": "For Work",
             "fieldtype": "Data",
-            "read_only": 1,
+            # Left editable on purpose: a buyer raising an order straight off
+            # the estimate has to be able to say which work it is for, and a
+            # wrong one has to be correctable.
             "insert_after": after,
         },
         {

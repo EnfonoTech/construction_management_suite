@@ -112,6 +112,57 @@ def get_site_progress_timeline(project, limit=30):
 
 
 @frappe.whitelist()
+def take_off_outstanding(project):
+    """What the priced work still needs bought, per material per line of work.
+
+    A forecast is optional — a job can be bought straight off the estimate —
+    and without one nothing filled the work reference on a request, so what
+    was needed and what was bought never met in a report. This is the same
+    figure a forecast would show, read live instead of planned.
+    """
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        take_off_by_line,
+    )
+
+    if not project:
+        frappe.throw(_("Choose a project"))
+
+    asked = {}
+    for table, parent, cond in (
+        ("Material Request Item", "Material Request", "m.docstatus = 1 AND m.status NOT IN ('Stopped','Cancelled')"),
+        ("Purchase Order Item", "Purchase Order", "m.docstatus = 1 AND m.status NOT IN ('Closed','Cancelled')"),
+    ):
+        for row in frappe.db.sql(
+            f"""
+            SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty
+            FROM `tab{table}` i JOIN `tab{parent}` m ON m.name = i.parent
+            WHERE i.project = %s AND {cond}
+            GROUP BY i.item_code, i.cms_work_ref
+            """,
+            project,
+            as_dict=True,
+        ):
+            # A request converted to an order would otherwise count twice, so
+            # only the larger of the two is taken per material and work.
+            key = (row.code, row.work or None)
+            asked[key] = max(flt(asked.get(key)), flt(row.qty))
+
+    out = []
+    for (code, ref), entry in take_off_by_line(project).items():
+        outstanding = flt(entry["qty"]) - flt(asked.get((code, ref)))
+        if outstanding <= 0.0001:
+            continue
+        out.append({
+            "item_code": code,
+            "uom": entry["uom"],
+            "qty": outstanding,
+            "cms_work_ref": ref,
+            "cms_work_no": entry["boq_item_no"],
+        })
+    return sorted(out, key=lambda r: (str(r["cms_work_no"]), r["item_code"]))
+
+
+@frappe.whitelist()
 def create_material_request_from_forecast(forecast_name):
     """Convert a Material Forecast into ERPNext Material Request(s)."""
     forecast = frappe.get_doc("Material Forecast", forecast_name)

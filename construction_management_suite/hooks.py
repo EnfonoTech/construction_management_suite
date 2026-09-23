@@ -107,6 +107,9 @@ website_context = {}
 # Override standard page
 page_js = {}
 
+# Buying straight off the estimate, with no forecast in between.
+doctype_js = {"Material Request": "public/js/material_request.js"}
+
 # Permission query conditions — row-level security by company
 permission_query_conditions = {
     "BOQ": "construction_management_suite.utils.permissions.get_company_filter",
