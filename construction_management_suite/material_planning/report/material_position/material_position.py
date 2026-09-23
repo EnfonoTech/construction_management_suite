@@ -60,10 +60,26 @@ def build_rows(filters):
 		SELECT i.item_code AS code, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Order Item` i JOIN `tabPurchase Order` o ON o.name = i.parent
 		WHERE i.project = %(p)s AND o.docstatus = 1 GROUP BY i.item_code""", project)
+	# Stock comes in two ways: a Purchase Receipt, or a Purchase Invoice that
+	# updates stock — some purchases never get a receipt. ERPNext will not let
+	# an invoice update stock when any line came from a receipt, so the two
+	# cannot count the same delivery twice.
 	received, received_value = _sum_value("""
+		SELECT code, SUM(qty) AS qty, SUM(value) AS value FROM (
+			SELECT i.item_code AS code, i.qty AS qty, i.base_amount AS value
+			FROM `tabPurchase Receipt Item` i JOIN `tabPurchase Receipt` r ON r.name = i.parent
+			WHERE i.project = %(p)s AND r.docstatus = 1
+			UNION ALL
+			SELECT i.item_code, i.qty, i.base_amount
+			FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
+			WHERE i.project = %(p)s AND v.docstatus = 1 AND v.update_stock = 1
+		) x GROUP BY code""", project)
+
+	# What the suppliers have actually billed, receipt or not.
+	invoiced, invoiced_value = _sum_value("""
 		SELECT i.item_code AS code, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
-		FROM `tabPurchase Receipt Item` i JOIN `tabPurchase Receipt` r ON r.name = i.parent
-		WHERE i.project = %(p)s AND r.docstatus = 1 GROUP BY i.item_code""", project)
+		FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
+		WHERE i.project = %(p)s AND v.docstatus = 1 GROUP BY i.item_code""", project)
 	# Material also arrives by transfer, and the Received column read purchase
 	# receipts alone — so a store moved onto site showed as never delivered.
 	# Older entries carry the project on the header only, newer ones on the row.
@@ -86,7 +102,7 @@ def build_rows(filters):
 		WHERE e.project = %(p)s AND e.docstatus = 1 GROUP BY i.item_code""", project)
 
 	codes = (set(take_off) | set(forecast) | set(requested) | set(ordered)
-	         | set(received) | set(transferred) | set(consumed))
+	         | set(received) | set(transferred) | set(invoiced) | set(consumed))
 	group_filter = filters.get("item_group")
 
 	rows = []
@@ -117,8 +133,12 @@ def build_rows(filters):
 			"forecast": flt(forecast.get(code)),
 			"requested": flt(requested.get(code)),
 			"ordered": flt(ordered.get(code)),
+			"ordered_value": flt(ordered_value.get(code)),
 			"received": arrived,
 			"transferred_in": flt(transferred.get(code)),
+			"received_value": flt(received_value.get(code)) + flt(transferred_value.get(code)),
+			"invoiced": flt(invoiced.get(code)),
+			"invoiced_value": flt(invoiced_value.get(code)),
 			"consumed": used,
 			"balance": required - used,
 			"est_rate": est_rate,
@@ -161,8 +181,12 @@ def get_columns():
 		col("Forecast", "forecast", precision=2),
 		col("Requested", "requested", precision=2),
 		col("Ordered", "ordered", precision=2),
+		col("Ordered Value", "ordered_value", "Currency", 115),
 		col("Received", "received", precision=2),
 		col("Of Which Moved In", "transferred_in", precision=2, width=130),
+		col("Received Value", "received_value", "Currency", 120),
+		col("Invoiced", "invoiced", precision=2),
+		col("Invoiced Value", "invoiced_value", "Currency", 120),
 		col("Consumed", "consumed", precision=2, width=110),
 		col("Balance", "balance", precision=2, width=110),
 		col("Est. Rate", "est_rate", "Currency"),
