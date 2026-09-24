@@ -197,23 +197,73 @@ class CostEstimation(Document):
         )
 
     def _create_project_budget(self):
-        """On approval, seed a Project Budget from this estimation."""
+        """On approval, seed a Project Budget — or bring the draft one up to date.
+
+        An estimate is revised by cancelling and amending it, so the budget has
+        to follow it. This returned the moment any budget existed, which meant
+        every revision from then on left the budget stating the superseded
+        figure — and the variance report, the project cockpit and the estimate's
+        own headline all read that figure.
+
+        A submitted budget is not rewritten behind anyone's back: it is a
+        commitment somebody approved, and ERPNext's amend flow is how it moves.
+        Say so, and leave it to them.
+        """
         if not self.project:
             return
-        if frappe.db.exists("Project Budget", {"project": self.project, "docstatus": ["!=", 2]}):
-            frappe.msgprint(_("A Project Budget already exists for this project. Estimation submitted."))
+
+        existing = frappe.db.get_value(
+            "Project Budget",
+            {"project": self.project, "docstatus": ("!=", 2)},
+            ["name", "docstatus"],
+            as_dict=True,
+        )
+        if existing and existing.docstatus == 1:
+            frappe.msgprint(
+                _(
+                    "{0} is submitted and still states the previous estimate. "
+                    "Amend it and use <b>Refresh from Estimate</b> to bring it "
+                    "onto this one."
+                ).format(frappe.utils.get_link_to_form("Project Budget", existing.name)),
+                title=_("Budget not updated"),
+                indicator="orange",
+            )
             return
-        budget = frappe.new_doc("Project Budget")
+
+        budget = (
+            frappe.get_doc("Project Budget", existing.name)
+            if existing
+            else frappe.new_doc("Project Budget")
+        )
+        self.fill_project_budget(budget)
+        budget.flags.ignore_permissions = True
+        budget.save()
+        frappe.msgprint(
+            _("Project Budget {0} updated from this estimation").format(budget.name)
+            if existing
+            else _("Project Budget {0} created from this estimation").format(budget.name)
+        )
+
+    def fill_project_budget(self, budget):
+        """Write this estimate's cost plan onto a draft budget.
+
+        The scope is the estimate's, so the rows are rewritten rather than
+        merged — but a cost code somebody put against a head is theirs, and is
+        carried over wherever that head survives the revision.
+        """
+        coded = {r.cost_head: r.cost_code for r in (budget.get("items") or []) if r.cost_code}
+
         budget.project = self.project
         budget.company = self.company
         budget.currency = self.currency
-        budget.budget_title = f"Budget from {self.name}"
         budget.cost_estimation_ref = self.name
         budget.total_budget = self.total_estimated_cost
+        budget.set("items", [])
         for item in self.items:
+            head = item.description or item.item_code
             budget.append("items", {
-                "cost_head": item.description or item.item_code,
+                "cost_head": head,
+                "cost_code": coded.get(head),
                 "budgeted_amount": item.total_cost,
             })
-        budget.insert(ignore_permissions=True)
-        frappe.msgprint(_("Project Budget {0} created from this estimation").format(budget.name))
+        return budget

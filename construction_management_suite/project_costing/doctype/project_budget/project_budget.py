@@ -63,22 +63,29 @@ class ProjectBudget(Document):
         """Break the project's actual spend down onto rows that name a Cost Code.
 
         A Cost Code carries the expense account its spend lands in, so each row's
-        actual is the sum of that account's GL entries for this project. Rows with
-        no cost code keep whatever was entered manually.
+        actual is that account's GL entries for this project. Rows with no cost
+        code keep whatever was entered manually.
+
+        Where several rows lead back to one account — two cost codes posting to
+        the same expense head, or one code used on two rows — the ledger cannot
+        say which of them spent it, and giving each the whole account total
+        reported the same money twice and three times over. It is apportioned by
+        what each row was budgeted, which is the only signal there is, and the
+        document says so rather than presenting an estimate as an observation.
         """
         coded = [i for i in self.items if i.cost_code]
         if not coded:
             return
 
-        accounts = {}
-        for code in {i.cost_code for i in coded}:
-            account = frappe.db.get_value("Cost Code", code, "debit_account")
+        rows_by_account = {}
+        for item in coded:
+            account = frappe.db.get_value("Cost Code", item.cost_code, "debit_account")
             if account:
-                accounts.setdefault(account, []).append(code)
-        if not accounts:
+                rows_by_account.setdefault(account, []).append(item)
+        if not rows_by_account:
             return
 
-        rows = frappe.db.sql(
+        actuals = frappe.db.sql(
             """
             SELECT account, SUM(debit - credit) AS actual
             FROM `tabGL Entry`
@@ -88,17 +95,35 @@ class ProjectBudget(Document):
               AND account IN %(accounts)s
             GROUP BY account
             """,
-            {"project": self.project, "accounts": tuple(accounts)},
+            {"project": self.project, "accounts": tuple(rows_by_account)},
             as_dict=True,
         )
-        by_code = {}
-        for row in rows:
-            for code in accounts[row.account]:
-                by_code[code] = flt(by_code.get(code)) + flt(row.actual)
 
-        for item in coded:
-            if item.cost_code in by_code:
-                item.actual_amount = flt(by_code[item.cost_code])
+        shared = []
+        for row in actuals:
+            members = rows_by_account.get(row.account) or []
+            if len(members) == 1:
+                members[0].actual_amount = flt(row.actual)
+                continue
+            base = sum(flt(m.budgeted_amount) for m in members)
+            for member in members:
+                share = flt(member.budgeted_amount) / base if base else 1.0 / len(members)
+                member.actual_amount = flt(row.actual) * share
+            shared.append((row.account, [m.idx for m in members]))
+
+        if shared:
+            frappe.msgprint(
+                "<br>".join(
+                    _("{0} — rows {1}").format(account, ", ".join(str(i) for i in idxs))
+                    for account, idxs in shared
+                )
+                + _("<br><br>These rows post to the same account, so their actual "
+                    "cost is apportioned by what each was budgeted. The ledger "
+                    "cannot tell them apart; give them their own accounts to see "
+                    "them separately."),
+                title=_("Actual cost apportioned"),
+                indicator="orange",
+            )
 
     def calculate_variance(self):
         self.variance_amount = flt(self.total_budget) - flt(self.total_actual_cost)
@@ -109,6 +134,34 @@ class ProjectBudget(Document):
 
     def before_submit(self):
         self.status = "Active"
+
+    @frappe.whitelist()
+    def refresh_from_estimate(self):
+        """Rewrite this budget from the project's current Cost Estimation.
+
+        The other half of amending an estimate: submitting the amendment leaves
+        a submitted budget alone, because it is an approved figure, so this is
+        how the amended budget is brought onto the new plan without anybody
+        retyping a cost plan.
+        """
+        from construction_management_suite.utils.validations import current_estimate
+
+        if self.docstatus != 0:
+            frappe.throw(
+                _("Only a draft budget can be rebuilt. Amend this one first."),
+                title=_("Budget is submitted"),
+            )
+        estimate = current_estimate(self.project)
+        if not estimate:
+            frappe.throw(
+                _("{0} has no submitted Cost Estimation to build a budget from.")
+                .format(self.project),
+                title=_("Nothing to read"),
+            )
+        frappe.get_doc("Cost Estimation", estimate).fill_project_budget(self)
+        self.save()
+        frappe.msgprint(_("Rebuilt from {0}").format(estimate), alert=True)
+        return estimate
 
     @frappe.whitelist()
     def refresh_actuals(self):

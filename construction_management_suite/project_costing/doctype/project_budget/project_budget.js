@@ -9,6 +9,16 @@ frappe.ui.form.on("Project Budget", {
             frm.add_custom_button(__("Refresh Actuals"), () => {
                 frm.call("refresh_actuals").then(() => frm.reload_doc());
             });
+            // A draft budget — a new one, or the amendment of an approved one —
+            // is rebuilt from the project's current estimate rather than retyped.
+            if (frm.doc.docstatus === 0 && frm.doc.project) {
+                frm.add_custom_button(__("Refresh from Estimate"), () => {
+                    frappe.confirm(
+                        __("Rebuild these lines from the project's current Cost Estimation?<br><small>Amounts are rewritten; a cost code you set is kept where its line survives.</small>"),
+                        () => frm.call("refresh_from_estimate").then(() => frm.reload_doc())
+                    );
+                }, __("Actions"));
+            }
             frm.add_custom_button(__("Cost Variance"), () => {
                 frappe.set_route("query-report", "Project Cost Variance", { project: frm.doc.project });
             }, __("View"));
