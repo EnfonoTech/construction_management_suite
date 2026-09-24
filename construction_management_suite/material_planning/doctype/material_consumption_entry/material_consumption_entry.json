@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
+  "consumption_title",
   "project",
   "posting_date",
   "daily_site_report_ref",
@@ -28,6 +29,12 @@
    "label": "Series",
    "options": "MCE-.YYYY.MM.-.####",
    "reqd": 1
+  },
+  {
+   "fieldname": "consumption_title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "no_copy": 1
   },
   {
    "fieldname": "project",
@@ -153,7 +160,7 @@
    "read": 1
   }
  ],
- "title_field": "project",
+ "title_field": "consumption_title",
  "track_changes": 1,
  "states": [
   {

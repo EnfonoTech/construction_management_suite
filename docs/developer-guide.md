@@ -1,6 +1,6 @@
 # Construction Management Suite — Developer Guide
 
-*As of 2026-09-19. Published copy: https://claude.ai/artifact/TRdnQDrLhp4xwzkp5FSHUu*
+*As of 2026-09-24. Published copy: https://claude.ai/artifact/TRdnQDrLhp4xwzkp5FSHUu*
 
 A Frappe v15 / ERPNext v15 application: 8 modules, 37 doctypes, one whitelisted API module, and a deliberate rule that it measures while ERPNext accounts.
 
@@ -38,7 +38,7 @@ construction_management_suite/
                         validations, permissions, helpers, notifications
   overrides/            project_dashboard
   public/js/cms.js      global desk JS, CMS.* helpers, CMS.calc
-  fixtures/             workspace + number cards
+  fixtures/             number cards (the workspace is NOT a fixture — see below)
   demo/sample_project.py  a full mid-flight project
   tests/                parity + lifecycle harnesses
   <module>/doctype/...  controllers
@@ -102,7 +102,7 @@ That is the whole dict, and it must stay that way. **This app's own doctypes mus
 | --- | --- | --- |
 | `app_include_js` | `/assets/construction_management_suite/js/cms.js` | Served from the symlinked `public/`, so a rebuild is immediate |
 | `app_include_css` | `css/cms.css` | |
-| `fixtures` | Custom Field `cms_%`, Property Setters on 8 doctypes, the 7 roles, the workspace | |
+| `fixtures` | Custom Field `cms_%`, Property Setters on 8 doctypes, the 7 roles | The workspace is deliberately absent |
 | `scheduler_events` | daily: cost variance, retention eligibility, forecast recompute; weekly: subcontractor aging | All four resolve |
 | `jinja.methods` | `format_currency_arabic`, `number_to_words_arabic`, `get_project_summary` | For print formats |
 | `jinja.filters` | `arabic_number` | |
@@ -216,6 +216,13 @@ enforce(action, _("Row {0}: ...").format(item.idx), title=_("Over-certification"
 | `advance_recovery_action` + `advance_recovery_threshold_percent` | `utils/billing.py :: check_advance_recovery`, called from both certificates |
 | `over_certification_action` | `interim_payment_certificate.py :: validate_over_certification` |
 | `consumption_over_takeoff_action` + `consumption_tolerance_percent` | `material_consumption_entry.py :: check_against_take_off` |
+| `work_item_type_action` | `utils/validations.py :: validate_work_item` — BOQ, Cost Estimation, Variation Order, Rate Analysis, and every work row on a material document |
+| `material_resource_action` | `validate_material_resources` (Rate Analysis, on approval) and `validate_material_item` (every material row) |
+| `missing_rate_analysis_action` | `validate_rate_analysis_present` — Cost Estimation |
+| `no_estimate_action` | `require_estimate` — consumption and forecast |
+| `uom_mismatch_action` | `validate_uom_convertible` — Rate Analysis resources, forecast, consumption, site request, transfer |
+
+`scope_rate_analysis_by_company` is a Check rather than an action: on, an item's analysis is looked up inside the document's company, the pickers filter to it and a line pointing at another company's analysis is refused.
 
 Defaults that are values rather than actions are read the same way: `default_rate_source`, `default_selling_price_list`, `default_contingency_percent`, `default_retention_percent`, `default_subcontract_retention_percent`, the three billing items, the two tax templates, `consumption_expense_account`.
 
@@ -230,7 +237,9 @@ def on_update(self):
 
 `frappe.clear_cache(doctype=...)` clears the meta and leaves the cached document, so a changed setting appears to have no effect.
 
-**Defaults never apply retroactively.** A docfield `default` runs only when a document is created. Adding a field to an existing Single leaves it empty, and for a Check `0` is indistinguishable from unset. New settings therefore need a patch — see `patches/v1_1/apply_new_setting_defaults.py`, which uses `frappe.get_meta(...).get_field()`; `frappe.db.has_column` throws on a Single because the values live in `tabSingles`.
+**Defaults never apply retroactively.** A docfield `default` runs only when a document is created. Adding a field to an existing Single leaves it empty, so a new Select needs a patch — see `patches/v1_1/apply_new_setting_defaults.py`, which uses `frappe.get_meta(...).get_field()`; `frappe.db.has_column` throws on a Single because the values live in `tabSingles`.
+
+**A Check is worse than that, and it is silent.** A Single is loaded out of `tabSingles` and a field with no row there comes back cast to `0` — so a checkbox whose docfield default is `1` reads as *off* to every line of server code while the form shows it ticked. A Select survives this because blank means "use the module default" and the code says what that default is; a Check has no blank state. `setup.seed_check_defaults()` writes the docfield default of any unstored Check on install and on migrate, once, and never again — a site that unticks a box stores a `0`, and a `0` is a row. Add a Check to Construction Settings and it is covered; do not rely on the `default` alone.
 
 Also: a hardcoded docfield `default` always beats a value read from settings. A retention default of 4 in the settings showed as 10 on three forms because the docfields carried `"default": "10"`.
 
@@ -427,7 +436,9 @@ Remember the `modified` bump when editing one.
 
 ### The workspace
 
-`Construction Management Suite`, module BOQ Management, shipped both as a doctype JSON and as `fixtures/cms_workspace.json`. Keep the two in step.
+`Construction Management Suite`, module BOQ Management, shipped as a **standard workspace** under `boq_management/workspace/construction_management_suite/`. Frappe syncs it from there on every migrate.
+
+It used to be exported as `fixtures/cms_workspace.json` as well. That put two files in charge of one page, and `import_fixtures` reads **every** `.json` in `fixtures/` regardless of what the `fixtures` hook lists — so which one won depended on ordering. The fixture is gone and the hook entry with it. Edit the module JSON and nothing else.
 
 Three structures have to agree, and they are stored separately:
 
@@ -491,7 +502,7 @@ cd /home/ramees/frappe-bench/sites
 # diff the two, tolerance 0.0005
 ```
 
-`client.js` stubs just enough Frappe to `eval` the real `cms.js`. `cases.json` deliberately holds the awkward inputs: zero contract quantity (the division guard), a fully-completed line, a subcontract resource with a waste factor, over-ordered material, overtime.
+`client.js` stubs just enough Frappe to `eval` the real `cms.js`. `cases.json` deliberately holds the awkward inputs: zero contract quantity (the division guard), a fully-completed line, a subcontract resource, over-ordered material, overtime.
 
 Current state: **299 values across 13 doctypes, 0 mismatched.** Server-owned fields such as `already_ordered_qty` are excluded — the browser can only ever use what the server last put there.
 
@@ -564,7 +575,12 @@ A patch that writes to a Single must also clear the document cache afterwards, f
 
 1. Ship the `.js` with the filters. Without it, `filters.get(...)` in the Python is dead code.
 2. `ref_doctype` decides where it appears in the desk.
-3. Add it to **both** the workspace JSON and `fixtures/cms_workspace.json`, and recompute the Card Break's `link_count`.
+3. Add it to the workspace JSON under `boq_management/workspace/` — there is only one — and recompute the Card Break's `link_count`.
+4. **Bump `modified` in that JSON.** `import_file_by_path` compares the file's
+   `modified` against the record's and skips the import when they match, so an
+   edited workspace with an untouched timestamp is a silent no-op on migrate.
+   This is not theoretical: it is what made the first attempt at this change
+   appear to do nothing.
 4. Bump `modified` on any standard JSON you touch.
 
 ### Change a calculation
@@ -622,20 +638,24 @@ Each of these cost real debugging time. They are collected here so the next pers
 
 ## Known gaps
 
-Honest list, current as of 19 September 2026.
+Honest list, current as of 24 September 2026.
 
 ### Material workflow
 
+The three gaps listed here before — no picker filling the work reference on a
+consumption entry, no take-off picker on a Site Material Request, and an unread
+`qty_wasted` — are closed. Work is tracked by `cms_work_item` (the work Item
+itself, not a child-row name), both documents have a take-off picker, and waste
+now lives in the quantity rather than in a field nothing read.
+
 | Gap | Effect |
 | --- | --- |
-| No picker fills `boq_item_ref` on consumption entries | Consumption is attributed per item, not per bill line, so Material Position can report the item but not which line consumed it |
-| Site Material Request has no take-off picker | The site types what it wants; it does not net against the forecast |
-| `qty_wasted` on consumption lines is never read | The field exists, nothing reports on it |
 | No returns or wastage path | Material issued and later returned has no document |
+| `Cost Code` is not a tree | `parent_cost_code` exists, but the doctype is not `is_tree`, there is no nested set, and nothing rolls a child's spend to its parent |
 
 ### Reports
 
-Three report folders are empty placeholders: `billing_summary`, `cash_flow_projection`, `profitability_analysis`. `BOQ Summary` and `Project Cost Variance` have no `.js`, so their filters never reach the Python.
+Three report folders are empty placeholders: `billing_summary`, `cash_flow_projection`, `profitability_analysis`. `Project Cash Flow Item` exists with nothing populating it.
 
 ### Buying side
 

@@ -4,9 +4,11 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from construction_management_suite.utils.accounting import get_warehouse
+from construction_management_suite.utils.titles import project_label, set_auto_title
 from construction_management_suite.utils.validations import (
     validate_item_kinds,
     validate_project_company,
+    validate_uom_convertible,
 )
 
 
@@ -18,8 +20,12 @@ class SiteMaterialRequest(Document):
     """
 
     def validate(self):
+        set_auto_title(self, "request_title",
+                       [_("Site request"), project_label(self.project),
+                        frappe.utils.formatdate(self.request_date) if self.request_date else None])
         validate_project_company(self)
         validate_item_kinds(self.items)
+        validate_uom_convertible(self.items)
         self.validate_quantities()
         self.set_default_warehouse()
         self.set_work_numbers()

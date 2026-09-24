@@ -46,7 +46,8 @@
   "material_resource_action",
   "model_col",
   "missing_rate_analysis_action",
-  "no_estimate_action"
+  "no_estimate_action",
+  "uom_mismatch_action"
  ],
  "fields": [
   {
@@ -304,6 +305,13 @@
    "label": "Project Has No Cost Estimation",
    "options": "Ignore\nWarn\nStop",
    "default": "Stop"
+  },
+  {
+   "fieldname": "uom_mismatch_action",
+   "fieldtype": "Select",
+   "label": "Unit Cannot Be Converted",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn"
   }
  ],
  "links": [],

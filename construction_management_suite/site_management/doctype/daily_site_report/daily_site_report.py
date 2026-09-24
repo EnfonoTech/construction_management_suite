@@ -3,6 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, flt, nowdate
 from construction_management_suite.utils.accounting import get_warehouse
+from construction_management_suite.utils.titles import project_label, set_auto_title
 from construction_management_suite.utils.validations import (
     validate_item_kinds,
     validate_project_company,
@@ -11,6 +12,9 @@ from construction_management_suite.utils.validations import (
 
 class DailySiteReport(Document):
     def validate(self):
+        set_auto_title(self, "report_title",
+                       [_("Site report"), project_label(self.project),
+                        frappe.utils.formatdate(self.report_date) if self.report_date else None])
         self.set_activity_progress()
         validate_project_company(self)
         self.validate_date()

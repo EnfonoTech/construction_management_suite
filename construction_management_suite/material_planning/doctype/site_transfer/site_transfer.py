@@ -4,16 +4,24 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from construction_management_suite.utils.accounting import get_cost_center, get_warehouse
+from construction_management_suite.utils.titles import project_label, set_auto_title
 from construction_management_suite.utils.validations import (
     validate_item_kinds,
     validate_project_company,
+    validate_uom_convertible,
 )
 
 
 class SiteTransfer(Document):
     def validate(self):
+        # Both ends, because which job it came off is half the story.
+        set_auto_title(self, "transfer_title",
+                       [_("Transfer"), project_label(self.from_project),
+                        _("to {0}").format(project_label(self.to_project)) if self.to_project else None,
+                        frappe.utils.formatdate(self.transfer_date) if self.transfer_date else None])
         validate_project_company(self, ("from_project", "to_project"))
         validate_item_kinds(self.items)
+        validate_uom_convertible(self.items)
         self.set_default_warehouses()
         if self.from_warehouse == self.to_warehouse:
             frappe.throw(_("Source and destination warehouses must be different"))
@@ -113,6 +121,9 @@ class SiteTransfer(Document):
                 "t_warehouse": self.to_warehouse,
                 "batch_no": item.batch_no,
                 "serial_no": item.serial_no,
+                # See Material Consumption Entry: the plain fields only apply
+                # when the row says so, whatever Stock Settings happens to say.
+                "use_serial_batch_fields": 1,
                 "cost_center": cost_center,
                 "project": self.to_project,
                 "cms_work_item": item.get("work_item"),

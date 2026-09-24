@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
+  "request_title",
   "project",
   "request_date",
   "required_date",
@@ -30,6 +31,12 @@
    "label": "Series",
    "options": "SMR-.YYYY.MM.-.####",
    "reqd": 1
+  },
+  {
+   "fieldname": "request_title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "no_copy": 1
   },
   {
    "fieldname": "project",
@@ -167,7 +174,7 @@
    "read": 1
   }
  ],
- "title_field": "project",
+ "title_field": "request_title",
  "track_changes": 1,
  "states": [
   {

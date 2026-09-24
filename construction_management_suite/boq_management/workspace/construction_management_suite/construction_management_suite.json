@@ -520,7 +520,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-09-18 20:00:00.000000",
+ "modified": "2026-09-24 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "BOQ Management",
  "name": "Construction Management Suite",
@@ -574,6 +574,14 @@
   },
   {
    "color": "Blue",
+   "doc_view": "",
+   "label": "Cost Estimation",
+   "link_to": "Cost Estimation",
+   "type": "DocType",
+   "stats_filter": ""
+  },
+  {
+   "color": "Blue",
    "label": "Projects",
    "link_to": "Project",
    "stats_filter": "{\"status\": [\"=\", \"Open\"]}",
@@ -620,6 +628,15 @@
    "link_to": "Project Cost Variance",
    "report_ref_doctype": "Project Budget",
    "type": "Report"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "Report",
+   "label": "Material Position",
+   "link_to": "Material Position",
+   "type": "Report",
+   "stats_filter": "",
+   "report_ref_doctype": "Material Forecast"
   }
  ],
  "title": "Construction Management Suite"

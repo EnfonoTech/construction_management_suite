@@ -1,6 +1,6 @@
 # Construction Management Suite — User Guide
 
-*As of 2026-09-19. Published copy: https://claude.ai/artifact/X316c1N75nHD6eJF2z5r9z*
+*As of 2026-09-24. Published copy: https://claude.ai/artifact/X316c1N75nHD6eJF2z5r9z*
 
 ## What this adds to ERPNext
 
@@ -10,16 +10,23 @@ It replaces nothing. Every document you raise here produces the ordinary ERPNext
 
 ```mermaid
 flowchart LR
-  RA[Rate Analysis] --> BOQ
-  BOQ --> CE[Cost Estimation]
-  CE --> PB[Project Budget]
+  RA[Rate Analysis] --> CE[Cost Estimation]
+  RA --> BOQ
+  BOQ --> CE
   BOQ --> PRJ[Project]
-  BOQ --> MF[Material Forecast]
-  BOQ --> SA[Subcontract<br/>Agreement]
   BOQ --> IPC[Payment<br/>Certificate]
   IPC --> SI[Sales Invoice]
+  CE --> PB[Project Budget]
+  CE --> MF[Material Forecast]
+  CE --> SA[Subcontract<br/>Agreement]
   SA --> PO[Purchase Order]
 ```
+
+Two documents, two jobs. The **BOQ is the sales side** — the client's quantities
+at the client's rates — and it is what you certify and bill against. The **Cost
+Estimation is the cost side**, and it is what the job is planned, bought and
+checked against: every material figure in this app comes from it, not from the
+bill. A project can run on an estimate alone, with no BOQ at all.
 
 The rule to hold on to: **this app measures and certifies, ERPNext accounts.** If a number has to reach the ledger it gets there through a document ERPNext already understands.
 
@@ -65,6 +72,7 @@ One screen decides how the whole module behaves: **Construction Settings** (sear
 | Advance Recovery Threshold % | How far through the job an unrecovered advance starts complaining | 75 |
 | Purchase Rate Tolerance % | How far above the estimate a purchase may go quietly | 10 |
 | Consumption Tolerance % | How far above the take-off the site may consume quietly | 10 |
+| Rate Analysis Is Company-Specific | An item's rate is looked up inside the company being priced for. Turn it off to share one rate library across companies | on |
 
 ### Billing items and taxes
 
@@ -80,9 +88,11 @@ Point them at your own service items if you already have them — the setup neve
 
 **Material Consumption Account** is the expense account site issues are charged to. Left blank, the company's default expense account is used.
 
-### Cost centres
+### Cost centres, and the site store
 
 There is no setting, and nothing is created. Postings take the **project's own cost centre** if it has one, otherwise the **company default**. If you want a project's costs ring-fenced, give that Project a cost centre in ERPNext before you start billing.
+
+A job has a store the same way it has a cost centre. Set **Default Warehouse** on the Project — it sits next to Cost Center and offers that company's warehouses only — and every material document fills a blank warehouse from it: consumption, site request, forecast, transfer, site diary, and the ERPNext order, request, receipt and stock-moving invoice. Only a blank: a warehouse somebody chose is never touched. A job running **several** stores names none, and then every entry has to say which, which is the honest answer.
 
 ### The last thing before real work
 
@@ -92,13 +102,24 @@ Check the three blocker sections — *Estimating*, *Purchasing and Budget*, *Pro
 
 A **Rate Analysis** answers one question: what does one unit of this work actually cost us? One cubic metre of RCC is so many bags of cement, so many hours of labour, so much mixer time, plus overhead. Build the analysis once and every bill you price afterwards inherits it.
 
+### Work is a service item, material is a stock item
+
+Both come out of ERPNext's own Item master, and the difference between them is one checkbox:
+
+- A **line of work** — *RCC M30*, *200mm blockwork* — is an Item with **Maintain Stock off**. It is what the job builds and what a Rate Analysis prices.
+- A **material** — cement, aggregate, cable — is an Item with **Maintain Stock on**. It is what a store issues.
+
+Every Item picker in the module offers only the right one of the two, and the server refuses a material row naming a service item. Get this the wrong way round and the take-off cannot see the line: it looks priced and orders nothing.
+
 ### Building one
 
 1. Name the work and the **Item** it prices, with its UOM and output quantity (usually 1).
-2. Add resource rows. Each row has a **type** — Material, Labour, Equipment, Subcontract or Overhead — a quantity per unit, a rate, and an optional **waste factor**.
+2. Add resource rows. Each row has a **type** — Material, Labour, Equipment, Subcontract or Overhead — a quantity and a rate. Waste is not a separate field: it belongs in the quantity, put there by whoever measured it.
 3. The five type totals and the **rate per unit** compute as you type.
 
-Link each material row to a real **Item** where you can. It costs nothing extra and it is what lets the *BOQ Resource Analysis* and *Material Position* reports tell you how many bags of cement the whole bill needs.
+**Every material row must name a real Item.** A row with only a description is skipped by the take-off entirely, so the analysis looks priced and orders nothing — the app refuses to approve one. It is also what lets *BOQ Resource Analysis* and *Material Position* say how many bags of cement the whole job needs.
+
+An analysis belongs to a **company**, and by default an item's rate is looked up inside the company being priced for. Two builders on one site keep their own labour and plant rates that way. A single-company site, or one keeping a deliberately shared library, turns *Rate Analysis Is Company-Specific* off.
 
 ### Active, default, approved
 
@@ -157,6 +178,12 @@ The **Rate Source** on the bill decides where rates come from:
 
 **Actions → Price Lines** re-prices the bill from the library in one pass. It leaves lines that already carry a rate alone unless you tick *overwrite*.
 
+### Work Breakdown
+
+Below the lines on both the BOQ and the Cost Estimation, **Work Breakdown** shows the document at all three of its levels at once: the section, the work under it, and what that work is priced to consume, with totals at each level. Click a line to open its resources, or *Expand all*.
+
+It reads the **frozen build-up** saved on each line — what the line was actually priced at, not what the library says today — and labels any line where no build-up was kept, so a rate that has drifted is visible rather than assumed. On a bill it shows the selling side and the cost side together; on an estimate everything is cost.
+
 ### Item numbers
 
 Every line gets an **Item No** that is assigned once and never revised. Insert a row in the middle and it takes the next free number in its section rather than pushing everything down — so an item quoted to the client as 2.4 is still 2.4 next month. Numbering is flat (1, 2, 3) until the bill has sections, and becomes 1.1 / 2.3 once it does.
@@ -175,7 +202,9 @@ After submission, certified quantities flow back onto the bill from the payment 
 
 ## Costing the job
 
-A **Cost Estimation** is the internal counterpart of the bill: not what the client pays, but what the job will cost you to deliver. Raise it from the BOQ (**Create → Cost Estimation**) so the lines come across already linked.
+A **Cost Estimation** is the internal counterpart of the bill: not what the client pays, but what the job will cost you to deliver. Raise it from the BOQ (**Create → Cost Estimation**) so the lines come across already linked — or raise it straight off the project, which is the normal thing on a job nobody is billed for.
+
+**A project has exactly one.** The take-off adds up every submitted estimate on a project, so a second one would double every material quantity on the job. To change an estimate, cancel it and amend it: ERPNext's own revision flow keeps the original on file and the amendment supersedes it. The app refuses a second submitted estimate outright.
 
 Each line carries the five cost components per unit; the document adds them up, applies **contingency** as a percentage on top, and compares the result to the selling price so you can see the margin before you commit.
 
@@ -183,10 +212,12 @@ Each line carries the five cost components per unit; the document adds them up, 
 
 ### Approving it seeds the budget
 
-Submitting a Cost Estimation creates a **Project Budget** from its lines. From then on the budget is the thing you watch:
+Submitting a Cost Estimation creates a **Project Budget** from its lines, and an amendment brings the budget with it — a draft budget is rewritten from the estimate that owns it, keeping any cost code you set against a line that survived. A budget somebody has already **submitted** is not rewritten behind your back: the estimate says so and leaves it to you. Amend the budget and use **Refresh from Estimate** to bring it onto the new plan.
+
+From then on the budget is the thing you watch:
 
 - **Refresh Actuals** pulls real spend from the ledger — expense-account entries tagged to the project — and outstanding Purchase Orders as committed cost
-- Rows that name a **Cost Code** get the actuals broken down onto them
+- Rows that name a **Cost Code** get the actuals broken down onto them. Where several rows lead back to one account the ledger cannot tell them apart, so the spend is apportioned between them in proportion to what each was budgeted, and the document says it did
 - **Variance** is budget less actual, per row and for the project
 - The **Project Cost Variance** report is the same picture, printable
 
@@ -217,7 +248,8 @@ The chain runs from the priced bill to the issue slip, and every step nets again
 
 ```mermaid
 flowchart LR
-  BOQ[Priced BOQ] --> MF[Material<br/>Forecast]
+  CE[Cost Estimation] --> MF[Material<br/>Forecast]
+  CE --> MR
   MF --> MR[Material Request]
   MR --> PO[Purchase Order]
   PO --> PR[Receipt]
@@ -225,20 +257,27 @@ flowchart LR
   MCE --> SE[Stock Entry]
 ```
 
+A forecast is optional. **Get from the Take-off** on a draft Material Request or Site Material Request asks the estimate directly what is still to buy, so a job bought line by line as the work comes up never needs one.
+
+Everything on this chain is tracked **per line of work**, not just per material. The same cement sits under the substructure, the blockwork mortar and the plaster, and **For Work** on every row says which of them it was bought and burnt for. It rides from the request to the order to the receipt to the stock movement on its own.
+
 ### Material Forecast
 
-**Get Items from BOQ** explodes every priced line into the materials underneath it, via the rate analysis each line was priced on, and adds the waste factor. Nobody retypes a take-off.
+**Get Materials from the Estimate** explodes every priced line into the materials underneath it, via the rate analysis each line was priced on. Nobody retypes a take-off.
+
+One row per material **per line of work**, not one row per material: the same cement under three trades cannot be split later by a document that never said which.
 
 The figures it produces:
 
 | Column | Meaning |
 | --- | --- |
-| BOQ Qty | What the bill's quantity explodes into for this material |
-| Waste Factor | From the rate analysis |
-| Net Qty Required | BOQ Qty × (1 + waste) |
+| For Work | The line of work this material is for |
+| Net Qty Required | What the estimate's quantity explodes into for this material |
 | Already Ordered | On open Purchase Orders for this project — read-only, from the system |
 | Qty To Order | Net required less already ordered |
 | Estimated Rate / Value | What it was costed at |
+
+Waste is not a separate column. It belongs in the quantity, put there by whoever measured it — a rate analysis that needs 5% extra cement says so in its cement figure.
 
 You can have **several forecasts on one project** — by phase, by package, by month. Each one nets against the others, so the second forecast offers only what the first did not already cover. Quantities remain editable: the take-off is a starting point, not a verdict.
 
@@ -400,6 +439,11 @@ Ten checks guard the places where construction money goes wrong. Each one is a s
 | Advance Left Unrecovered | The job passes the recovery threshold with an advance outstanding | Warn |
 | Certifying More Than The Contract Qty | A certificate would bill beyond the contract quantity | **Stop** |
 | Consuming More Than The Take-off | Site issues exceed the take-off by more than the tolerance | Warn |
+| Work Item Is A Stock Item | A line of work is priced against something a store issues | Warn |
+| Material Resource Not A Stock Item | A material row names a service item, so it can never be issued | Stop |
+| Work Item Has No Approved Analysis | Nothing can cost the line, so it plans no material at all | Warn |
+| Project Has No Cost Estimation | There is no plan to buy or check against | Stop |
+| Unit Cannot Be Converted | A row's unit has no conversion to the unit the item is held in | Warn |
 
 Three of them have a companion tolerance so small overruns stay quiet: **Purchase Rate Tolerance %** (10), **Consumption Tolerance %** (10) and **Advance Recovery Threshold %** (75).
 

@@ -1,5 +1,6 @@
 frappe.ui.form.on("Material Consumption Entry", {
     refresh(frm) {
+        CMS.batchQuery(frm, "items", "warehouse");
         CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
         CMS.filterByCompany(frm, "warehouse", { is_group: 0 });

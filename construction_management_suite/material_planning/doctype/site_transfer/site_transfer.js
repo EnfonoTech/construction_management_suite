@@ -1,5 +1,6 @@
 frappe.ui.form.on("Site Transfer", {
     refresh(frm) {
+        CMS.batchQuery(frm, "items", "from_warehouse");
         if (frm.doc.docstatus === 0 && frm.doc.to_project) {
             frm.add_custom_button(__("Get from the Take-off"), () => {
                 frm.call("get_items_from_take_off").then(r => {

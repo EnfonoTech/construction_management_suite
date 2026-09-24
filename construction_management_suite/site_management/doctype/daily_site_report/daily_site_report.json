@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
+  "report_title",
   "project",
   "report_date",
   "status",
@@ -52,6 +53,12 @@
    "label": "Series",
    "options": "DSR-.YYYY.MM.-.####",
    "reqd": 1
+  },
+  {
+   "fieldname": "report_title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "no_copy": 1
   },
   {
    "fieldname": "project",
@@ -307,7 +314,7 @@
    "report": 1
   }
  ],
- "title_field": "project",
+ "title_field": "report_title",
  "track_changes": 1,
  "states": [
   {

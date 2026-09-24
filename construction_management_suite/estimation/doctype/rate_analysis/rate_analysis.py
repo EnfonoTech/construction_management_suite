@@ -52,6 +52,7 @@ class RateAnalysis(Document):
 		"""
 		from construction_management_suite.utils.validations import (
 			validate_material_resources,
+			validate_uom_convertible,
 			validate_work_item,
 		)
 
@@ -61,6 +62,7 @@ class RateAnalysis(Document):
 		was = (before.status if before else None) or "Draft"
 		if self.status == "Approved" and was != "Approved":
 			validate_material_resources(self.resources)
+			validate_uom_convertible(self.resources, item_field="resource_item")
 
 	def on_update(self):
 		self.clear_other_defaults()

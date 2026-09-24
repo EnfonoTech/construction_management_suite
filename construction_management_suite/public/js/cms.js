@@ -428,6 +428,28 @@ CMS.scopeItemPickers = function (frm) {
 // Every form, without a handler per doctype: form.js triggers this on render.
 $(document).on("form-refresh", (e, frm) => CMS.scopeItemPickers(frm));
 
+/**
+ * Offer only the batches of this row's item that the store actually holds.
+ *
+ * The pickers were plain Links: every batch on the site, of every item, in
+ * every warehouse. ERPNext's own query reads the stock ledger and answers the
+ * question properly, so use that rather than a second, worse version of it.
+ */
+CMS.batchQuery = function (frm, tablefield, warehouseField) {
+    frm.set_query("batch_no", tablefield, (doc, cdt, cdn) => {
+        const row = locals[cdt][cdn];
+        return {
+            query: "erpnext.controllers.queries.get_batch_no",
+            filters: {
+                item_code: row.item_code,
+                warehouse: row.warehouse || doc[warehouseField] || null,
+                posting_date: doc.posting_date || doc.transfer_date || doc.report_date,
+                include_expired_batches: 1,
+            },
+        };
+    });
+};
+
 /** Restrict a link field to the document's own project. */
 CMS.filterByProject = function (frm, fieldname, extra) {
     frm.set_query(fieldname, () => ({

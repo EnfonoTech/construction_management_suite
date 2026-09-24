@@ -30,8 +30,14 @@ fixtures = [
         "Construction Billing Officer",
         "Construction Viewer",
     ]]]},
-    {"dt": "Workspace", "filters": [["name", "=", "Construction Management Suite"]]},
 ]
+
+# NOTE: the workspace is deliberately NOT a fixture. It is a standard workspace
+# owned by the BOQ Management module, and frappe syncs it from that JSON on every
+# migrate. Exporting it here as well put two files in charge of one page — the
+# fixture loader imports every .json in `fixtures/`, whatever this list says —
+# and the loser is whichever wrote first. Edit
+# boq_management/workspace/construction_management_suite/ and nothing else.
 
 # Document Events
 # NOTE: CMS's own doctypes must NOT be registered here. Frappe already calls the

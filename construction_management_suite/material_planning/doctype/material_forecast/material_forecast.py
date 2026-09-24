@@ -8,6 +8,7 @@ from construction_management_suite.utils.validations import (
     require_estimate,
     validate_item_kinds,
     validate_project_company,
+    validate_uom_convertible,
 )
 from construction_management_suite.utils.titles import (
     month_of,
@@ -31,6 +32,7 @@ class MaterialForecast(Document):
         validate_project_company(self)
         require_estimate(self.project, _("material can be forecast for it"))
         validate_item_kinds(self.items)
+        validate_uom_convertible(self.items)
         self.recalculate()
         self.set_default_warehouse()
         self.set_work_numbers()

@@ -14,7 +14,9 @@
   "qty_received",
   "valuation_rate",
   "batch_no",
-  "serial_no"
+  "serial_no",
+  "has_batch_no",
+  "has_serial_no"
  ],
  "fields": [
   {
@@ -89,12 +91,34 @@
    "label": "Batch No",
    "options": "Batch",
    "in_list_view": 1,
-   "columns": 2
+   "columns": 2,
+   "depends_on": "eval:doc.has_batch_no"
   },
   {
    "fieldname": "serial_no",
    "fieldtype": "Text",
-   "label": "Serial No"
+   "label": "Serial No",
+   "depends_on": "eval:doc.has_serial_no"
+  },
+  {
+   "fieldname": "has_batch_no",
+   "fieldtype": "Check",
+   "label": "Has Batch No",
+   "fetch_from": "item_code.has_batch_no",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "has_serial_no",
+   "fieldtype": "Check",
+   "label": "Has Serial No",
+   "fetch_from": "item_code.has_serial_no",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1
   }
  ],
  "istable": 1,

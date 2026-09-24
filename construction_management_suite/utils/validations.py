@@ -349,3 +349,78 @@ def require_estimate(project, what=None):
         ).format(project, subject),
         title=_("Project is not estimated"),
     )
+
+
+# ── Units: a quantity means nothing until its unit can be converted ─────────
+
+
+def _conversion_exists(item_code, uom):
+    """Can this Item's quantity be stated in this unit at all?
+
+    The Item's own conversion table first, then the site-wide factor. Either
+    one lets ERPNext turn the figure into stock; without both, the number is
+    only a number.
+    """
+    if frappe.db.exists("UOM Conversion Detail", {"parent": item_code, "uom": uom}):
+        return True
+    stock_uom = frappe.db.get_value("Item", item_code, "stock_uom")
+    return bool(
+        frappe.db.exists("UOM Conversion Factor", {"from_uom": uom, "to_uom": stock_uom})
+        or frappe.db.exists("UOM Conversion Factor", {"from_uom": stock_uom, "to_uom": uom})
+    )
+
+
+def validate_uom_convertible(rows, item_field="item_code", uom_field="uom", buying=True):
+    """Flag a row whose unit cannot be turned into the Item's stock unit.
+
+    The take-off multiplies a quantity across three statements of the unit —
+    the estimate line, the Rate Analysis resource and the Item itself — and
+    where they differ with no conversion behind them, cubic metres are ordered
+    as bags and issued as kilograms, all as the same number.
+
+    Skipped where ERPNext has been told the stock quantity is entered directly:
+    `Stock Settings.allow_to_edit_stock_uom_qty_for_purchase` (and the selling
+    twin) make the stock figure the user's own to state, so a differing unit on
+    the document is deliberate and already handled.
+    """
+    from construction_management_suite.utils.settings import action_for, enforce
+
+    action = action_for("uom_mismatch_action")
+    if action == "Ignore":
+        return
+
+    field = ("allow_to_edit_stock_uom_qty_for_purchase" if buying
+             else "allow_to_edit_stock_uom_qty_for_sales")
+    if frappe.db.get_single_value("Stock Settings", field):
+        return
+
+    bad = []
+    for row in rows:
+        item, uom = row.get(item_field), row.get(uom_field)
+        if not item or not uom:
+            continue
+        stock_uom = frappe.db.get_value("Item", item, "stock_uom")
+        if not stock_uom or uom == stock_uom:
+            continue
+        if _conversion_exists(item, uom):
+            continue
+        bad.append((row, uom, stock_uom))
+    if not bad:
+        return
+
+    enforce(
+        action,
+        "<br>".join(
+            _("Row {0}: {1} is stated in {2}, but the item is held in {3}").format(
+                row.idx, row.get(item_field), uom, stock_uom
+            )
+            for row, uom, stock_uom in bad[:10]
+        )
+        + ("<br>…" if len(bad) > 10 else "")
+        + _(
+            "<br><br>Nothing says how many {0} make a {1}, so the quantity is "
+            "carried across as if the two were the same unit. Add the conversion "
+            "on the Item, or state the quantity in the unit it is held in."
+        ).format(bad[0][1], bad[0][2]),
+        title=_("{0} row(s) have a unit that cannot be converted").format(len(bad)),
+    )

@@ -11,20 +11,26 @@ from construction_management_suite.utils.accounting import (
     get_warehouse,
 )
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
+from construction_management_suite.utils.titles import project_label, set_auto_title
 from construction_management_suite.utils.validations import (
     require_estimate,
     validate_item_kinds,
     validate_project_company,
+    validate_uom_convertible,
 )
 
 
 class MaterialConsumptionEntry(Document):
     def validate(self):
+        set_auto_title(self, "consumption_title",
+                       [_("Consumption"), project_label(self.project),
+                        frappe.utils.formatdate(self.posting_date) if self.posting_date else None])
         validate_project_company(self)
         require_estimate(self.project, _("material can be issued against it"))
         if not self.warehouse:
             self.warehouse = get_warehouse(self.project, self.company)
         validate_item_kinds(self.items)
+        validate_uom_convertible(self.items)
         numbers = work_no_map(self.project) if self.project else {}
         for item in self.items:
             item.amount = flt(item.qty) * flt(item.valuation_rate)
@@ -164,6 +170,11 @@ class MaterialConsumptionEntry(Document):
                 "uom": item.uom,
                 "s_warehouse": self.warehouse,
                 "batch_no": item.batch_no,
+                # Say it on the row rather than inheriting it. Stock Entry
+                # Detail only reads batch_no when this is set, and it defaults
+                # from a Stock Settings checkbox — so on a site with that box
+                # off, the batch a storeman chose here was silently dropped.
+                "use_serial_batch_fields": 1,
                 "cost_center": cost_center,
                 # On the row, not just the header: a report grouping Stock Entry
                 # Detail by project saw nothing, and the expense defaulted to

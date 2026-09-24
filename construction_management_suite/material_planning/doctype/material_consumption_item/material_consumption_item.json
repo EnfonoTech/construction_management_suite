@@ -13,7 +13,8 @@
   "qty",
   "valuation_rate",
   "amount",
-  "batch_no"
+  "batch_no",
+  "has_batch_no"
  ],
  "fields": [
   {
@@ -89,7 +90,18 @@
    "fieldname": "batch_no",
    "fieldtype": "Link",
    "label": "Batch No",
-   "options": "Batch"
+   "options": "Batch",
+   "depends_on": "eval:doc.has_batch_no"
+  },
+  {
+   "fieldname": "has_batch_no",
+   "fieldtype": "Check",
+   "label": "Has Batch No",
+   "fetch_from": "item_code.has_batch_no",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1,
+   "print_hide": 1
   }
  ],
  "istable": 1,

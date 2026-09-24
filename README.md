@@ -67,11 +67,25 @@ the Interim Payment Certificate under another name.
 Not built, and worth knowing before you scope a project around this app:
 
 - **No WIP journals.** Work-in-progress is not posted at month end.
-- **No test suite.**
+- **`Cost Code` is not a tree.** It carries a `parent_cost_code` field, but the
+  doctype is not `is_tree`, there is no nested-set bookkeeping, and nothing
+  rolls a child's spend up to its parent. Treat it as a flat coding list.
 
-`Cost Code` is a working WBS tree, but its actuals only populate for Project Budget
-rows that name a cost code whose **Debit Account** is set — spend is matched by GL
-account, so rows without one keep whatever was entered by hand.
+Two test harnesses ship with the app, both under `construction_management_suite/tests`:
+
+- `lifecycle.py` submits and cancels one document of every doctype against a
+  live site, so a broken `on_cancel` shows up before a user finds it.
+- `client.js` + `server.py` run the same calculations in the browser and on the
+  server over `cases.json` and compare every computed field, tolerance 0.0005 —
+  the figures on screen and the figures in the table cannot drift apart silently.
+
+See `construction_management_suite/tests/README.md` for how to run them.
+
+Project Budget actuals only populate for rows that name a cost code whose
+**Debit Account** is set — spend is matched by GL account, so rows without one
+keep whatever was entered by hand. Where several rows lead back to one account
+the spend is apportioned between them by what each was budgeted, and the
+document says so.
 
 ## Requirements
 
@@ -145,13 +159,13 @@ After installation, navigate to **Construction Management Suite** in the ERPNext
 
 | Role | Access |
 |---|---|
-| `CMS Admin` | Full access to all CMS modules |
-| `CMS Project Manager` | Read/write on all modules, submit workflows |
-| `CMS Quantity Surveyor` | BOQ, Estimation, Project Costing |
-| `CMS Site Engineer` | Daily Site Report, Site Material Request, Material Consumption |
-| `CMS Billing Officer` | IPC, Retention Release, Subcontractor Payment Certs |
-| `CMS Subcontractor` | Read own Subcontractor Payment Certificates (portal) |
-| `CMS Viewer` | Read-only across all modules |
+| `Construction Admin` | Full access to all CMS modules |
+| `Construction Project Manager` | Read/write on all modules, submit workflows |
+| `Construction Quantity Surveyor` | BOQ, Estimation, Project Costing |
+| `Construction Site Engineer` | Daily Site Report, Site Material Request, Material Consumption |
+| `Construction Billing Officer` | IPC, Retention Release, Subcontractor Payment Certs |
+| `Construction Subcontractor` | Read own Subcontractor Payment Certificates (portal) |
+| `Construction Viewer` | Read-only across all modules |
 
 ---
 

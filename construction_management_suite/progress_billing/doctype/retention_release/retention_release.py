@@ -29,6 +29,10 @@ class RetentionRelease(Document):
     """
 
     def validate(self):
+        from construction_management_suite.utils.titles import project_label, set_auto_title
+
+        set_auto_title(self, "release_title",
+                       [_("Retention"), project_label(self.project), self.release_type])
         if not self.taxes_and_charges and not self.taxes:
             self.taxes_and_charges = company_setting(self.company, "sales_taxes_template")
         load_tax_template(self)
