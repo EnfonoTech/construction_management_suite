@@ -5,12 +5,11 @@
  "engine": "InnoDB",
  "field_order": [
   "item_code",
-  "boq_item_ref",
-  "boq_item_no",
+  "work_item",
+  "work_no",
   "item_name",
   "uom",
   "column_break_1",
-  "boq_items",
   "net_qty_required",
   "already_ordered_qty",
   "qty_to_order",
@@ -31,21 +30,19 @@
    "columns": 2
   },
   {
-   "fieldname": "boq_item_ref",
-   "fieldtype": "Data",
-   "label": "Work Ref",
-   "read_only": 1,
-   "hidden": 1,
-   "no_copy": 1
+   "fieldname": "work_item",
+   "fieldtype": "Link",
+   "label": "For Work",
+   "options": "Item",
+   "reqd": 0,
+   "in_list_view": 1
   },
   {
-   "fieldname": "boq_item_no",
+   "fieldname": "work_no",
    "fieldtype": "Data",
-   "label": "For Work",
+   "label": "Work No",
    "read_only": 1,
-   "in_list_view": 1,
-   "columns": 2,
-   "description": "The priced line this is for"
+   "no_copy": 0
   },
   {
    "fieldname": "item_name",
@@ -65,14 +62,6 @@
   {
    "fieldname": "column_break_1",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "boq_items",
-   "fieldtype": "Data",
-   "label": "Serves",
-   "read_only": 1,
-   "description": "The contract lines this quantity is for",
-   "in_list_view": 0
   },
   {
    "fieldname": "net_qty_required",
@@ -137,5 +126,6 @@
  "module": "Material Planning",
  "name": "Material Forecast Item",
  "owner": "Administrator",
- "editable_grid": 1
+ "editable_grid": 1,
+ "modified": "2026-09-24 11:00:00.000000"
 }

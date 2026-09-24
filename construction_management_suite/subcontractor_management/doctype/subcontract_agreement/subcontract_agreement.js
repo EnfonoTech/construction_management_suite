@@ -11,8 +11,8 @@ frappe.ui.form.on("Subcontract Agreement", {
         frm.set_query("boq_ref", () => ({
             filters: { project: frm.doc.project, docstatus: 1 },
         }));
-        if (frm.doc.docstatus === 0 && frm.doc.boq_ref) {
-            frm.add_custom_button(__("Get Items from BOQ"), () => pick_boq_lines(frm));
+        if (frm.doc.docstatus === 0 && frm.doc.project) {
+            frm.add_custom_button(__("Get Work from the Estimate"), () => pick_boq_lines(frm));
         }
         CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
@@ -72,17 +72,17 @@ CMS.liveRows("Purchase Taxes and Charges", ["charge_type", "rate", "tax_amount",
 /** Pick the contract lines this trade is engaged to deliver. */
 function pick_boq_lines(frm) {
     frappe.call({
-        method: "construction_management_suite.api.boq.get_boq_lines_for_subcontract",
-        args: { boq: frm.doc.boq_ref },
+        method: "construction_management_suite.api.boq.get_work_lines_for_subcontract",
+        args: { project: frm.doc.project },
         callback: (r) => {
             const lines = r.message || [];
-            const taken = new Set((frm.doc.items || []).map(i => i.boq_ref).filter(Boolean));
-            const available = lines.filter(l => !taken.has(l.boq_ref));
+            const taken = new Set((frm.doc.items || []).map(i => i.item_code).filter(Boolean));
+            const available = lines.filter(l => !taken.has(l.item_code));
             if (!available.length) {
                 return frappe.msgprint(__("Every line of this BOQ is already on the agreement"));
             }
             const d = new frappe.ui.Dialog({
-                title: __("Lines from {0}", [frm.doc.boq_ref]),
+                title: __("Work on {0}", [frm.doc.project]),
                 size: "large",
                 fields: [{ fieldname: "lines", fieldtype: "HTML" }],
                 primary_action_label: __("Add Selected"),
@@ -93,7 +93,7 @@ function pick_boq_lines(frm) {
                     });
                     if (!chosen.length) return frappe.msgprint(__("Nothing selected"));
                     d.hide();
-                    frm.call("add_boq_lines", { rows: chosen }).then(res => {
+                    frm.call("add_work_lines", { rows: chosen }).then(res => {
                         frm.refresh_field("items");
                         CMS.recalc(frm);
                         frappe.show_alert({
@@ -107,7 +107,7 @@ function pick_boq_lines(frm) {
             const rows = available.map((l, i) => `
                 <tr>
                   <td><input type="checkbox" class="cms-pick" data-i="${i}"></td>
-                  <td>${frappe.utils.escape_html(l.boq_item_no || "")}</td>
+                  <td>${frappe.utils.escape_html(l.work_no || "")}</td>
                   <td>${frappe.utils.escape_html(l.description || l.item_code || "")}</td>
                   <td class="text-right">${format_number(l.qty, null, 2)} ${frappe.utils.escape_html(l.uom || "")}</td>
                   <td class="text-right">${format_currency(l.boq_cost_rate, frm.doc.currency)}</td>

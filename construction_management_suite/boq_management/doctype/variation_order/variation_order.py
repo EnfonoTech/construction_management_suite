@@ -19,6 +19,10 @@ class VariationOrder(Document):
     """
 
     def validate(self):
+        from construction_management_suite.utils.validations import validate_item_kinds
+
+        # A variation prices work, the same as the bill it varies.
+        validate_item_kinds(self.items, material_field=None, work_field="item_code")
         validate_project_company(self)
         self.set_vo_number()
         set_auto_title(self, "vo_title", [_("VO #{0}").format(self.vo_number) if self.vo_number else _("Variation"), project_label(self.project), self.variation_type])
@@ -33,10 +37,10 @@ class VariationOrder(Document):
 
         if isinstance(rows, str):
             rows = _json.loads(rows)
-        existing = {i.boq_item_ref for i in self.items if i.boq_item_ref}
+        existing = {i.item_code for i in self.items if i.item_code}
         added = 0
         for row in rows:
-            if row.get("boq_item_ref") in existing:
+            if row.get("item_code") in existing:
                 continue
             row.setdefault("nature", "Omission")
             self.append("items", row)

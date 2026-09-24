@@ -2,8 +2,13 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
+from construction_management_suite.utils.accounting import get_warehouse
 from construction_management_suite.utils.billing import orderable_qty
-from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.validations import (
+    require_estimate,
+    validate_item_kinds,
+    validate_project_company,
+)
 from construction_management_suite.utils.titles import (
     month_of,
     project_label,
@@ -24,10 +29,40 @@ class MaterialForecast(Document):
     def validate(self):
         set_auto_title(self, "forecast_title", [_("Forecast"), project_label(self.project), month_of(self.forecast_date) if self.get("forecast_date") else None])
         validate_project_company(self)
+        require_estimate(self.project, _("material can be forecast for it"))
+        validate_item_kinds(self.items)
         self.recalculate()
+        self.set_default_warehouse()
+        self.set_work_numbers()
+
+    def set_default_warehouse(self):
+        """The job's store on every row that does not name one.
+
+        It travels: the Material Request raised from this forecast takes each
+        row's warehouse, so filling it here is what stops a buyer being asked
+        where to deliver on a job that has only one store.
+        """
+        store = get_warehouse(self.project, self.company)
+        if not store:
+            return
+        for row in self.items:
+            if not row.warehouse:
+                row.warehouse = store
+
+    def set_work_numbers(self):
+        """Fill the bill number beside each work item. Display only."""
+        from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+            work_no_map,
+        )
+
+        project = self.get("project") or self.get("to_project")
+        numbers = work_no_map(project) if project else {}
+        for row in self.items:
+            row.work_no = numbers.get(row.work_item)
+
 
     @frappe.whitelist()
-    def get_items_from_boq(self):
+    def get_items_from_estimate(self):
         """Build the forecast from what the priced work is costed to consume.
 
         One row per material per work, not per material: the same cement sits
@@ -51,24 +86,24 @@ class MaterialForecast(Document):
         # plaster does not cancel out the cement the blockwork still needs.
         planned = frappe.db.sql(
             """
-            SELECT i.item_code AS code, i.boq_item_ref AS ref, SUM(i.net_qty_required) AS qty
+            SELECT i.item_code AS code, i.work_item AS ref, SUM(i.net_qty_required) AS qty
             FROM `tabMaterial Forecast Item` i
             JOIN `tabMaterial Forecast` f ON f.name = i.parent
             WHERE f.project = %(p)s AND f.docstatus = 1 AND f.name != %(n)s
-            GROUP BY i.item_code, i.boq_item_ref
+            GROUP BY i.item_code, i.work_item
             """,
             {"p": self.project, "n": self.name or ""},
             as_dict=True,
         )
         elsewhere = {(r.code, r.ref): flt(r.qty) for r in planned}
 
-        rows = {(i.item_code, i.boq_item_ref): i for i in self.items if i.item_code}
+        rows = {(i.item_code, i.work_item): i for i in self.items if i.item_code}
         added = updated = skipped = 0
         for entry in sorted(
-            take_off_by_line(self.project, self.boq_ref).values(),
-            key=lambda e: (str(e["boq_item_no"]), e["item_code"]),
+            take_off_by_line(self.project).values(),
+            key=lambda e: (str(e["work_item"] or ""), e["item_code"]),
         ):
-            key = (entry["item_code"], entry["boq_item_ref"])
+            key = (entry["item_code"], entry["work_item"])
             outstanding = flt(entry["qty"]) - flt(elsewhere.get(key))
             if outstanding <= 0.0001:
                 skipped += 1
@@ -77,8 +112,7 @@ class MaterialForecast(Document):
                 "uom": entry["uom"],
                 "net_qty_required": outstanding,
                 "estimated_rate": entry["estimated_rate"],
-                "boq_item_ref": entry["boq_item_ref"],
-                "boq_item_no": entry["boq_item_no"],
+                "work_item": entry["work_item"],
             }
             row = rows.get(key)
             if row:

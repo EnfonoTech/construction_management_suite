@@ -32,6 +32,8 @@
   "approved_date",
   "section_items",
   "items",
+  "section_breakdown",
+  "breakdown_html",
   "section_summary",
   "total_material_amount",
   "total_labour_amount",
@@ -65,7 +67,8 @@
    "label": "Project",
    "options": "Project",
    "in_list_view": 1,
-   "search_index": 1
+   "search_index": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "boq_title",
@@ -81,7 +84,8 @@
    "options": "Draft\nSubmitted\nApproved\nRevised\nCancelled",
    "default": "Draft",
    "in_list_view": 1,
-   "no_copy": 1
+   "no_copy": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "column_break_1",
@@ -97,7 +101,8 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1,
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "currency",
@@ -164,7 +169,8 @@
    "fieldname": "client",
    "fieldtype": "Link",
    "label": "Client",
-   "options": "Customer"
+   "options": "Customer",
+   "in_standard_filter": 1
   },
   {
    "fieldname": "client_po",
@@ -205,6 +211,17 @@
    "label": "BOQ Items",
    "options": "BOQ Item",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_breakdown",
+   "fieldtype": "Section Break",
+   "label": "Work Breakdown",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "breakdown_html",
+   "fieldtype": "HTML",
+   "label": "Work Breakdown"
   },
   {
    "fieldname": "section_summary",

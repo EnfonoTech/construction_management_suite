@@ -1,5 +1,8 @@
+import json
+
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from frappe.utils import cint
 
 
 def after_install():
@@ -7,6 +10,7 @@ def after_install():
     create_missing_uoms()
     create_custom_fields_on_erpnext()
     create_billing_items()
+    seed_check_defaults()
     frappe.db.commit()
 
 
@@ -14,7 +18,32 @@ def after_migrate():
     create_missing_uoms()
     create_custom_fields_on_erpnext()
     create_billing_items()
+    seed_check_defaults()
     frappe.db.commit()
+
+
+def seed_check_defaults():
+    """Write the docfield default of any Check in the settings nobody has stored.
+
+    A Single is loaded out of `tabSingles`, and a field with no row there comes
+    back cast to 0 — so a checkbox whose docfield default is 1 reads as *off*
+    to every piece of server code, while the form shows it ticked. A Select can
+    live with that, because blank means "use the module default" and the code
+    says what that is; a Check has no blank state, so the default has to be
+    materialised.
+
+    Written once, when the row is missing, and never touched again: a site that
+    unticks a box stores a 0, and a 0 is a row.
+    """
+    settings = "Construction Settings"
+    stored = set(
+        frappe.db.sql_list("SELECT field FROM tabSingles WHERE doctype = %s", settings)
+    )
+    for df in frappe.get_meta(settings).fields:
+        if df.fieldtype != "Check" or df.fieldname in stored:
+            continue
+        frappe.db.set_single_value(settings, df.fieldname, cint(df.default))
+    frappe.clear_document_cache(settings, settings)
 
 
 def create_missing_uoms():
@@ -70,24 +99,31 @@ def create_roles():
 
 
 def _work_ref_fields(after):
-    """The work reference, as it appears on every buying document."""
+    """The work reference, as it appears on every buying document.
+
+    One Link to the work Item, not the old hidden-row-name plus visible-number
+    pair. The Item is the key: it survives a bill being revised, where a child
+    row name does not.
+
+    Left editable on purpose: a buyer raising an order straight off the estimate
+    has to be able to say which work it is for, and a wrong one has to be
+    correctable.
+
+    Two Item links now sit on the same row — `item_code` is the cement,
+    `cms_work_item` is the painting it is for. Hence the explicit label and the
+    query restricted to service items; without them people attribute cement to
+    cement.
+    """
     return [
         {
-            "fieldname": "cms_work_no",
+            "fieldname": "cms_work_item",
             "label": "For Work",
-            "fieldtype": "Data",
-            # Left editable on purpose: a buyer raising an order straight off
-            # the estimate has to be able to say which work it is for, and a
-            # wrong one has to be correctable.
+            "fieldtype": "Link",
+            "options": "Item",
+            # A line of work is a service item. Without this the picker offers
+            # the cement you are already buying on the same row.
+            "link_filters": json.dumps([["Item", "is_stock_item", "=", 0]]),
             "insert_after": after,
-        },
-        {
-            "fieldname": "cms_work_ref",
-            "label": "Work Ref",
-            "fieldtype": "Data",
-            "read_only": 1,
-            "hidden": 1,
-            "insert_after": "cms_work_no",
         },
     ]
 
@@ -128,6 +164,18 @@ def create_custom_fields_on_erpnext():
                 "fieldtype": "Percent",
                 "description": "Blank = the module default",
                 "insert_after": "cms_client_po",
+            },
+            # A job has a site store the way it has a cost centre, and every
+            # material document on it asks the same question. Left blank on a
+            # project that runs several stores, so the entry still has to say
+            # which one — the default is a convenience, never an assumption.
+            {
+                "fieldname": "cms_default_warehouse",
+                "label": "Default Warehouse",
+                "fieldtype": "Link",
+                "options": "Warehouse",
+                "description": "Blank if the job runs more than one store",
+                "insert_after": "cost_center",
             },
         ],
         "Purchase Order": [
@@ -211,5 +259,16 @@ def create_custom_fields_on_erpnext():
     create_custom_fields(custom_fields, ignore_validate=True)
 
 
+# Every field this app creates on an ERPNext doctype, by name. Deleting on
+# `fieldname like 'cms_%'` alone would take another app's cms_ fields with it.
+_OWN_CUSTOM_FIELDS = (
+    "cms_project_type", "cms_contract_value", "cms_client_po", "cms_advance_amount",
+    "cms_retention_percent", "cms_subcontract_ref", "cms_ipc_ref",
+    "cms_retention_release_ref", "cms_subcontract_certificate_ref",
+    "cms_forecast_ref", "cms_site_request_ref", "cms_site_ref",
+    "cms_consumption_ref", "cms_work_item", "cms_default_warehouse",
+)
+
+
 def remove_custom_fields():
-    frappe.db.delete("Custom Field", {"fieldname": ["like", "cms_%"]})
+    frappe.db.delete("Custom Field", {"fieldname": ["in", _OWN_CUSTOM_FIELDS]})

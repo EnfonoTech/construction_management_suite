@@ -18,6 +18,8 @@
   "allow_pricing_after_approval",
   "section_items",
   "items",
+  "section_breakdown",
+  "breakdown_html",
   "section_totals",
   "estimated_material_cost",
   "estimated_labour_cost",
@@ -61,13 +63,15 @@
    "label": "Project",
    "options": "Project",
    "reqd": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "boq_ref",
    "fieldtype": "Link",
    "label": "BOQ Reference",
-   "options": "BOQ"
+   "options": "BOQ",
+   "in_standard_filter": 1
   },
   {
    "fieldname": "column_break_1",
@@ -79,7 +83,8 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1,
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "currency",
@@ -101,7 +106,8 @@
    "options": "Draft\nSubmitted\nApproved\nRejected\nCancelled",
    "default": "Draft",
    "in_list_view": 1,
-   "no_copy": 1
+   "no_copy": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "allow_pricing_after_approval",
@@ -125,6 +131,17 @@
    "label": "Items",
    "options": "Cost Estimation Item",
    "allow_on_submit": 1
+  },
+  {
+   "fieldname": "section_breakdown",
+   "fieldtype": "Section Break",
+   "label": "Work Breakdown",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "breakdown_html",
+   "fieldtype": "HTML",
+   "label": "Work Breakdown"
   },
   {
    "fieldname": "section_totals",
@@ -309,5 +326,27 @@
   }
  ],
  "title_field": "estimation_title",
- "track_changes": 1
+ "track_changes": 1,
+ "states": [
+  {
+   "color": "Yellow",
+   "title": "Draft"
+  },
+  {
+   "color": "Blue",
+   "title": "Submitted"
+  },
+  {
+   "color": "Green",
+   "title": "Approved"
+  },
+  {
+   "color": "Red",
+   "title": "Rejected"
+  },
+  {
+   "color": "Red",
+   "title": "Cancelled"
+  }
+ ]
 }

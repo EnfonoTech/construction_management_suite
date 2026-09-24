@@ -4,11 +4,10 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
+  "work_item",
+  "work_no",
   "activity_description",
-  "boq_item_no",
-  "boq_item_ref",
   "location",
-  "column_break_1",
   "planned_qty",
   "actual_qty",
   "uom",
@@ -16,6 +15,21 @@
   "remarks"
  ],
  "fields": [
+  {
+   "fieldname": "work_item",
+   "fieldtype": "Link",
+   "label": "For Work",
+   "options": "Item",
+   "reqd": 0,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "work_no",
+   "fieldtype": "Data",
+   "label": "Work No",
+   "read_only": 1,
+   "no_copy": 0
+  },
   {
    "fieldname": "activity_description",
    "fieldtype": "Data",
@@ -25,30 +39,11 @@
    "columns": 3
   },
   {
-   "fieldname": "boq_item_no",
-   "fieldtype": "Data",
-   "label": "Work",
-   "read_only": 1,
-   "in_list_view": 1,
-   "columns": 1
-  },
-  {
-   "fieldname": "boq_item_ref",
-   "fieldtype": "Data",
-   "label": "Work Ref",
-   "read_only": 1,
-   "hidden": 1
-  },
-  {
    "fieldname": "location",
    "fieldtype": "Data",
    "label": "Location / Zone",
    "in_list_view": 1,
    "columns": 1
-  },
-  {
-   "fieldname": "column_break_1",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "planned_qty",
@@ -86,11 +81,16 @@
    "fieldtype": "Small Text",
    "label": "Remarks",
    "in_list_view": 0
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
   }
  ],
  "istable": 1,
  "module": "Site Management",
  "name": "Site Report Activity",
  "owner": "Administrator",
- "editable_grid": 1
+ "editable_grid": 1,
+ "modified": "2026-09-24 11:00:00.000000"
 }

@@ -5,6 +5,8 @@
  "engine": "InnoDB",
  "field_order": [
   "item_code",
+  "work_item",
+  "work_no",
   "item_name",
   "description",
   "uom",
@@ -13,9 +15,7 @@
   "qty_approved",
   "qty_received",
   "warehouse",
-  "boq_item_ref",
-  "remarks",
-  "boq_item_no"
+  "remarks"
  ],
  "fields": [
   {
@@ -26,6 +26,21 @@
    "reqd": 1,
    "in_list_view": 1,
    "columns": 2
+  },
+  {
+   "fieldname": "work_item",
+   "fieldtype": "Link",
+   "label": "For Work",
+   "options": "Item",
+   "reqd": 0,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "work_no",
+   "fieldtype": "Data",
+   "label": "Work No",
+   "read_only": 1,
+   "no_copy": 0
   },
   {
    "fieldname": "item_name",
@@ -84,34 +99,17 @@
    "columns": 2
   },
   {
-   "fieldname": "boq_item_ref",
-   "fieldtype": "Data",
-   "label": "BOQ Line",
-   "read_only": 1,
-   "hidden": 1,
-   "no_copy": 1,
-   "print_hide": 1,
-   "search_index": 1,
-   "description": "Row name of the BOQ line this is for"
-  },
-  {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks",
    "in_list_view": 1,
    "columns": 1
-  },
-  {
-   "fieldname": "boq_item_no",
-   "fieldtype": "Data",
-   "label": "BOQ Item",
-   "read_only": 1,
-   "description": "The contract line this is for"
   }
  ],
  "istable": 1,
  "module": "Site Management",
  "name": "Site Material Request Item",
  "owner": "Administrator",
- "editable_grid": 1
+ "editable_grid": 1,
+ "modified": "2026-09-24 11:00:00.000000"
 }

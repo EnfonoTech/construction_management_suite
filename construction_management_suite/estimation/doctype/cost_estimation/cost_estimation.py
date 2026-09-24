@@ -21,7 +21,23 @@ class CostEstimation(Document):
         self.pull_costs_from_rate_analysis()
         self.calculate_totals()
 
+    def validate_model(self):
+        """Every line must be a line of work, and something must be able to cost it."""
+        from construction_management_suite.utils.validations import (
+            validate_one_estimate_per_project,
+            validate_rate_analysis_company,
+            validate_rate_analysis_present,
+            validate_work_item,
+        )
+
+        validate_one_estimate_per_project(self)
+        for row in self.items:
+            validate_work_item(row.item_code, row.idx)
+        validate_rate_analysis_company(self)
+        validate_rate_analysis_present(self.items, company=self.company)
+
     def before_submit(self):
+        self.validate_model()
         self.submitted_by = frappe.session.user
         self.status = "Submitted"
 

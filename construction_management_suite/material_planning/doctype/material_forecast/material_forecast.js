@@ -8,8 +8,8 @@ frappe.ui.form.on("Material Forecast", {
         show_position(frm);
 
         if (frm.doc.docstatus === 0 && frm.doc.project) {
-            frm.add_custom_button(__("Get Items from BOQ"), () => {
-                frm.call("get_items_from_boq").then(r => {
+            frm.add_custom_button(__("Get Materials from the Estimate"), () => {
+                frm.call("get_items_from_estimate").then(r => {
                     frm.refresh_field("items");
                     CMS.recalc(frm);
                     const m = r.message || {};

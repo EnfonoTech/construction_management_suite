@@ -60,7 +60,8 @@
    "options": "Project",
    "reqd": 1,
    "in_list_view": 1,
-   "search_index": 1
+   "search_index": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "report_date",
@@ -77,7 +78,8 @@
    "options": "Draft\nSubmitted\nReviewed\nApproved\nCancelled",
    "default": "Draft",
    "in_list_view": 1,
-   "no_copy": 1
+   "no_copy": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "column_break_1",
@@ -89,7 +91,8 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1,
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "site_engineer",
@@ -117,7 +120,7 @@
   {
    "fieldname": "temperature",
    "fieldtype": "Float",
-   "label": "Temperature (°C)"
+   "label": "Temperature (\u00b0C)"
   },
   {
    "fieldname": "wind_speed",
@@ -305,5 +308,27 @@
   }
  ],
  "title_field": "project",
- "track_changes": 1
+ "track_changes": 1,
+ "states": [
+  {
+   "color": "Yellow",
+   "title": "Draft"
+  },
+  {
+   "color": "Blue",
+   "title": "Submitted"
+  },
+  {
+   "color": "Green",
+   "title": "Reviewed"
+  },
+  {
+   "color": "Green",
+   "title": "Approved"
+  },
+  {
+   "color": "Red",
+   "title": "Cancelled"
+  }
+ ]
 }

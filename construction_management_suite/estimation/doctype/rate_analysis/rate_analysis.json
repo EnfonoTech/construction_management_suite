@@ -57,7 +57,8 @@
    "fieldtype": "Link",
    "label": "Work Item / Item Code",
    "options": "Item",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "uom",
@@ -82,7 +83,8 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1,
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "currency",
@@ -111,7 +113,8 @@
    "label": "Status",
    "options": "Draft\nApproved\nObsolete",
    "default": "Draft",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "is_active",
@@ -268,5 +271,19 @@
   }
  ],
  "title_field": "analysis_name",
- "track_changes": 1
+ "track_changes": 1,
+ "states": [
+  {
+   "color": "Yellow",
+   "title": "Draft"
+  },
+  {
+   "color": "Green",
+   "title": "Approved"
+  },
+  {
+   "color": "Gray",
+   "title": "Obsolete"
+  }
+ ]
 }

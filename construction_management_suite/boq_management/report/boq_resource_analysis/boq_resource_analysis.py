@@ -14,15 +14,12 @@ all the line still appears, because a take-off that silently drops two thirds
 of a bill is worse than no take-off.
 """
 
-import json
 
 import frappe
 from frappe import _
 from frappe.utils import flt
 
-AS_PRICED = "As priced"
-LIVE = "Live analysis"
-NO_ANALYSIS = "No analysis"
+from construction_management_suite.api.boq import NO_ANALYSIS, resources_behind_line
 
 UNLINKED_SUFFIX = " (not linked to an Item)"
 
@@ -124,6 +121,12 @@ def get_rows(filters):
 def get_boq_lines(filters):
 	conditions = ["b.docstatus < 2"]
 	params = {}
+	# A revision leaves the bill it replaces at docstatus 1, status 'Revised', so
+	# running this by project alone summed every revision. Naming a bill
+	# explicitly still shows it, superseded or not — that is a deliberate choice
+	# to look at an old revision.
+	if not filters.get("boq"):
+		conditions.append("b.status != 'Revised'")
 	for field, column in (
 		("company", "b.company"),
 		("project", "b.project"),
@@ -161,41 +164,16 @@ def get_boq_lines(filters):
 
 
 def get_resources_for_line(line):
-	"""Prefer what the line was priced at; fall back to the library as it is now."""
-	if line.get("rate_build_up"):
-		try:
-			frozen = json.loads(line["rate_build_up"])
-		except (ValueError, TypeError):
-			frozen = None
-		if frozen and frozen.get("resources"):
-			for res in frozen["resources"]:
-				res["_source"] = AS_PRICED
-				res["_output_qty"] = flt(frozen.get("output_qty")) or 1
-			return frozen["resources"]
+	"""Prefer what the line was priced at; fall back to the library as it is now.
 
-	if not line.get("rate_analysis_ref"):
-		return []
-	if not frappe.db.exists("Rate Analysis", line["rate_analysis_ref"]):
-		return []
-
-	ra = frappe.get_cached_doc("Rate Analysis", line["rate_analysis_ref"])
-	output_qty = flt(ra.output_qty) or 1
-	return [
-		{
-			"type": r.resource_type,
-			"resource_item": r.resource_item or None,
-			"item_group": (
-				frappe.db.get_value("Item", r.resource_item, "item_group") if r.resource_item else None
-			),
-			"description": r.description or r.resource_item,
-			"uom": r.uom,
-			"qty": flt(r.qty),
-			"rate": flt(r.rate),
-			"_source": LIVE,
-			"_output_qty": output_qty,
-		}
-		for r in ra.resources
-	]
+	One reading of that, shared with the breakdown shown on the BOQ and the
+	Cost Estimation themselves — see `resources_behind_line`.
+	"""
+	found = resources_behind_line(line.get("rate_build_up"), line.get("rate_analysis_ref"))
+	for res in found["resources"]:
+		res["_source"] = found["source"]
+		res["_output_qty"] = found["output_qty"]
+	return found["resources"]
 
 
 def passes_resource_filters(res, filters):

@@ -3,7 +3,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
-from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.accounting import get_warehouse
+from construction_management_suite.utils.validations import (
+    validate_item_kinds,
+    validate_project_company,
+)
 
 
 class SiteMaterialRequest(Document):
@@ -15,7 +19,59 @@ class SiteMaterialRequest(Document):
 
     def validate(self):
         validate_project_company(self)
+        validate_item_kinds(self.items)
         self.validate_quantities()
+        self.set_default_warehouse()
+        self.set_work_numbers()
+
+    def set_default_warehouse(self):
+        """The job's store on every row that does not name one."""
+        store = get_warehouse(self.project, self.company)
+        if not store:
+            return
+        for row in self.items:
+            if not row.warehouse:
+                row.warehouse = store
+
+    def set_work_numbers(self):
+        """Fill the bill number beside each work item. Display only."""
+        from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+            work_no_map,
+        )
+
+        project = self.get("project") or self.get("to_project")
+        numbers = work_no_map(project) if project else {}
+        for row in self.items:
+            row.work_no = numbers.get(row.work_item)
+
+
+    @frappe.whitelist()
+    def get_items_from_take_off(self):
+        """Offer what the estimate still needs bought, per material per work item.
+
+        The site used to type what it wanted, so a request never met the plan in
+        any report and nothing netted it against what was already on order.
+        """
+        from construction_management_suite.api.boq import take_off_outstanding
+
+        if not self.project:
+            frappe.throw(_("Choose the project this request is for"))
+
+        on_form = {(i.item_code, i.work_item) for i in self.items if i.item_code}
+        added = 0
+        for line in take_off_outstanding(self.project):
+            key = (line["item_code"], line["cms_work_item"])
+            if key in on_form:
+                continue
+            self.append("items", {
+                "item_code": line["item_code"],
+                "uom": line["uom"],
+                "qty_requested": line["qty"],
+                "work_item": line["cms_work_item"],
+                "work_no": line["work_no"],
+            })
+            added += 1
+        return added
 
     def validate_quantities(self):
         for row in self.items:
@@ -60,6 +116,9 @@ class SiteMaterialRequest(Document):
                 "project": self.project,
                 "schedule_date": self.required_date or mr.schedule_date,
                 "description": item.description or item.item_name,
+                # Rides on to the order, the receipt and the invoice by itself:
+                # frappe's mapper copies fields of the same name.
+                "cms_work_item": item.work_item,
             })
 
         if not mr.items:

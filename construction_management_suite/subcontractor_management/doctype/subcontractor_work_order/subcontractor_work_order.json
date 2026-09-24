@@ -60,7 +60,8 @@
    "fieldtype": "Link",
    "label": "Project",
    "options": "Project",
-   "fetch_from": "subcontract_agreement.project"
+   "fetch_from": "subcontract_agreement.project",
+   "in_standard_filter": 1
   },
   {
    "fieldname": "column_break_1",
@@ -72,7 +73,8 @@
    "label": "Subcontractor",
    "options": "Supplier",
    "fetch_from": "subcontract_agreement.subcontractor",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "company",
@@ -80,7 +82,8 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1,
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "currency",
@@ -96,7 +99,8 @@
    "default": "Draft",
    "in_list_view": 1,
    "no_copy": 1,
-   "allow_on_submit": 1
+   "allow_on_submit": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "section_schedule",
@@ -229,5 +233,27 @@
   }
  ],
  "title_field": "work_order_title",
- "track_changes": 1
+ "track_changes": 1,
+ "states": [
+  {
+   "color": "Yellow",
+   "title": "Draft"
+  },
+  {
+   "color": "Blue",
+   "title": "Issued"
+  },
+  {
+   "color": "Blue",
+   "title": "In Progress"
+  },
+  {
+   "color": "Green",
+   "title": "Completed"
+  },
+  {
+   "color": "Red",
+   "title": "Cancelled"
+  }
+ ]
 }

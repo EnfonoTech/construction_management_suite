@@ -28,6 +28,11 @@ MATERIALS = [
     ("CMS-SAND", "Washed sand", "Cubic Meter", 6.00),
     ("CMS-STEEL", "Reinforcement steel", "Kg", 0.45),
     ("CMS-BLOCK-200", "200mm hollow block", "Nos", 0.42),
+    ("CMS-TILE-600", "Porcelain tile 600x600", "Square Meter", 9.40),
+    ("CMS-PAINT-EMUL", "Emulsion paint", "Litre", 3.60),
+    ("CMS-ALUM-SEC", "Aluminium section and glass", "Square Meter", 48.00),
+    ("CMS-CABLE", "Cable and electrical accessories", "Nos", 1.00),
+    ("CMS-PIPE", "Pipe, fittings and sanitaryware", "Nos", 1.00),
 ]
 
 # item, uom, output qty, [(type, item_or_none, description, qty, rate)]
@@ -52,6 +57,49 @@ ANALYSES = [
         ("Material", "CMS-CEMENT-OPC", "Plaster cement", 27.3, 2.10),
         ("Material", "CMS-SAND", "Plaster sand", 2.73, 6.00),
         ("Labour", None, "Plasterer", 22, 12.00),
+    ]),
+    # Every work item carries one. A line with no approved analysis contributes
+    # nothing to the take-off — no material planned, ordered or checked against
+    # it — and the only sign is an absence, so the demo must not model that by
+    # accident.
+    ("CMS-EXCAV", "Cubic Meter", 100, [
+        ("Equipment", None, "Excavator and tipper", 11, 22.00),
+        ("Labour", None, "Banksman", 6, 8.00),
+    ]),
+    ("CMS-PCC", "Cubic Meter", 10, [
+        ("Material", "CMS-CEMENT-OPC", "Cement", 42.0, 2.10),
+        ("Material", "CMS-AGG-20", "Aggregate", 9.1, 8.50),
+        ("Material", "CMS-SAND", "Sand", 5.2, 6.00),
+        ("Labour", None, "Concrete gang", 4, 12.00),
+    ]),
+    ("CMS-REBAR", "Kg", 1000, [
+        ("Material", "CMS-STEEL", "Reinforcement bar", 1050, 0.45),
+        ("Labour", None, "Steel fixer", 14, 12.00),
+    ]),
+    ("CMS-TILE", "Square Meter", 100, [
+        ("Material", "CMS-TILE-600", "600x600 porcelain tile", 106, 9.40),
+        ("Material", "CMS-CEMENT-OPC", "Tile adhesive cement", 18.0, 2.10),
+        ("Labour", None, "Tiler", 30, 12.00),
+    ]),
+    ("CMS-PAINT", "Square Meter", 100, [
+        ("Material", "CMS-PAINT-EMUL", "Emulsion paint", 34, 3.60),
+        ("Labour", None, "Painter", 17, 11.00),
+    ]),
+    ("CMS-ALUM", "Square Meter", 10, [
+        ("Material", "CMS-ALUM-SEC", "Aluminium section and glass", 10.4, 48.00),
+        ("Labour", None, "Glazier", 9, 14.00),
+    ]),
+    ("CMS-ELEC", "Nos", 1, [
+        ("Material", "CMS-CABLE", "Cable and accessories", 9800, 1.00),
+        ("Subcontract", None, "Electrical installation", 1, 52000.00),
+    ]),
+    ("CMS-PLUMB", "Nos", 1, [
+        ("Material", "CMS-PIPE", "Pipe, fittings and sanitaryware", 7400, 1.00),
+        ("Subcontract", None, "Plumbing installation", 1, 41000.00),
+    ]),
+    ("CMS-EXT", "Nos", 1, [
+        ("Material", "CMS-AGG-20", "Sub-base aggregate", 260, 8.50),
+        ("Subcontract", None, "Landscaping", 1, 22000.00),
     ]),
 ]
 
@@ -84,9 +132,12 @@ def build():
     made["client"] = client = _customer()
     made["subcontractor"] = sub = _supplier()
     made["warehouse"] = warehouse = _warehouse()
+    _work_items()
     _materials()
 
     made["project"] = project = _project(client)
+    # One site store on this job, so every material document fills it in.
+    frappe.db.set_value("Project", project, "cms_default_warehouse", warehouse)
     made["rate_analyses"] = analyses = _rate_analyses()
     made["boq"] = boq = _boq(project, client, analyses)
     made["cost_estimation"] = _cost_estimation(project, boq)
@@ -95,11 +146,17 @@ def build():
     made["sub_certificate"] = _sub_certificate(project, sub, agreement)
     made["ipcs"] = _certificates(project, client, boq)
     made["variation"] = _variation(project, client, boq)
-    made["forecast"] = forecast = _forecast(project, boq)
+    made["forecast"] = forecast = _forecast(project)
     made["stock"] = _seed_stock(warehouse)
     made.update(_procurement(project, forecast, warehouse, sub))
     made["consumption"] = _consumption(project, warehouse)
     made["site_reports"] = _site_reports(project)
+    made["cost_codes"] = _cost_codes()
+    made["template"] = _boq_template()
+    made["budget"] = _activate_budget(project)
+    made["site_request"] = _site_material_request(project, warehouse)
+    made["site_transfer"] = _site_transfer(project, warehouse)
+    made["retention_release"] = _retention_release(project, client)
 
     frappe.db.commit()
     return made
@@ -141,15 +198,46 @@ def _warehouse():
     return name
 
 
+def _item_group(name):
+    if not frappe.db.exists("Item Group", name):
+        frappe.get_doc({
+            "doctype": "Item Group", "item_group_name": name,
+            "parent_item_group": "All Item Groups", "is_group": 0,
+        }).insert()
+    return name
+
+
 def _materials():
-    """Make sure the purchasable materials exist and are stock items."""
-    group = "Services" if frappe.db.exists("Item Group", "Services") else "All Item Groups"
+    """The purchasable materials. Stock items, because a store issues them."""
+    group = _item_group("CMS Materials")
     for code, name, uom, _rate in MATERIALS:
         if frappe.db.exists("Item", code):
             continue
         frappe.get_doc({
             "doctype": "Item", "item_code": code, "item_name": name,
             "item_group": group, "stock_uom": uom, "is_stock_item": 1,
+        }).insert()
+
+
+def _work_items():
+    """The lines of work. SERVICE items — `is_stock_item = 0`.
+
+    This is the model the whole module keys on: a work item is something the job
+    builds and is never held in a warehouse; a material is something a store
+    issues. A Rate Analysis is the bill of materials joining the two, and the
+    work item is what every downstream document references.
+
+    The demo used to assume these already existed, which made it silently
+    dependent on whatever had been typed into the site by hand.
+    """
+    group = _item_group("CMS Work")
+    for code, desc, _section, _category, uom, _qty, _rate in BOQ_LINES:
+        if frappe.db.exists("Item", code):
+            continue
+        frappe.get_doc({
+            "doctype": "Item", "item_code": code, "item_name": desc[:140],
+            "description": desc, "item_group": group, "stock_uom": uom,
+            "is_stock_item": 0, "is_sales_item": 1, "is_purchase_item": 1,
         }).insert()
 
 
@@ -301,7 +389,8 @@ def _work_order(project, sub, agreement):
         "subcontract_agreement": agreement, "company": COMPANY, "currency": CURRENCY,
         "order_date": add_days(START, 46),
     })
-    doc.append("items", {"description": "Blockwork — ground and first floor",
+    doc.append("items", {"item_code": "CMS-BLK-200",
+                         "description": "Blockwork — ground and first floor",
                          "uom": "Square Meter", "contract_qty": 1700, "contract_rate": 7.90,
                          "completed_qty": 1180})
     doc.insert()
@@ -316,7 +405,9 @@ def _sub_certificate(project, sub, agreement):
         "currency": CURRENCY, "submission_date": "2026-08-05",
         "retention_percent": 10,
     })
-    doc.append("items", {"description": "Blockwork to 5 August 2026",
+    doc.append("items", {"item_code": "CMS-BLK-200",
+                         "description": "Blockwork to 5 August 2026",
+                         "qty_completed": 1180, "contract_rate": 7.90,
                          "amount_claimed": 9322.00})
     doc.insert()
     doc.certified_amount = 9100.00
@@ -329,7 +420,7 @@ def _sub_certificate(project, sub, agreement):
 # ───────────────────────────── site ─────────────────────────────
 
 
-def _forecast(project, boq):
+def _forecast(project):
     """Planned from the take-off, a row per material per line of work."""
     from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
         work_lines,
@@ -337,11 +428,11 @@ def _forecast(project, boq):
 
     doc = frappe.get_doc({
         "doctype": "Material Forecast", "project": project, "company": COMPANY,
-        "currency": CURRENCY, "boq_ref": boq, "forecast_date": "2026-06-10",
+        "currency": CURRENCY, "forecast_date": "2026-06-10",
         "from_date": "2026-06-01", "to_date": "2026-12-31",
     })
     doc.insert()
-    doc.get_items_from_boq()
+    doc.get_items_from_estimate()
     for row in doc.items:
         row.warehouse = _warehouse()
     doc.save()
@@ -413,14 +504,14 @@ def _consumption(project, warehouse):
     )
 
     works = {}
-    for (code, ref), entry in take_off_by_line(project).items():
-        works.setdefault(code, []).append((ref, entry["boq_item_no"]))
+    for (code, work_item), entry in take_off_by_line(project).items():
+        works.setdefault(code, []).append(work_item)
     for rows in works.values():
-        rows.sort(key=lambda r: str(r[1]))
+        rows.sort(key=str)
 
     def against(code, nth):
         rows = works.get(code) or []
-        return rows[nth % len(rows)] if rows else (None, None)
+        return rows[nth % len(rows)] if rows else None
 
     made = []
     for date, rows in (
@@ -433,12 +524,11 @@ def _consumption(project, warehouse):
             "warehouse": warehouse, "posting_date": date,
         })
         for code, qty, nth in rows:
-            ref, no = against(code, nth)
             doc.append("items", {
                 "item_code": code, "qty": qty,
                 "uom": frappe.db.get_value("Item", code, "stock_uom"),
                 "valuation_rate": dict((m[0], m[3]) for m in MATERIALS).get(code, 0),
-                "boq_item_ref": ref, "boq_item_no": no,
+                "work_item": against(code, nth),
             })
         doc.insert()
         doc.submit()
@@ -475,7 +565,7 @@ def _site_reports(project):
         if blockwork:
             doc.append("activities", {
                 "activity_description": "200mm blockwork, second floor",
-                "boq_item_ref": blockwork.ref, "boq_item_no": blockwork.line_no,
+                "work_item": blockwork.work_item,
                 "location": "Grid A-F", "planned_qty": 90, "actual_qty": 82 + i * 3,
                 "uom": blockwork.uom or "Square Meter",
             })
@@ -483,3 +573,140 @@ def _site_reports(project):
         doc.submit()
         made.append(doc.name)
     return made
+
+
+# ───────────────────────── setup and the long tail ─────────────────────────
+
+
+# code, name, parent, category
+COST_CODES = [
+    ("01", "Substructure", None, None),
+    ("01-100", "Earthworks", "01", "Equipment"),
+    ("01-200", "Concrete", "01", "Material"),
+    ("02", "Superstructure", None, None),
+    ("02-100", "Blockwork", "02", "Subcontract"),
+    ("03", "Finishes", None, None),
+    ("03-100", "Plaster and paint", "03", "Labour"),
+    ("04", "Preliminaries", None, "Overhead"),
+]
+
+
+def _cost_codes():
+    """A small WBS. Group rows carry no category; leaves do."""
+    made = []
+    for code, name, parent, category in COST_CODES:
+        if frappe.db.exists("Cost Code", code):
+            made.append(code)
+            continue
+        doc = frappe.get_doc({
+            "doctype": "Cost Code", "cost_code": code, "cost_code_name": name,
+            "company": COMPANY, "parent_cost_code": parent,
+            "is_group": 1 if parent is None and not category else 0,
+            "cost_category": category,
+        })
+        doc.insert()
+        made.append(doc.name)
+    return made
+
+
+def _boq_template():
+    """A reusable bill for the next job of this type."""
+    name = "Office Block — shell and core"
+    if frappe.db.exists("BOQ Template", name):
+        return name
+    doc = frappe.get_doc({
+        "doctype": "BOQ Template", "template_name": name,
+        "project_type": "Building Construction", "currency": CURRENCY, "is_active": 1,
+        "description": "Standard shell-and-core bill, priced per project.",
+    })
+    for code, desc, section, category, uom, qty, rate in BOQ_LINES[:6]:
+        doc.append("items", {
+            "item_code": code, "description": desc, "uom": uom,
+            "qty": qty, "rate": rate, "work_category": category, "boq_section": section,
+        })
+    doc.insert()
+    return doc.name
+
+
+def _activate_budget(project):
+    """Submit the budget the approved estimate seeded, so variance reports run."""
+    name = frappe.db.get_value("Project Budget", {"project": project, "docstatus": 0}, "name")
+    if not name:
+        return None
+    doc = frappe.get_doc("Project Budget", name)
+    codes = ["01-200", "02-100", "03-100", "04"]
+    for i, row in enumerate(doc.items):
+        row.cost_code = codes[i % len(codes)]
+    doc.status = "Active"
+    doc.save()
+    doc.submit()
+    return doc.name
+
+
+def _site_material_request(project, warehouse):
+    """Raised off the take-off — the picker that had no caller before."""
+    doc = frappe.get_doc({
+        "doctype": "Site Material Request", "project": project, "company": COMPANY,
+        "request_date": TODAY, "required_date": add_days(TODAY, 21),
+        "purpose": "New Construction",
+        "remarks": "Second fix materials for the finishes package.",
+    })
+    doc.get_items_from_take_off()
+    if not doc.items:
+        doc.append("items", {
+            "item_code": "CMS-CEMENT-OPC", "uom": "Nos", "qty_requested": 200,
+            "work_item": "CMS-PLASTER",
+        })
+    for row in doc.items:
+        row.warehouse = warehouse
+        row.qty_approved = row.qty_requested
+    doc.insert()
+    doc.submit()
+    return doc.name
+
+
+def _site_transfer(project, warehouse):
+    """Stock moved onto the job, attributed to the work it is for.
+
+    The transfer leg carried a work reference from the first day and nothing
+    ever filled it, so material moved onto site was invisible to every per-work
+    total. This exercises the picker that now fills it.
+    """
+    other = frappe.db.get_value(
+        "Warehouse", {"company": COMPANY, "is_group": 0, "name": ("!=", warehouse)}, "name"
+    )
+    if not other:
+        return None
+    doc = frappe.get_doc({
+        "doctype": "Site Transfer", "company": COMPANY, "to_project": project,
+        "from_warehouse": other, "to_warehouse": warehouse,
+        "transfer_date": TODAY, "notes": "Surplus cement moved from the central store.",
+    })
+    doc.get_items_from_take_off()
+    doc.items = doc.items[:2]
+    if not doc.items:
+        doc.append("items", {
+            "item_code": "CMS-CEMENT-OPC", "uom": "Nos", "qty": 50,
+            "work_item": "CMS-PLASTER",
+        })
+    doc.insert()
+    return doc.name
+
+
+def _retention_release(project, client):
+    """Half the retention released at practical completion."""
+    held = flt(frappe.db.sql(
+        """SELECT SUM(retention_amount) FROM `tabInterim Payment Certificate`
+           WHERE project = %s AND docstatus = 1""", project)[0][0])
+    if held <= 0:
+        return None
+    doc = frappe.get_doc({
+        "doctype": "Retention Release", "project": project, "client": client,
+        "company": COMPANY, "currency": CURRENCY,
+        "release_type": "Practical Completion", "release_date": TODAY,
+        "release_amount": round(held / 2, 3),
+        "defects_liability_period_end": add_days(TODAY, 365),
+        "notes": "50% of retention released on practical completion.",
+    })
+    doc.insert()
+    return doc.name

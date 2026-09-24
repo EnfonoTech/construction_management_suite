@@ -87,8 +87,8 @@ class InterimPaymentCertificate(Document):
             return
         claimed = _previously_claimed_by_line(self.project, exclude_ipc=self.name)
         for item in self.items:
-            if item.boq_item_ref:
-                item.previous_qty_claimed = flt(claimed.get(item.boq_item_ref))
+            if item.item_code:
+                item.previous_qty_claimed = flt(claimed.get(item.item_code))
 
     def calculate_items(self):
         gross = 0
@@ -256,10 +256,12 @@ class InterimPaymentCertificate(Document):
             return
         certified = _previously_claimed_by_line(self.project)
         rows = frappe.get_all(
-            "BOQ Item", filters={"parent": self.boq_ref}, fields=["name", "qty", "rate", "actual_qty"]
+            "BOQ Item",
+            filters={"parent": self.boq_ref},
+            fields=["name", "item_code", "qty", "rate", "actual_qty"],
         )
         for row in rows:
-            actual = flt(certified.get(row.name))
+            actual = flt(certified.get(row.item_code))
             if flt(row.actual_qty) == actual:
                 continue
             variance_qty = actual - flt(row.qty)
@@ -296,10 +298,10 @@ class InterimPaymentCertificate(Document):
         if not self.boq_ref:
             frappe.throw(_("Set the BOQ this certificate bills against first"))
 
-        existing = {i.boq_item_ref for i in self.items if i.boq_item_ref}
+        existing = {i.item_code for i in self.items if i.item_code}
         added = 0
         for line in get_boq_lines_for_ipc(self.boq_ref, ipc=self.name):
-            if line["boq_item_ref"] in existing:
+            if line["item_code"] in existing:
                 continue
             self.append("items", line)
             added += 1

@@ -40,10 +40,21 @@ fixtures = [
 # Only doctypes this app does NOT own. Hooking one of our own here as well as
 # in its controller runs the same code twice — that is what emptied this dict
 # once already.
+_PROJECT_WAREHOUSE = (
+    "construction_management_suite.project_costing.purchase_controls.set_project_warehouse"
+)
+
 doc_events = {
     "Purchase Order": {
+        "before_validate": _PROJECT_WAREHOUSE,
         "validate": "construction_management_suite.project_costing.purchase_controls.validate_purchase_order",
     },
+    # The same question on every document that receives or asks for material
+    # against a job. before_validate, because ERPNext refuses a blank warehouse
+    # in its own validate — see set_project_warehouse.
+    "Material Request": {"before_validate": _PROJECT_WAREHOUSE},
+    "Purchase Receipt": {"before_validate": _PROJECT_WAREHOUSE},
+    "Purchase Invoice": {"before_validate": _PROJECT_WAREHOUSE},
 }
 
 # Scheduled Tasks

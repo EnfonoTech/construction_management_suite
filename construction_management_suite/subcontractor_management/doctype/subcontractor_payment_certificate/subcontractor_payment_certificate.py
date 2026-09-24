@@ -56,10 +56,10 @@ class SubcontractorPaymentCertificate(Document):
 
         if not self.subcontract_agreement:
             frappe.throw(_("Choose the agreement this certificate is against"))
-        existing = {i.work_order_item_ref for i in self.items if i.work_order_item_ref}
+        existing = {i.item_code for i in self.items if i.item_code}
         added = 0
         for line in get_completed_work(self.subcontract_agreement, certificate=self.name):
-            if line["work_order_item_ref"] in existing:
+            if line["item_code"] in existing:
                 continue
             self.append("items", line)
             added += 1

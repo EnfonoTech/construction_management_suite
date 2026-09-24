@@ -67,12 +67,13 @@ function choose(frm, project, rows) {
             fields: [
                 { fieldname: "item_code", label: __("Item"), fieldtype: "Link", options: "Item",
                   read_only: 1, in_list_view: 1, columns: 3 },
-                { fieldname: "cms_work_no", label: __("For Work"), fieldtype: "Data",
+                { fieldname: "work_no", label: __("Work No"), fieldtype: "Data",
                   read_only: 1, in_list_view: 1, columns: 2 },
                 { fieldname: "uom", label: __("UOM"), fieldtype: "Link", options: "UOM",
                   read_only: 1, in_list_view: 1, columns: 2 },
                 { fieldname: "qty", label: __("Qty"), fieldtype: "Float", in_list_view: 1, columns: 2 },
-                { fieldname: "cms_work_ref", fieldtype: "Data", hidden: 1 },
+                { fieldname: "cms_work_item", label: __("For Work"), fieldtype: "Link",
+                  options: "Item", in_list_view: 1, read_only: 1 },
             ],
         }],
         primary_action_label: __("Add to this request"),
@@ -87,8 +88,7 @@ function choose(frm, project, rows) {
                     uom: line.uom,
                     project: project,
                     schedule_date: frm.doc.schedule_date,
-                    cms_work_ref: line.cms_work_ref,
-                    cms_work_no: line.cms_work_no,
+                    cms_work_item: line.cms_work_item,
                 });
             });
             picker.hide();

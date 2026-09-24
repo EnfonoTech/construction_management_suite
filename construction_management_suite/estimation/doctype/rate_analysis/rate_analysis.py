@@ -34,8 +34,33 @@ class RateAnalysis(Document):
 		self.validate_locked_content()
 		self.validate_rate_basis()
 		self.validate_active_and_default()
+		self.validate_model()
 		self.calculate_resources()
 		self.calculate_totals()
+
+	def validate_model(self):
+		"""Hold the analysis to what it is: a bill of materials for a line of work.
+
+		The item being analysed is the work; the Material resources under it are
+		what a store issues to build it.
+
+		The resource check fires only as the analysis becomes Approved. Running
+		it on every save would strand an already-approved analysis that predates
+		the rule: its resources are locked by `validate_locked_content` once it
+		is behind a submitted document, so there would be no way to satisfy the
+		rule and no way to change even its status. Use Actions > New Version.
+		"""
+		from construction_management_suite.utils.validations import (
+			validate_material_resources,
+			validate_work_item,
+		)
+
+		validate_work_item(self.item_code)
+
+		before = self.get_doc_before_save()
+		was = (before.status if before else None) or "Draft"
+		if self.status == "Approved" and was != "Approved":
+			validate_material_resources(self.resources)
 
 	def on_update(self):
 		self.clear_other_defaults()
@@ -231,14 +256,19 @@ class RateAnalysis(Document):
 
 		Done after the write rather than in validate() so the winner is already
 		on disk: if this save later fails, nothing else has been demoted.
+
+		Per item *and company* while the library is company-specific, because
+		that is the scope the lookup searches in: demoting the other company's
+		default would leave its items with no default at all.
 		"""
+		from construction_management_suite.utils.settings import company_scoped_rates
+
 		if not self.is_default or not self.item_code:
 			return
-		others = frappe.get_all(
-			"Rate Analysis",
-			filters={"item_code": self.item_code, "is_default": 1, "name": ("!=", self.name)},
-			pluck="name",
-		)
+		filters = {"item_code": self.item_code, "is_default": 1, "name": ("!=", self.name)}
+		if self.company and company_scoped_rates():
+			filters["company"] = self.company
+		others = frappe.get_all("Rate Analysis", filters=filters, pluck="name")
 		for name in others:
 			frappe.db.set_value("Rate Analysis", name, "is_default", 0, update_modified=False)
 		if others:

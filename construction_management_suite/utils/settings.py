@@ -28,6 +28,20 @@ def action_for(fieldname, default="Warn"):
     return action if action in ("Ignore", "Warn", "Stop") else default
 
 
+def company_scoped_rates():
+    """Is the rate library private to the company that owns each analysis?
+
+    On by default. An analysis carries a company, and two builders sharing a
+    site keep their own labour, plant and material rates — so costing one
+    company's work from the other's library is wrong, silently and by exactly
+    the difference between them. `is_default` makes it worse: it is a flag on
+    the analysis, not a flag per company, so whichever company ticks it first
+    decides the other's cost. A single-company site, or one deliberately
+    keeping one shared library, turns this off.
+    """
+    return bool(cms_setting("scope_rate_analysis_by_company", 1))
+
+
 def enforce(action, message, title=None):
     """Apply one of the three levels. Returns True when it blocked."""
     if action == "Stop":

@@ -35,7 +35,7 @@ class SubcontractAgreement(Document):
         self.set_missing_defaults()
         validate_project_company(self)
         self.calculate_items()
-        self.check_against_boq()
+        self.check_against_estimate()
         self.calculate_advance()
         self.fetch_payment_summary()
         self.calculate_document_taxes()
@@ -46,40 +46,41 @@ class SubcontractAgreement(Document):
         self.total_with_taxes = flt(self.subcontract_value) + tax
 
     @frappe.whitelist()
-    def add_boq_lines(self, rows):
-        """Append the chosen contract lines for this trade to price."""
+    def add_work_lines(self, rows):
+        """Append the chosen lines of work for this trade to price."""
         import json as _json
 
         if isinstance(rows, str):
             rows = _json.loads(rows)
-        existing = {i.boq_ref for i in self.items if i.boq_ref}
+        existing = {i.item_code for i in self.items if i.item_code}
         added = 0
         for row in rows:
-            if row.get("boq_ref") in existing:
+            if row.get("item_code") in existing:
                 continue
             self.append("items", row)
             added += 1
         return added
 
-    def check_against_boq(self):
-        """Flag paying a trade more than the bill was priced to build the work for.
+    def check_against_estimate(self):
+        """Flag paying a trade more than the work was costed at.
 
         Not an error — a trade rate can beat your own gang, or a specialist may
         simply cost more than the estimate assumed — but engaging someone above
         the costed rate is the moment a line stops making money, and nothing
         said so before.
 
-        The BOQ itself is never rewritten. It holds the rates it was signed at,
-        and a frozen bill moving because a subcontract was placed months later
-        is exactly what the build-up snapshots exist to prevent. The comparison
-        is reported here and in the cost variance report instead.
+        The estimate itself is never rewritten. It holds the rates it was
+        approved at, and a frozen cost plan moving because a subcontract was
+        placed months later is exactly what the build-up snapshots exist to
+        prevent. The comparison is reported here and in the cost variance
+        report instead.
         """
         action = action_for("subcontract_above_cost_action")
         if action == "Ignore":
             return
         over = []
         for row in self.items:
-            if not row.boq_ref or not flt(row.boq_cost_rate):
+            if not row.item_code or not flt(row.boq_cost_rate):
                 continue
             if flt(row.rate) > flt(row.boq_cost_rate) + 0.005:
                 over.append(row)
@@ -88,8 +89,8 @@ class SubcontractAgreement(Document):
         enforce(
             action,
             "<br>".join(
-                _("Row {0} ({1}): agreed at {2}, the bill was priced at {3}").format(
-                    r.idx, r.boq_item_no or r.item_code, flt(r.rate), flt(r.boq_cost_rate)
+                _("Row {0} ({1}): agreed at {2}, the estimate costed it at {3}").format(
+                    r.idx, r.work_no or r.item_code, flt(r.rate), flt(r.boq_cost_rate)
                 )
                 for r in over[:10]
             ),

@@ -31,6 +31,20 @@ def execute(filters=None):
 	return get_columns(), rows, None, get_chart(rows), get_summary(rows)
 
 
+def _work_label(work, detail):
+	"""What the Work column shows, including when nothing named the work.
+
+	A purchase order can legitimately be raised without naming a line of work —
+	a general stock top-up. Those quantities are real and must not vanish from
+	the report just because they cannot be attributed, so they collect under an
+	explicit bucket rather than silently dropping out of every per-work total.
+	"""
+	if not work:
+		return _("(unattributed)")
+	labels = [x for x in (detail.get("work_items") or []) if x]
+	return labels[0] if labels else work
+
+
 def build_rows(filters):
 	from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
 		take_off_detail,
@@ -44,10 +58,15 @@ def build_rows(filters):
 		from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
 			take_off_by_line,
 		)
+		from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+			work_no_map,
+		)
+		numbers = work_no_map(project)
 		take_off = {
-			(e["item_code"], e["boq_item_ref"]): {
+			(e["item_code"], e["work_item"]): {
 				"item_code": e["item_code"], "uom": e["uom"], "boq_qty": e["qty"],
-				"estimated_rate": e["estimated_rate"], "boq_items": [e["boq_item_no"]],
+				"estimated_rate": e["estimated_rate"],
+				"work_items": [numbers.get(e["work_item"]) or e["work_item"]],
 			}
 			for e in take_off_by_line(project, filters.get("boq")).values()
 		}
@@ -63,46 +82,46 @@ def build_rows(filters):
 			for d in take_off_detail(project, boq=filters.get("boq"), source="BOQ")
 		}
 	forecast = _sum("""
-		SELECT i.item_code AS code, i.boq_item_ref AS work, SUM(i.net_qty_required) AS qty
+		SELECT i.item_code AS code, i.work_item AS work, SUM(i.net_qty_required) AS qty
 		FROM `tabMaterial Forecast Item` i JOIN `tabMaterial Forecast` f ON f.name = i.parent
 		WHERE f.project = %(p)s AND f.docstatus = 1
-		GROUP BY i.item_code, i.boq_item_ref""", project, by_work)
+		GROUP BY i.item_code, i.work_item""", project, by_work)
 	requested = _sum("""
-		SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty
+		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty
 		FROM `tabMaterial Request Item` i JOIN `tabMaterial Request` m ON m.name = i.parent
 		WHERE i.project = %(p)s AND m.docstatus = 1
-		GROUP BY i.item_code, i.cms_work_ref""", project, by_work)
+		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
 	ordered, ordered_value = _sum_value("""
-		SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
+		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Order Item` i JOIN `tabPurchase Order` o ON o.name = i.parent
 		WHERE i.project = %(p)s AND o.docstatus = 1
-		GROUP BY i.item_code, i.cms_work_ref""", project, by_work)
+		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
 	# Stock comes in two ways: a Purchase Receipt, or a Purchase Invoice that
 	# updates stock — some purchases never get a receipt. ERPNext will not let
 	# an invoice update stock when any line came from a receipt, so the two
 	# cannot count the same delivery twice.
 	received, received_value = _sum_value("""
 		SELECT code, work, SUM(qty) AS qty, SUM(value) AS value FROM (
-			SELECT i.item_code AS code, i.cms_work_ref AS work, i.qty AS qty, i.base_amount AS value
+			SELECT i.item_code AS code, i.cms_work_item AS work, i.qty AS qty, i.base_amount AS value
 			FROM `tabPurchase Receipt Item` i JOIN `tabPurchase Receipt` r ON r.name = i.parent
 			WHERE i.project = %(p)s AND r.docstatus = 1
 			UNION ALL
-			SELECT i.item_code, i.cms_work_ref, i.qty, i.base_amount
+			SELECT i.item_code, i.cms_work_item, i.qty, i.base_amount
 			FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
 			WHERE i.project = %(p)s AND v.docstatus = 1 AND v.update_stock = 1
 		) x GROUP BY code, work""", project, by_work)
 
 	# What the suppliers have actually billed, receipt or not.
 	invoiced, invoiced_value = _sum_value("""
-		SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
+		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
 		WHERE i.project = %(p)s AND v.docstatus = 1
-		GROUP BY i.item_code, i.cms_work_ref""", project, by_work)
+		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
 	# Material also arrives by transfer, and the Received column read purchase
 	# receipts alone — so a store moved onto site showed as never delivered.
 	# Older entries carry the project on the header only, newer ones on the row.
 	transferred, transferred_value = _sum_value("""
-		SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty, SUM(i.amount) AS value
+		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty, SUM(i.amount) AS value
 		FROM `tabStock Entry Detail` i
 		JOIN `tabStock Entry` e ON e.name = i.parent
 		LEFT JOIN `tabSite Transfer` t ON t.name = e.cms_site_ref
@@ -111,14 +130,14 @@ def build_rows(filters):
 		  AND IFNULL(i.t_warehouse, '') != ''
 		  AND (i.project = %(p)s OR (IFNULL(i.project, '') = '' AND e.project = %(p)s))
 		  AND IFNULL(t.from_project, '') != %(p)s
-		GROUP BY i.item_code, i.cms_work_ref""", project, by_work)
+		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
 
 	consumed, consumed_value = _sum_value("""
-		SELECT i.item_code AS code, i.boq_item_ref AS work, SUM(i.qty) AS qty, SUM(i.amount) AS value
+		SELECT i.item_code AS code, i.work_item AS work, SUM(i.qty) AS qty, SUM(i.amount) AS value
 		FROM `tabMaterial Consumption Item` i
 		JOIN `tabMaterial Consumption Entry` e ON e.name = i.parent
 		WHERE e.project = %(p)s AND e.docstatus = 1
-		GROUP BY i.item_code, i.boq_item_ref""", project, by_work)
+		GROUP BY i.item_code, i.work_item""", project, by_work)
 
 	codes = (set(take_off) | set(forecast) | set(requested) | set(ordered)
 	         | set(received) | set(transferred) | set(invoiced) | set(consumed))
@@ -146,10 +165,10 @@ def build_rows(filters):
 
 		rows.append({
 			"item_code": code,
-			"work": (detail.get("boq_items") or [None])[0] if by_work else None,
+			"work": _work_label(work, detail) if by_work else None,
 			"item_group": item_group,
 			"uom": detail.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
-			"boq_items": ", ".join(detail.get("boq_items") or []),
+			"boq_items": ", ".join(str(x) for x in (detail.get("work_items") or []) if x),
 			"required": required,
 			"boq_qty": flt(sold.get(key)) if sold else required,
 			"forecast": flt(forecast.get(key)),

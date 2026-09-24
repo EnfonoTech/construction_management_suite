@@ -22,6 +22,7 @@ frappe.ui.form.on("BOQ", {
     refresh(frm) {
         CMS.uomQuery(frm, "items", "item_code");
         CMS.rateAnalysisQuery(frm, "items");
+        CMS.renderWorkBreakdown(frm);
         if (!frm.is_new()) frm.add_custom_button(__("Rate Build-up"), () => CMS.showRateBuildUp(frm), __("View"));
         CMS.filterProjects(frm);
 
@@ -158,6 +159,7 @@ frappe.ui.form.on("BOQ Item", {
                 item_code: row.item_code,
                 rate_source: frm.doc.rate_source,
                 price_list: frm.doc.selling_price_list,
+                company: frm.doc.company,
             },
             callback: (r) => r.message && apply_line_rates(frm, cdt, cdn, r.message),
         });

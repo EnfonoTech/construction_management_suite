@@ -35,7 +35,8 @@
    "label": "Project",
    "options": "Project",
    "reqd": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "posting_date",
@@ -60,7 +61,8 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1,
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "warehouse",
@@ -75,7 +77,8 @@
    "label": "Status",
    "options": "Draft\nSubmitted\nCancelled",
    "default": "Draft",
-   "no_copy": 1
+   "no_copy": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "section_items",
@@ -151,5 +154,19 @@
   }
  ],
  "title_field": "project",
- "track_changes": 1
+ "track_changes": 1,
+ "states": [
+  {
+   "color": "Yellow",
+   "title": "Draft"
+  },
+  {
+   "color": "Blue",
+   "title": "Submitted"
+  },
+  {
+   "color": "Red",
+   "title": "Cancelled"
+  }
+ ]
 }

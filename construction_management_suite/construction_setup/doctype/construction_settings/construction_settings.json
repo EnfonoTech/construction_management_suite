@@ -7,6 +7,7 @@
  "field_order": [
   "section_estimating",
   "default_rate_source",
+  "scope_rate_analysis_by_company",
   "default_selling_price_list",
   "default_contingency_percent",
   "column_break_est",
@@ -39,7 +40,13 @@
   "section_site",
   "consumption_over_takeoff_action",
   "column_break_site",
-  "consumption_tolerance_percent"
+  "consumption_tolerance_percent",
+  "model_section",
+  "work_item_type_action",
+  "material_resource_action",
+  "model_col",
+  "missing_rate_analysis_action",
+  "no_estimate_action"
  ],
  "fields": [
   {
@@ -54,6 +61,12 @@
    "options": "Rate Analysis\nPrice List\nManual",
    "default": "Rate Analysis",
    "description": "Where a new BOQ prices its lines from"
+  },
+  {
+   "fieldname": "scope_rate_analysis_by_company",
+   "fieldtype": "Check",
+   "label": "Rate Analysis Is Company-Specific",
+   "default": "1"
   },
   {
    "fieldname": "default_selling_price_list",
@@ -254,10 +267,47 @@
    "fieldtype": "Percent",
    "label": "Consumption Tolerance %",
    "default": "10"
+  },
+  {
+   "fieldname": "model_section",
+   "fieldtype": "Section Break",
+   "label": "Work Items and Resources"
+  },
+  {
+   "fieldname": "work_item_type_action",
+   "fieldtype": "Select",
+   "label": "Work Item Is A Stock Item",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn"
+  },
+  {
+   "fieldname": "material_resource_action",
+   "fieldtype": "Select",
+   "label": "Material Resource Not A Stock Item",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Stop"
+  },
+  {
+   "fieldname": "model_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "missing_rate_analysis_action",
+   "fieldtype": "Select",
+   "label": "Work Item Has No Approved Analysis",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn"
+  },
+  {
+   "fieldname": "no_estimate_action",
+   "fieldtype": "Select",
+   "label": "Project Has No Cost Estimation",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Stop"
   }
  ],
  "links": [],
- "modified": "2026-09-16 00:00:00.000000",
+ "modified": "2026-09-24 11:00:00.000000",
  "module": "Construction Setup",
  "name": "Construction Settings",
  "owner": "Administrator",

@@ -36,14 +36,14 @@ class SubcontractorWorkOrder(Document):
 
         mine = {}
         for row in self.items:
-            if row.agreement_item_ref:
-                mine[row.agreement_item_ref] = mine.get(row.agreement_item_ref, 0) + flt(row.contract_qty)
-        rows = {r.agreement_item_ref: r for r in self.items if r.agreement_item_ref}
+            if row.item_code:
+                mine[row.item_code] = mine.get(row.item_code, 0) + flt(row.contract_qty)
+        rows = {r.item_code: r for r in self.items if r.item_code}
 
         added = topped = 0
         open_elsewhere = []
         for line in get_agreement_lines(self.subcontract_agreement, work_order=self.name):
-            ref = line["agreement_item_ref"]
+            ref = line["item_code"]
             remaining = (
                 flt(line["agreed_qty"])
                 - flt(line["delivered_elsewhere"])
@@ -64,10 +64,8 @@ class SubcontractorWorkOrder(Document):
                 topped += 1
             else:
                 self.append("items", {
-                    "agreement_item_ref": ref,
                     "item_code": line["item_code"],
-                    "boq_ref": line["boq_ref"],
-                    "boq_item_no": line["boq_item_no"],
+                    "work_no": line["work_no"],
                     "description": line["description"],
                     "uom": line["uom"],
                     "contract_qty": remaining,

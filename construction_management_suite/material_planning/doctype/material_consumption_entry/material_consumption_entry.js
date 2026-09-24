@@ -22,7 +22,7 @@ frappe.ui.form.on("Material Consumption Entry", {
             });
         }
     },
-    project(frm) { CMS.fillFromProject(frm, { company: "company" }); },
+    project(frm) { CMS.fillFromProject(frm, { company: "company", warehouse: "cms_default_warehouse" }); },
     company(frm) {
         CMS.filterByCompany(frm, "warehouse", { is_group: 0 });
         CMS.filterProjects(frm);

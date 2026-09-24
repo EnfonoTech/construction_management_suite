@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import add_days, flt, getdate
 
 
 def execute(filters=None):
@@ -46,8 +46,10 @@ def get_data(filters):
         conditions.append("creation >= %(from_date)s")
         params["from_date"] = filters["from_date"]
     if filters.get("to_date"):
-        conditions.append("creation <= %(to_date)s")
-        params["to_date"] = filters["to_date"]
+        # `creation` carries a time; a bare date would drop everything raised
+        # on the last day of the range, which is the day people ask about.
+        conditions.append("creation < %(to_date)s")
+        params["to_date"] = add_days(getdate(filters["to_date"]), 1)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     return frappe.db.sql(

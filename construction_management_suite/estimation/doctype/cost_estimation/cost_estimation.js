@@ -2,6 +2,7 @@ frappe.ui.form.on("Cost Estimation", {
     refresh(frm) {
         CMS.uomQuery(frm, "items", "item_code");
         CMS.rateAnalysisQuery(frm, "items");
+        CMS.renderWorkBreakdown(frm);
         if (!frm.is_new()) frm.add_custom_button(__("Rate Build-up"), () => CMS.showRateBuildUp(frm), __("View"));
         CMS.filterByProject(frm, "boq_ref", { docstatus: 1 });
         CMS.filterProjects(frm);
@@ -26,6 +27,8 @@ frappe.ui.form.on("Cost Estimation", {
                     CMS.linkButton(frm, __("Project Budget"), "Project Budget", r.message.name);
                 }
             });
+            downstream_buttons(frm);
+            render_position(frm);
         }
     },
 
@@ -47,3 +50,61 @@ frappe.ui.form.on("Cost Estimation", {
 });
 
 CMS.liveRows("Cost Estimation Item", ["qty", "material_cost", "labour_cost", "equipment_cost", "overhead_cost", "unit_cost"]);
+
+
+/* The estimate is where the job is bought and built from, so the documents
+ * that do that start here. They hang off the project rather than off this
+ * document, which is why they are buttons and not a connections panel. */
+function downstream_buttons(frm) {
+    const make = (label, doctype, extra) => {
+        frm.add_custom_button(__(label), () => {
+            frappe.new_doc(doctype, Object.assign({
+                project: frm.doc.project,
+                company: frm.doc.company,
+            }, extra || {}));
+        }, __("Create"));
+    };
+    make("Material Forecast", "Material Forecast");
+    make("Site Material Request", "Site Material Request");
+    make("Material Consumption Entry", "Material Consumption Entry");
+    make("Subcontract Agreement", "Subcontract Agreement");
+
+    frm.add_custom_button(__("Material Position"), () => {
+        frappe.set_route("query-report", "Material Position", { project: frm.doc.project });
+    }, __("View"));
+    // The project form is the cockpit — every list filtered to this job is a
+    // click away from there, and a route into a child-table list is not.
+    CMS.linkButton(frm, __("Project"), "Project", frm.doc.project);
+}
+
+/** Where the job stands against the plan this estimate set. */
+function render_position(frm) {
+    frappe.call({
+        method: "construction_management_suite.api.boq.get_estimate_position",
+        args: { cost_estimation: frm.doc.name },
+        callback: (r) => {
+            const d = r.message;
+            if (!d) return;
+            const money = (v) => format_currency(flt(v), d.currency);
+            const cells = [
+                [__("Estimated cost"), money(d.estimated)],
+                [__("Budget"), d.budget === null
+                    ? __("none") : `${money(d.budget)} <span class="text-muted">(${__(d.budget_status)})</span>`],
+                [__("On order"), money(d.ordered)],
+                [__("Actual"), d.actual === null ? "—" : money(d.actual)],
+                [__("Material consumed"), `${money(d.consumed_value)} ${__("of")} ${money(d.planned_value)} ${__("planned")}`],
+            ];
+            if (d.unpriced) {
+                cells.push([__("Unpriced lines"),
+                    `<span class="text-danger">${d.unpriced} ${__("of")} ${d.lines}</span>`]);
+            }
+            frm.dashboard.clear_headline();
+            frm.dashboard.set_headline(
+                `<div style="display:flex;flex-wrap:wrap;gap:6px 26px">` +
+                cells.map(([k, v]) =>
+                    `<span><span class="text-muted">${k}</span> <b>${v}</b></span>`).join("") +
+                `</div>`
+            );
+        },
+    });
+}

@@ -37,7 +37,8 @@
    "label": "Project",
    "options": "Project",
    "reqd": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "request_date",
@@ -58,7 +59,8 @@
    "options": "Draft\nPending Approval\nApproved\nOrdered\nReceived\nRejected\nCancelled",
    "default": "Draft",
    "in_list_view": 1,
-   "no_copy": 1
+   "no_copy": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "column_break_1",
@@ -70,7 +72,8 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1,
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "requested_by",
@@ -165,5 +168,35 @@
   }
  ],
  "title_field": "project",
- "track_changes": 1
+ "track_changes": 1,
+ "states": [
+  {
+   "color": "Yellow",
+   "title": "Draft"
+  },
+  {
+   "color": "Orange",
+   "title": "Pending Approval"
+  },
+  {
+   "color": "Green",
+   "title": "Approved"
+  },
+  {
+   "color": "Green",
+   "title": "Ordered"
+  },
+  {
+   "color": "Green",
+   "title": "Received"
+  },
+  {
+   "color": "Red",
+   "title": "Rejected"
+  },
+  {
+   "color": "Red",
+   "title": "Cancelled"
+  }
+ ]
 }

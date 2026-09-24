@@ -9,6 +9,8 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from construction_management_suite.utils.settings import company_scoped_rates
+
 
 @frappe.whitelist()
 def get_boq_summary(project):
@@ -32,6 +34,12 @@ def apply_rate_analysis_to_boq(rate_analysis, boq, item_code):
     """Push Rate Analysis rates into matching BOQ Item rows."""
     ra = frappe.get_doc("Rate Analysis", rate_analysis)
     boq_doc = frappe.get_doc("BOQ", boq)
+    if ra.company and boq_doc.company != ra.company and company_scoped_rates():
+        frappe.throw(
+            _("{0} belongs to {1}; this bill is for {2}.").format(
+                rate_analysis, ra.company, boq_doc.company
+            )
+        )
     updated = 0
     for item in boq_doc.items:
         if item.item_code == item_code:
@@ -134,10 +142,10 @@ def take_off_outstanding(project):
     ):
         for row in frappe.db.sql(
             f"""
-            SELECT i.item_code AS code, i.cms_work_ref AS work, SUM(i.qty) AS qty
+            SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty
             FROM `tab{table}` i JOIN `tab{parent}` m ON m.name = i.parent
             WHERE i.project = %s AND {cond}
-            GROUP BY i.item_code, i.cms_work_ref
+            GROUP BY i.item_code, i.cms_work_item
             """,
             project,
             as_dict=True,
@@ -147,19 +155,28 @@ def take_off_outstanding(project):
             key = (row.code, row.work or None)
             asked[key] = max(flt(asked.get(key)), flt(row.qty))
 
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        work_no_map,
+    )
+
+    from construction_management_suite.utils.billing import orderable_qty
+
+    numbers = work_no_map(project)
     out = []
-    for (code, ref), entry in take_off_by_line(project).items():
-        outstanding = flt(entry["qty"]) - flt(asked.get((code, ref)))
+    for (code, work_item), entry in take_off_by_line(project).items():
+        outstanding = flt(entry["qty"]) - flt(asked.get((code, work_item)))
         if outstanding <= 0.0001:
             continue
         out.append({
             "item_code": code,
             "uom": entry["uom"],
-            "qty": outstanding,
-            "cms_work_ref": ref,
-            "cms_work_no": entry["boq_item_no"],
+            # ERPNext refuses a fraction on a whole-number UOM outright, so what
+            # is offered has to be orderable. Same helper the forecast uses.
+            "qty": orderable_qty(outstanding, entry["uom"]),
+            "cms_work_item": work_item,
+            "work_no": numbers.get(work_item),
         })
-    return sorted(out, key=lambda r: (str(r["cms_work_no"]), r["item_code"]))
+    return sorted(out, key=lambda r: (str(r["work_no"] or ""), str(r["cms_work_item"] or ""), r["item_code"]))
 
 
 @frappe.whitelist()
@@ -196,8 +213,7 @@ def create_material_request_from_forecast(forecast_name):
                 "schedule_date": item.required_by_date or mr.schedule_date,
                 # Rides on to the order, the receipt and the invoice by itself:
                 # frappe's mapper copies fields of the same name.
-                "cms_work_ref": item.boq_item_ref,
-                "cms_work_no": item.boq_item_no,
+                "cms_work_item": item.work_item,
             })
 
     if not mr.items:
@@ -333,11 +349,6 @@ def make_cost_estimation(source_name, target_doc=None):
                     "subcontract_rate": "subcontract_cost",
                     "overhead_rate": "overhead_cost",
                     "rate_analysis_ref": "rate_analysis_ref",
-                    # The bill line each estimate line came from: what lets the
-                    # take-off, the reports and a subcontract read one against
-                    # the other rather than guessing by item code.
-                    "name": "boq_item_ref",
-                    "item_no": "boq_item_no",
                 },
             },
         },
@@ -378,7 +389,7 @@ def make_interim_payment_certificate(source_name, target_doc=None):
 
         claimed = _previously_claimed_by_line(source.project)
         for row in target.items:
-            row.previous_qty_claimed = flt(claimed.get(row.boq_item_ref))
+            row.previous_qty_claimed = flt(claimed.get(row.item_code))
         # Nothing left to certify on a line is not worth a row on the
         # certificate; the engineer should see only live work.
         target.items = [
@@ -403,10 +414,10 @@ def make_interim_payment_certificate(source_name, target_doc=None):
             "BOQ Item": {
                 "doctype": "IPC Item",
                 "field_map": {
-                    # The BOQ Item ROW name, not the item code. An item can
-                    # appear on two lines of one bill in different sections; only
-                    # the row identifies which of them is being certified.
-                    "name": "boq_item_ref",
+                    # The work Item is the key. One line per work item per bill
+                    # is enforced, and unlike a child-row name the item code
+                    # survives the bill being revised — which is what let a
+                    # revision reset claimed-to-date to zero.
                     "item_code": "item_code",
                     "description": "description",
                     "uom": "uom",
@@ -441,13 +452,13 @@ def _previously_claimed_by_line(project, exclude_ipc=None):
     """
     rows = frappe.db.sql(
         """
-        SELECT i.boq_item_ref AS ref, SUM(i.qty_this_period) AS qty
+        SELECT i.item_code AS ref, SUM(i.qty_this_period) AS qty
         FROM `tabIPC Item` i
         JOIN `tabInterim Payment Certificate` p ON p.name = i.parent
         WHERE p.project = %(project)s AND p.docstatus = 1
-          AND i.boq_item_ref IS NOT NULL AND i.boq_item_ref != ''
+          AND i.item_code IS NOT NULL AND i.item_code != ''
           AND p.name != %(exclude)s
-        GROUP BY i.boq_item_ref
+        GROUP BY i.item_code
         """,
         {"project": project, "exclude": exclude_ipc or ""},
         as_dict=True,
@@ -469,11 +480,11 @@ def get_agreement_lines(agreement, work_order=None):
         frappe.throw(_("Only a signed agreement can be released to a work order"))
 
     # Submitted orders only — a draft is a proposal, not an instruction. Counted
-    # by row, falling back to the description for orders written before the
-    # reference existed, whose quantity would otherwise be invisible.
+    # by work Item: one line per work item per document is enforced, so the item
+    # code identifies the agreement line an order released.
     instructed = frappe.db.sql(
         """
-        SELECT i.agreement_item_ref AS ref, i.description AS d, w.name AS wo,
+        SELECT i.item_code AS ref, i.description AS d, w.name AS wo,
                w.status AS status, i.contract_qty AS qty, i.completed_qty AS done
         FROM `tabSubcontractor Work Order Item` i
         JOIN `tabSubcontractor Work Order` w ON w.name = i.parent
@@ -487,27 +498,24 @@ def get_agreement_lines(agreement, work_order=None):
     # balance may go to another trade, or in another batch — so the undelivered
     # quantity is offered and the orders already holding it are named, rather
     # than the decision being made here.
-    delivered, by_text, where = {}, {}, {}
+    delivered, where = {}, {}
     for r in instructed:
         key = r.ref or None
         built = flt(r.done)
-        if key:
-            delivered[key] = delivered.get(key, 0) + built
-            if flt(r.qty) - built > 0.0001:
-                where.setdefault(key, {})[r.wo] = {
-                    "instructed": flt(r.qty), "completed": built, "status": r.status,
-                }
-        else:
-            by_text[r.d] = by_text.get(r.d, 0) + built
+        if not key:
+            continue
+        delivered[key] = delivered.get(key, 0) + built
+        if flt(r.qty) - built > 0.0001:
+            where.setdefault(key, {})[r.wo] = {
+                "instructed": flt(r.qty), "completed": built, "status": r.status,
+            }
 
     lines = []
     for row in doc.items:
-        elsewhere = flt(delivered.get(row.name)) + flt(by_text.get(row.description))
+        elsewhere = flt(delivered.get(row.item_code))
         lines.append({
-            "agreement_item_ref": row.name,
             "item_code": row.item_code,
-            "boq_ref": row.boq_ref,
-            "boq_item_no": row.boq_item_no,
+            "work_no": row.work_no,
             "description": row.description,
             "uom": row.uom,
             "agreed_qty": flt(row.qty),
@@ -517,7 +525,8 @@ def get_agreement_lines(agreement, work_order=None):
             "contract_rate": flt(row.rate),
             "completed_qty": 0,
             "open_on": [
-                dict(order=k, **v) for k, v in sorted((where.get(row.name) or {}).items())
+                dict(order=k, **v)
+                for k, v in sorted((where.get(row.item_code) or {}).items())
             ],
         })
     return lines
@@ -532,8 +541,8 @@ def get_completed_work(agreement, certificate=None, work_order=None):
     """
     rows = frappe.db.sql(
         """
-        SELECT i.name AS ref, i.description AS d, i.uom AS uom, i.item_code AS item_code,
-               i.boq_ref AS boq_ref, i.boq_item_no AS boq_item_no,
+        SELECT i.item_code AS ref, i.description AS d, i.uom AS uom,
+               i.item_code AS item_code, i.work_no AS work_no,
                i.contract_rate AS rate, i.completed_qty AS done
         FROM `tabSubcontractor Work Order Item` i
         JOIN `tabSubcontractor Work Order` w ON w.name = i.parent
@@ -545,28 +554,35 @@ def get_completed_work(agreement, certificate=None, work_order=None):
     )
     claimed = frappe.db.sql(
         """
-        SELECT i.work_order_item_ref AS d, SUM(i.qty_completed) AS qty
+        SELECT i.item_code AS d, SUM(i.qty_completed) AS qty
         FROM `tabSubcontractor Payment Item` i
         JOIN `tabSubcontractor Payment Certificate` c ON c.name = i.parent
         WHERE c.subcontract_agreement = %(a)s AND c.docstatus = 1 AND c.name != %(c)s
-          AND i.work_order_item_ref IS NOT NULL AND i.work_order_item_ref != ''
-        GROUP BY i.work_order_item_ref
+          AND i.item_code IS NOT NULL AND i.item_code != ''
+        GROUP BY i.item_code
         """,
         {"a": agreement, "c": certificate or ""},
         as_dict=True,
     )
     already = {r.d: flt(r.qty) for r in claimed}
 
-    lines = []
+    # Several orders may release the same work item, so the built quantity is
+    # summed per item before the claim is netted off it.
+    built = {}
     for r in rows:
+        e = built.setdefault(r.ref, dict(r))
+        if e is not r:
+            e["done"] = flt(e["done"]) + flt(r.done)
+
+    lines = []
+    for r in built.values():
+        r = frappe._dict(r)
         outstanding = flt(r.done) - flt(already.get(r.ref))
         if outstanding <= 0.0001:
             continue
         lines.append({
-            "work_order_item_ref": r.ref,
             "item_code": r.item_code,
-            "boq_ref": r.boq_ref,
-            "boq_item_no": r.boq_item_no,
+            "work_no": r.work_no,
             "description": r.d,
             "uom": r.uom,
             "qty_completed": outstanding,
@@ -587,6 +603,10 @@ def make_payment_certificate(source_name, target_doc=None):
     from frappe.model.mapper import get_mapped_doc
 
     def postprocess(source, target):
+        # get_mapped_doc copies every field the two doctypes share, naming_series
+        # included — so a certificate raised from a work order came out named
+        # SWO-2026-0005 and burnt a number from the order's series.
+        _own_naming_series(target)
         target.retention_percent = flt(
             frappe.db.get_value("Subcontract Agreement", source.subcontract_agreement,
                                 "retention_percent")
@@ -624,22 +644,33 @@ def make_payment_certificate(source_name, target_doc=None):
 
 
 @frappe.whitelist()
-def get_boq_lines_for_subcontract(boq):
-    """Contract lines a trade could be engaged to deliver.
+def get_work_lines_for_subcontract(project):
+    """Lines of work a trade could be engaged to deliver.
 
-    Carries the line's COST rate, not its selling rate — what a subcontract
-    should be judged against is what the bill was priced to build the work for,
-    never what the client is being charged.
+    Read from the **Cost Estimation**, not the bill. A subcontract is let
+    against what the work is planned to cost, never against the marked-up rate
+    the client is charged — judging a quote by the selling rate makes every
+    subcontract look cheap.
     """
-    doc = frappe.get_doc("BOQ", boq)
-    if doc.docstatus != 1:
-        frappe.throw(_("Only a submitted BOQ can be subcontracted against"))
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        work_no_map,
+    )
+    from construction_management_suite.utils.validations import current_estimate
+
+    estimate = current_estimate(project)
+    if not estimate:
+        frappe.throw(
+            _("{0} has no submitted Cost Estimation to subcontract against.").format(
+                project
+            )
+        )
+    doc = frappe.get_doc("Cost Estimation", estimate)
+    numbers = work_no_map(project)
     return [
         {
-            "boq_ref": row.name,
-            "boq_item_no": row.item_no,
-            "boq_cost_rate": flt(row.cost_rate),
             "item_code": row.item_code,
+            "work_no": numbers.get(row.item_code),
+            "boq_cost_rate": flt(row.unit_cost),
             "description": row.description or row.item_code,
             "uom": row.uom,
             "qty": flt(row.qty),
@@ -654,15 +685,13 @@ def get_boq_lines_for_variation(boq):
     """Every line of a bill, so a variation can be built against the real rows.
 
     A variation usually omits or re-rates work already in the contract, and the
-    row it refers to is what ties the two together — `boq_item_ref` held free
-    text before, which identified nothing.
+    work Item is what ties the two together.
     """
     doc = frappe.get_doc("BOQ", boq)
     if doc.docstatus != 1:
         frappe.throw(_("Only a submitted BOQ can be varied"))
     return [
         {
-            "boq_item_ref": row.name,
             "item_no": row.item_no,
             "item_code": row.item_code,
             "description": row.description or row.item_code,
@@ -685,12 +714,11 @@ def get_boq_lines_for_ipc(boq, ipc=None):
     claimed = _previously_claimed_by_line(doc.project, exclude_ipc=ipc)
     lines = []
     for row in doc.items:
-        previous = flt(claimed.get(row.name))
+        previous = flt(claimed.get(row.item_code))
         remaining = flt(row.qty) - previous
         if remaining <= 0.0001:
             continue
         lines.append({
-            "boq_item_ref": row.name,
             "item_code": row.item_code,
             "description": row.description or row.item_code,
             "uom": row.uom,
@@ -731,7 +759,7 @@ def check_rate_drift(boq):
 
 
 @frappe.whitelist()
-def get_rate_analysis_for_item(item_code):
+def get_rate_analysis_for_item(item_code, company=None):
     """The analysis an item is priced from when nobody picks one by hand.
 
     An item can legitimately carry several approved analyses — different
@@ -739,15 +767,32 @@ def get_rate_analysis_for_item(item_code):
     one. `is_default` is how the estimator says which is the real one; without
     it the choice fell to whichever happened to be saved last, which is not a
     decision anybody made.
+
+    The search is confined to the company being priced for unless the site has
+    turned that off; see `company_scoped_rates` for why.
     """
     if not item_code:
         return None
+    filters = {"item_code": item_code, "status": "Approved", "is_active": 1}
+    if company and company_scoped_rates():
+        filters["company"] = company
     return frappe.db.get_value(
         "Rate Analysis",
-        {"item_code": item_code, "status": "Approved", "is_active": 1},
+        filters,
         "name",
         order_by="is_default desc, modified desc",
     )
+
+
+@frappe.whitelist()
+def rate_library_is_company_scoped():
+    """For the form's Rate Analysis picker, which cannot read the Single.
+
+    Construction Settings is readable by System Manager and Projects Manager
+    only, so a site user filling a bill would get a permission error rather
+    than a filtered list.
+    """
+    return 1 if company_scoped_rates() else 0
 
 
 @frappe.whitelist()
@@ -766,7 +811,7 @@ def get_selling_rate(item_code, price_list):
 
 
 @frappe.whitelist()
-def get_boq_line_rates(item_code, rate_source=None, price_list=None):
+def get_boq_line_rates(item_code, rate_source=None, price_list=None, company=None):
     """Everything a BOQ line needs the moment its item is chosen.
 
     One call, and one place that decides where the SELLING rate comes from —
@@ -789,7 +834,7 @@ def get_boq_line_rates(item_code, rate_source=None, price_list=None):
     if not item_code:
         return out
 
-    analysis = get_rate_analysis_for_item(item_code)
+    analysis = get_rate_analysis_for_item(item_code, company)
     cost = 0
     if analysis:
         rates = get_rate_analysis_rates(analysis)
@@ -859,9 +904,12 @@ def price_boq_from_library(boq, overwrite=0, source=None, price_list=None):
     # what get_rate_analysis_for_item picks. The two must agree, so the filters
     # and the ordering here are that function's, applied in bulk.
     library = {}
+    filters = {"status": "Approved", "is_active": 1, "item_code": ["is", "set"]}
+    if doc.company and company_scoped_rates():
+        filters["company"] = doc.company
     for r in frappe.get_all(
         "Rate Analysis",
-        filters={"status": "Approved", "is_active": 1, "item_code": ["is", "set"]},
+        filters=filters,
         fields=["name", "item_code"],
         order_by="is_default desc, modified desc",
     ):
@@ -1094,6 +1142,71 @@ def snapshot_rate_analysis(ra):
     )
 
 
+# How a line's resources were arrived at. Shown wherever they are listed,
+# because "what this was priced at" and "what the library says today" are
+# different answers and only one of them is defensible in a claim.
+AS_PRICED = "As priced"
+LIVE = "Live analysis"
+NO_ANALYSIS = "No analysis"
+
+
+def resources_behind_line(rate_build_up=None, rate_analysis=None):
+    """What one line of work is made of, and where that came from.
+
+    Prefers the frozen build-up the line was priced with; falls back to the
+    library as it stands today, clearly labelled. One reading, used by the
+    take-off report and the breakdown on the form alike, so the two can never
+    tell a different story about the same line.
+
+    `output_qty` comes back with the resources rather than divided into them:
+    an analysis priced for a 10 m³ batch states its resources for the batch,
+    and the caller decides whether it wants per unit or per bill.
+    """
+    if rate_build_up:
+        try:
+            frozen = json.loads(rate_build_up)
+        except (ValueError, TypeError):
+            frozen = None
+        if frozen and frozen.get("resources"):
+            return {
+                "source": AS_PRICED,
+                "output_qty": flt(frozen.get("output_qty")) or 1,
+                "rate_analysis": frozen.get("rate_analysis"),
+                "resources": frozen["resources"],
+            }
+
+    if rate_analysis and frappe.db.exists("Rate Analysis", rate_analysis):
+        ra = frappe.get_cached_doc("Rate Analysis", rate_analysis)
+        return {
+            "source": LIVE,
+            "output_qty": flt(ra.output_qty) or 1,
+            "rate_analysis": ra.name,
+            "resources": [
+                {
+                    "type": r.resource_type,
+                    "resource_item": r.resource_item or None,
+                    "item_group": (
+                        frappe.db.get_value("Item", r.resource_item, "item_group")
+                        if r.resource_item
+                        else None
+                    ),
+                    "description": r.description or r.resource_item,
+                    "uom": r.uom,
+                    "qty": flt(r.qty),
+                    "rate": flt(r.rate),
+                }
+                for r in ra.resources
+            ],
+        }
+
+    return {
+        "source": NO_ANALYSIS,
+        "output_qty": 1,
+        "rate_analysis": rate_analysis or None,
+        "resources": [],
+    }
+
+
 @frappe.whitelist()
 def get_rate_build_up(doctype, docname, idx):
     """The frozen build-up for one line, plus how the library has moved since."""
@@ -1132,3 +1245,170 @@ def get_rate_build_up(doctype, docname, idx):
     if row.get("rate_analysis_ref") and frappe.db.exists("Rate Analysis", row.rate_analysis_ref):
         current = json.loads(snapshot_rate_analysis(row.rate_analysis_ref))
     return {"frozen": frozen, "current": current}
+
+
+# ── The whole of a priced document, on one screen ───────────────────────────
+
+
+BREAKDOWN_DOCTYPES = {
+    # doctype: (selling rate field, selling amount field, cost rate field, cost amount field)
+    "BOQ": ("rate", "amount", "cost_rate", None),
+    "Cost Estimation": (None, None, "unit_cost", "total_cost"),
+}
+
+
+@frappe.whitelist()
+def get_work_breakdown(doctype, docname):
+    """A bill or an estimate at all three of its levels at once.
+
+    Section, then the work under it, then what that work is made of. The grid
+    shows one level and the build-up dialog shows another one line at a time,
+    so the document every quantity surveyor actually reads — the one where you
+    can see the cement under every trade and what each section comes to — could
+    only be produced by exporting it.
+
+    The cost side is what each line is *made* of, priced from the same build-up
+    the take-off walks, so a section whose resources do not add up to its cost
+    is visible rather than buried.
+    """
+    if doctype not in BREAKDOWN_DOCTYPES:
+        frappe.throw(_("No breakdown is defined for {0}").format(doctype))
+    doc = frappe.get_doc(doctype, docname)
+    doc.check_permission("read")
+    rate_field, amount_field, cost_rate_field, cost_amount_field = BREAKDOWN_DOCTYPES[doctype]
+
+    sections, order = {}, []
+    for row in doc.items:
+        title = (row.get("boq_section") or "").strip() or _("Unsectioned")
+        if title not in sections:
+            sections[title] = []
+            order.append(title)
+        sections[title].append(_breakdown_line(row, rate_field, amount_field,
+                                               cost_rate_field, cost_amount_field))
+
+    out_sections, totals = [], {"amount": 0, "cost_amount": 0, "resource_amount": 0}
+    for title in order:
+        lines = sections[title]
+        section = {
+            "title": title,
+            "lines": lines,
+            "amount": sum(flt(l["amount"]) for l in lines),
+            "cost_amount": sum(flt(l["cost_amount"]) for l in lines),
+            "resource_amount": sum(flt(l["resource_amount"]) for l in lines),
+        }
+        for key in totals:
+            totals[key] += section[key]
+        out_sections.append(section)
+
+    return {
+        "doctype": doctype,
+        "name": doc.name,
+        "currency": doc.get("currency"),
+        "shows_selling": bool(rate_field),
+        "sections": out_sections,
+        "totals": totals,
+    }
+
+
+def _breakdown_line(row, rate_field, amount_field, cost_rate_field, cost_amount_field):
+    """One line of work, with the resources it is priced from underneath it."""
+    qty = flt(row.get("qty"))
+    cost_rate = flt(row.get(cost_rate_field))
+    cost_amount = flt(row.get(cost_amount_field)) if cost_amount_field else cost_rate * qty
+    found = resources_behind_line(row.get("rate_build_up"), row.get("rate_analysis_ref"))
+    output_qty = flt(found["output_qty"]) or 1
+
+    resources = []
+    for res in found["resources"]:
+        # An analysis priced for a batch states its resources for the whole
+        # batch; bring them back to one unit before scaling by the line.
+        qty_per_unit = flt(res.get("qty")) / output_qty
+        total_qty = qty * qty_per_unit
+        resources.append({
+            "type": res.get("type"),
+            "item": res.get("resource_item"),
+            "description": res.get("description") or res.get("resource_item"),
+            "uom": res.get("uom"),
+            "qty_per_unit": qty_per_unit,
+            "total_qty": total_qty,
+            "rate": flt(res.get("rate")),
+            "amount": total_qty * flt(res.get("rate")),
+        })
+
+    return {
+        "idx": row.idx,
+        "item_no": row.get("item_no"),
+        "item_code": row.get("item_code"),
+        "description": row.get("description"),
+        "uom": row.get("uom"),
+        "qty": qty,
+        "rate": flt(row.get(rate_field)) if rate_field else cost_rate,
+        "amount": flt(row.get(amount_field)) if amount_field else cost_amount,
+        "cost_rate": cost_rate,
+        "cost_amount": cost_amount,
+        "analysis": found["rate_analysis"],
+        "source": found["source"],
+        "resources": resources,
+        "resource_amount": sum(flt(r["amount"]) for r in resources),
+    }
+
+
+@frappe.whitelist()
+def get_estimate_position(cost_estimation):
+    """Where the job stands against the plan this estimate set.
+
+    The estimate is the document everything downstream is measured against —
+    the budget is seeded from it, material is bought off its take-off and
+    consumption is checked against it — and none of that was visible from the
+    estimate itself. Five figures, each from the document that owns it, so the
+    answer is never a second copy of anything.
+    """
+    doc = frappe.get_doc("Cost Estimation", cost_estimation)
+    doc.check_permission("read")
+
+    out = {
+        "currency": doc.currency,
+        "project": doc.project,
+        "estimated": flt(doc.total_estimated_cost),
+        "budget": None,
+        "budget_status": None,
+        "actual": None,
+        "ordered": 0,
+        "planned_value": 0,
+        "consumed_value": 0,
+        "lines": len(doc.items),
+        "unpriced": sum(1 for r in doc.items if not r.rate_analysis_ref),
+    }
+    if not doc.project:
+        return out
+
+    budget = frappe.db.get_value(
+        "Project Budget",
+        {"project": doc.project, "docstatus": ("<", 2)},
+        ["name", "status", "total_budget", "total_actual_cost"],
+        as_dict=True,
+    )
+    if budget:
+        out.update({
+            "budget_ref": budget.name,
+            "budget": flt(budget.total_budget),
+            "budget_status": budget.status,
+            "actual": flt(budget.total_actual_cost),
+        })
+
+    # Committed: what is on order against this job and not closed.
+    out["ordered"] = flt(
+        frappe.db.sql(
+            """
+            SELECT SUM(i.base_amount)
+            FROM `tabPurchase Order Item` i JOIN `tabPurchase Order` p ON p.name = i.parent
+            WHERE i.project = %s AND p.docstatus = 1 AND p.status NOT IN ('Closed', 'Cancelled')
+            """,
+            doc.project,
+        )[0][0]
+    )
+
+    position = get_consumption_position(doc.project)
+    out["planned_value"] = flt(position.get("allowed_value"))
+    out["consumed_value"] = flt(position.get("used_value"))
+    return out

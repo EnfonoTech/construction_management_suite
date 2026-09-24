@@ -7,7 +7,6 @@
   "item_code",
   "description",
   "uom",
-  "boq_item_ref",
   "column_break_1",
   "contract_qty",
   "contract_rate",
@@ -44,16 +43,6 @@
    "label": "UOM",
    "options": "UOM"
   },
-  {
-   "fieldname": "boq_item_ref",
-   "fieldtype": "Data",
-   "label": "BOQ Line",
-   "read_only": 1,
-   "hidden": 1,
-   "no_copy": 1,
-   "print_hide": 1,
-   "search_index": 1
-},
   {
    "fieldname": "column_break_1",
    "fieldtype": "Column Break"
@@ -141,5 +130,6 @@
  "module": "Progress Billing",
  "name": "IPC Item",
  "owner": "Administrator",
- "editable_grid": 1
+ "editable_grid": 1,
+ "modified": "2026-09-24 11:00:00.000000"
 }

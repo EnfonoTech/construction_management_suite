@@ -45,8 +45,8 @@ function pick_boq_lines(frm) {
         callback: (r) => {
             const lines = r.message || [];
             if (!lines.length) return frappe.msgprint(__("That BOQ has no lines"));
-            const taken = new Set((frm.doc.items || []).map(i => i.boq_item_ref).filter(Boolean));
-            const available = lines.filter(l => !taken.has(l.boq_item_ref));
+            const taken = new Set((frm.doc.items || []).map(i => i.item_code).filter(Boolean));
+            const available = lines.filter(l => !taken.has(l.item_code));
             if (!available.length) {
                 return frappe.msgprint(__("Every line of this BOQ is already on the variation"));
             }

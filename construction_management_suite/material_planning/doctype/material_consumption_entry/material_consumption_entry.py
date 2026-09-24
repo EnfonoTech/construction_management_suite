@@ -8,16 +8,28 @@ from frappe.utils import flt
 from construction_management_suite.utils.accounting import (
     consumption_account,
     get_cost_center,
+    get_warehouse,
 )
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
-from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.validations import (
+    require_estimate,
+    validate_item_kinds,
+    validate_project_company,
+)
 
 
 class MaterialConsumptionEntry(Document):
     def validate(self):
         validate_project_company(self)
+        require_estimate(self.project, _("material can be issued against it"))
+        if not self.warehouse:
+            self.warehouse = get_warehouse(self.project, self.company)
+        validate_item_kinds(self.items)
+        numbers = work_no_map(self.project) if self.project else {}
         for item in self.items:
             item.amount = flt(item.qty) * flt(item.valuation_rate)
+            # Display only — the work Item is the key.
+            item.work_no = numbers.get(item.work_item)
         self.check_against_take_off()
 
     @frappe.whitelist()
@@ -37,8 +49,9 @@ class MaterialConsumptionEntry(Document):
 
         lines = take_off_by_line(self.project) if self.project else {}
         single = {}
-        for (code, ref), entry in lines.items():
-            single[code] = None if code in single else (ref, entry["boq_item_no"])
+        for (code, work_item), entry in lines.items():
+            single[code] = None if code in single else work_item
+        numbers = work_no_map(self.project) if self.project else {}
 
         on_form = {i.item_code for i in self.items if i.item_code}
         added = 0
@@ -50,15 +63,15 @@ class MaterialConsumptionEntry(Document):
         ):
             if not row.item_code or row.item_code in on_form or flt(row.qty_used) <= 0:
                 continue
-            attribution = single.get(row.item_code)
+            work_item = single.get(row.item_code)
             self.append("items", {
                 "item_code": row.item_code,
                 "uom": row.uom or frappe.db.get_value("Item", row.item_code, "stock_uom"),
                 "qty": flt(row.qty_used),
                 "batch_no": row.batch_no,
                 "valuation_rate": flt(frappe.db.get_value("Item", row.item_code, "valuation_rate")),
-                "boq_item_ref": attribution[0] if attribution else None,
-                "boq_item_no": attribution[1] if attribution else None,
+                "work_item": work_item,
+                "work_no": numbers.get(work_item),
             })
             added += 1
         return added
@@ -159,8 +172,7 @@ class MaterialConsumptionEntry(Document):
                 "project": self.project,
                 "expense_account": expense,
                 # The movement says which work burnt it, not just which project.
-                "cms_work_ref": item.boq_item_ref,
-                "cms_work_no": item.boq_item_no,
+                "cms_work_item": item.work_item,
             })
         se.insert(ignore_permissions=True)
         se.submit()
@@ -171,15 +183,16 @@ class MaterialConsumptionEntry(Document):
 def take_off_source(project):
     """Which document says what this job consumes.
 
-    The Cost Estimation is the cost plan — what the work is expected to take —
-    and that is what procurement and the site work to. The BOQ is the sales
-    side: what the client is sold and billed. Where a project is priced both
-    ways the estimate wins; where it has no estimate the bill is all there is,
-    so it stands in rather than leaving the project with no plan at all.
+    Always the Cost Estimation. It is the cost plan — what the work is expected
+    to take — and it is what procurement, the site and the budget work to.
+
+    The BOQ is the sales side: what the client is sold and billed, at quantities
+    and rates that carry margin and may be front-loaded. Buying off it orders
+    the wrong quantities, so there is deliberately no fallback. A project with
+    no estimate has no plan, and `require_estimate` says so rather than
+    substituting the bill silently.
     """
-    if frappe.db.exists("Cost Estimation", {"project": project, "docstatus": 1}):
-        return "Cost Estimation"
-    return "BOQ"
+    return "Cost Estimation"
 
 
 # Both sources carry the same four columns the walk needs, under their own names.
@@ -187,6 +200,24 @@ _SOURCES = {
     "Cost Estimation": ("Cost Estimation Item", "Cost Estimation"),
     "BOQ": ("BOQ Item", "BOQ"),
 }
+
+
+# A revision does not cancel the bill it replaces: `create_revision` leaves the
+# old BOQ at docstatus 1 with status 'Revised'. Filtering on docstatus alone
+# therefore counts every revision of a project's bill — doubling the take-off
+# and listing every line of work twice in the site diary's picker.
+#
+# Cost Estimation needs no equivalent. It is replaced by cancel-and-amend, which
+# leaves the superseded document at docstatus 2, already excluded.
+SUPERSEDED_STATUS = {"BOQ": "Revised"}
+
+
+def _live_only(parent, alias="p"):
+    """SQL fragment excluding documents a later revision has superseded."""
+    status = SUPERSEDED_STATUS.get(parent)
+    if not status:
+        return ""
+    return " AND {0}.status != {1}".format(alias, frappe.db.escape(status))
 
 
 # Only what a store issues. Labour, plant, overhead and work let to a trade are
@@ -197,26 +228,43 @@ STOCK_TYPES = ("Material",)
 
 
 def work_lines(project):
-    """Every priced line of work on a project, from whichever document prices it.
+    """Every line of work on a project's cost estimate.
 
-    The same precedence the take-off uses — the cost estimate where there is
-    one, the bill otherwise — so what the site reports progress against is the
-    same list the materials were planned from.
+    Keyed by `item_code` — the work Item. That is the same key the take-off, the
+    site diary and every buying document use, so what the site reports progress
+    against is exactly what the materials were planned from.
     """
     child, parent = _SOURCES[take_off_source(project)]
-    label = "i.item_no" if child == "BOQ Item" else "i.boq_item_no"
     return frappe.db.sql(
         f"""
-        SELECT i.name AS ref, {label} AS line_no, i.item_code, i.description,
+        SELECT i.item_code AS work_item, i.item_code, i.description,
                i.qty, i.uom
         FROM `tab{child}` i
         JOIN `tab{parent}` p ON p.name = i.parent
-        WHERE p.project = %s AND p.docstatus = 1
+        WHERE p.project = %s AND p.docstatus = 1{_live_only(parent)}
         ORDER BY i.idx
         """,
         project,
         as_dict=True,
     )
+
+
+def work_no_map(project):
+    """Work Item -> the number the client speaks, from the bill.
+
+    The estimate has no item numbers; the BOQ does, and a QS quotes them in
+    every letter. Display only — nothing keys on it.
+    """
+    rows = frappe.db.sql(
+        """
+        SELECT i.item_code, i.item_no
+        FROM `tabBOQ Item` i JOIN `tabBOQ` b ON b.name = i.parent
+        WHERE b.project = %s AND b.docstatus = 1 AND b.status != 'Revised'
+        """,
+        project,
+        as_dict=True,
+    )
+    return {r.item_code: r.item_no for r in rows if r.item_no}
 
 
 def _take_off_rows(project, boq=None, source=None, types=STOCK_TYPES):
@@ -235,17 +283,22 @@ def _take_off_rows(project, boq=None, source=None, types=STOCK_TYPES):
 
     conditions = "p.project = %(project)s AND p.docstatus = 1"
     params = {"project": project, "boq": boq or ""}
-    # `boq` narrows an estimate through the bill line it was mapped from, so the
-    # same filter works whichever document is being read.
     if boq:
+        # Narrowing to one bill. Naming it explicitly pins one document, so the
+        # superseded filter is both redundant and wrong here — asking for a
+        # revised bill by name is a deliberate choice. Against the estimate the
+        # bill narrows by the work Items it prices, which is the same key both
+        # documents use.
         conditions += (
             " AND p.name = %(boq)s" if source == "BOQ"
-            else " AND i.boq_item_ref IN (SELECT name FROM `tabBOQ Item` WHERE parent = %(boq)s)"
+            else " AND i.item_code IN (SELECT item_code FROM `tabBOQ Item` WHERE parent = %(boq)s)"
         )
+    else:
+        conditions += _live_only(parent)
     rows = frappe.db.sql(
         f"""
-        SELECT i.qty, i.rate_analysis_ref, i.rate_build_up, i.item_code AS line_item,
-               i.name AS line_ref, {_label_column(source)}
+        SELECT i.qty, i.rate_analysis_ref, i.rate_build_up,
+               i.item_code AS work_item, i.item_code AS line_item
         FROM `tab{child}` i
         JOIN `tab{parent}` p ON p.name = i.parent
         WHERE {conditions}
@@ -284,11 +337,6 @@ def _take_off_rows(project, boq=None, source=None, types=STOCK_TYPES):
             yield row, res, flt(res.get("qty")) / output
 
 
-def _label_column(source):
-    """The bill's item number, whichever document is being read."""
-    return "i.item_no AS line_no" if source == "BOQ" else "i.boq_item_no AS line_no"
-
-
 def take_off_detail(project, boq=None, source=None, types=STOCK_TYPES):
     """Every material a project's bills are priced to consume, with its unit and rate.
 
@@ -303,12 +351,11 @@ def take_off_detail(project, boq=None, source=None, types=STOCK_TYPES):
             "uom": res.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
             "boq_qty": 0.0,
             "estimated_rate": flt(res.get("rate")),
-            "boq_items": [],
+            "work_items": [],
         })
         entry["boq_qty"] += flt(row.qty) * per_unit
-        label = row.line_no or row.line_item
-        if label and label not in entry["boq_items"]:
-            entry["boq_items"].append(label)
+        if row.work_item and row.work_item not in entry["work_items"]:
+            entry["work_items"].append(row.work_item)
     return list(detail.values())
 
 
@@ -322,20 +369,22 @@ def take_off_by_item(project):
 
 
 def take_off_by_line(project, boq=None):
-    """The same allowance, split by the bill line that asks for it.
+    """The same allowance, split by the line of work that asks for it.
 
     Cement sits under concrete, under blockwork mortar and under plaster. Summed
-    per item nobody can say which of those a bag was burnt on; keyed by line
-    they can. Sums back to `take_off_by_item` exactly.
+    per item nobody can say which of those a bag was burnt on; keyed by work
+    item they can. Sums back to `take_off_by_item` exactly.
+
+    Keyed `(material, work item)`. Both halves are Item codes, so the key
+    survives a bill being revised — which a child-row name did not.
     """
     allowed = {}
     for row, res, per_unit in _take_off_rows(project, boq):
         code = res.get("resource_item")
-        key = (code, row.line_ref)
+        key = (code, row.work_item)
         entry = allowed.setdefault(key, {
             "item_code": code,
-            "boq_item_ref": row.line_ref,
-            "boq_item_no": row.line_no or row.line_item,
+            "work_item": row.work_item,
             "uom": res.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
             "estimated_rate": flt(res.get("rate")),
             "qty": 0.0,

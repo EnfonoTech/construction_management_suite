@@ -5,10 +5,10 @@
 
 [post_model_sync]
 # Reads and writes columns this release adds, so it must run after the schema sync.
-construction_management_suite.patches.v1_1.link_ipc_lines_and_derive_margin
 construction_management_suite.patches.v1_1.tender_sum_and_item_numbers
-construction_management_suite.patches.v1_1.link_subcontract_chain
 construction_management_suite.patches.v1_1.backfill_work_order_status
 construction_management_suite.patches.v1_1.apply_new_setting_defaults
-construction_management_suite.patches.v1_1.link_estimate_lines_to_the_bill
 construction_management_suite.patches.v1_1.fold_waste_into_quantity
+construction_management_suite.patches.v1_1.apply_model_setting_defaults
+construction_management_suite.patches.v1_1.drop_row_name_work_refs
+construction_management_suite.patches.v1_1.apply_no_estimate_default

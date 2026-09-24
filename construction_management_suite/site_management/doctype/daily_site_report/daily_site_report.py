@@ -2,7 +2,11 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, flt, nowdate
-from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.accounting import get_warehouse
+from construction_management_suite.utils.validations import (
+    validate_item_kinds,
+    validate_project_company,
+)
 
 
 class DailySiteReport(Document):
@@ -14,6 +18,18 @@ class DailySiteReport(Document):
         self.set_submitted_by()
         self.calculate_labour_cost()
         self.calculate_equipment_cost()
+        self.set_default_warehouse()
+        validate_item_kinds(self.activities, material_field=None)
+        validate_item_kinds(self.materials_used, work_field=None)
+
+    def set_default_warehouse(self):
+        """The job's store on every material row that does not name one."""
+        store = get_warehouse(self.project, self.company)
+        if not store:
+            return
+        for row in self.materials_used:
+            if not row.warehouse:
+                row.warehouse = store
 
     def validate_date(self):
         # getdate on both sides: a field read back from the database is a
@@ -75,19 +91,21 @@ class DailySiteReport(Document):
         """
         from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
             work_lines,
+            work_no_map,
         )
 
         if not self.project:
             frappe.throw(_("Choose the project this report is for"))
-        on_form = {a.boq_item_ref for a in self.activities if a.boq_item_ref}
+        numbers = work_no_map(self.project)
+        on_form = {a.work_item for a in self.activities if a.work_item}
         added = 0
         for line in work_lines(self.project):
-            if line.ref in on_form:
+            if line.work_item in on_form:
                 continue
             self.append("activities", {
                 "activity_description": (line.description or line.item_code or "")[:140],
-                "boq_item_ref": line.ref,
-                "boq_item_no": line.line_no or line.item_code,
+                "work_item": line.work_item,
+                "work_no": numbers.get(line.work_item),
                 "uom": line.uom,
             })
             added += 1
@@ -102,19 +120,19 @@ class DailySiteReport(Document):
         """
         if not self.project:
             return
-        refs = [a.boq_item_ref for a in self.activities if a.boq_item_ref]
+        refs = [a.work_item for a in self.activities if a.work_item]
         if not refs:
             return
 
         done, total = {}, {}
         for row in frappe.db.sql(
             """
-            SELECT a.boq_item_ref AS ref, SUM(a.actual_qty) AS qty
+            SELECT a.work_item AS ref, SUM(a.actual_qty) AS qty
             FROM `tabSite Report Activity` a
             JOIN `tabDaily Site Report` d ON d.name = a.parent
             WHERE d.project = %(p)s AND d.docstatus = 1 AND d.name != %(n)s
-              AND a.boq_item_ref IN %(refs)s
-            GROUP BY a.boq_item_ref
+              AND a.work_item IN %(refs)s
+            GROUP BY a.work_item
             """,
             {"p": self.project, "n": self.name or "", "refs": refs},
             as_dict=True,
@@ -127,7 +145,7 @@ class DailySiteReport(Document):
             total[ref] = flt(frappe.db.get_value(source, ref, "qty"))
 
         for activity in self.activities:
-            ref = activity.boq_item_ref
+            ref = activity.work_item
             if not ref or not flt(total.get(ref)):
                 continue
             cumulative = flt(done.get(ref)) + flt(activity.actual_qty)

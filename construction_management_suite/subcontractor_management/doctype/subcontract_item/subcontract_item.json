@@ -5,15 +5,14 @@
  "engine": "InnoDB",
  "field_order": [
   "item_code",
+  "work_no",
   "description",
   "uom",
   "column_break_1",
   "qty",
   "rate",
   "amount",
-  "boq_cost_rate",
-  "boq_item_no",
-  "boq_ref"
+  "boq_cost_rate"
  ],
  "fields": [
   {
@@ -24,6 +23,13 @@
    "reqd": 1,
    "in_list_view": 1,
    "columns": 2
+  },
+  {
+   "fieldname": "work_no",
+   "fieldtype": "Data",
+   "label": "Work No",
+   "read_only": 1,
+   "no_copy": 0
   },
   {
    "fieldname": "description",
@@ -70,26 +76,6 @@
    "columns": 2
   },
   {
-   "fieldname": "boq_ref",
-   "fieldtype": "Data",
-   "label": "BOQ Line",
-   "read_only": 1,
-   "hidden": 1,
-   "no_copy": 1,
-   "print_hide": 1,
-   "search_index": 1,
-   "description": "Row name of the BOQ line this delivers"
-  },
-  {
-   "fieldname": "boq_item_no",
-   "fieldtype": "Data",
-   "label": "BOQ Item",
-   "read_only": 1,
-   "in_list_view": 1,
-   "columns": 1,
-   "description": "The contract line this delivers"
-  },
-  {
    "fieldname": "boq_cost_rate",
    "fieldtype": "Currency",
    "label": "BOQ Cost Rate",
@@ -103,5 +89,6 @@
  "module": "Subcontractor Management",
  "name": "Subcontract Item",
  "owner": "Administrator",
- "editable_grid": 1
+ "editable_grid": 1,
+ "modified": "2026-09-24 11:00:00.000000"
 }

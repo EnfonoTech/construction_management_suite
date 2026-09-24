@@ -4,19 +4,53 @@ Hooked onto ERPNext's Purchase Order rather than written into a controller,
 because the doctype is not ours. Both checks read their severity from
 Construction Settings, so a site decides whether they inform or block.
 
-Nothing here posts, writes or changes a figure — the checks only speak.
+The checks only speak — nothing here posts or changes a figure. The one thing
+it writes is a blank warehouse, filled from the project's own store, and only
+where the buyer left it blank.
 """
 
 import frappe
 from frappe import _
 from frappe.utils import flt
 
+from construction_management_suite.utils.accounting import get_warehouse
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
 
 
 def validate_purchase_order(doc, method=None):
     check_against_project_budget(doc)
     check_rates_against_estimate(doc)
+
+
+def set_project_warehouse(doc, method=None):
+    """Deliver to the job's own store when the line does not say otherwise.
+
+    ERPNext fills the warehouse from the buyer's own defaults, which on a
+    contractor's site is whichever job they last bought for. The line already
+    says which project it is for; where that project keeps one store, that is
+    the answer, and a project keeping several deliberately names none.
+
+    Hooked on `before_validate`, not `validate`: ERPNext's own validate refuses
+    a stock line with no warehouse, and a doc_event runs after the controller
+    it is attached to — so by `validate` the throw has already happened.
+
+    A purchase invoice only moves stock when it says it does; filling a
+    warehouse on one that does not would be answering a question nobody asked.
+    """
+    if doc.doctype == "Purchase Invoice" and not doc.get("update_stock"):
+        return
+
+    stores = {}
+    for row in doc.get("items") or []:
+        if row.get("warehouse"):
+            continue
+        project = row.get("project") or doc.get("project")
+        if not project:
+            continue
+        if project not in stores:
+            stores[project] = get_warehouse(project, doc.company)
+        if stores[project]:
+            row.warehouse = stores[project]
 
 
 def check_against_project_budget(doc):

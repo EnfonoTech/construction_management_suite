@@ -15,7 +15,26 @@ import traceback
 
 import frappe
 
-PROJECT = "PROJ-0009"
+def _busiest_project():
+    """The project with the most submitted CMS documents on it.
+
+    Resolved rather than hardcoded: the demo builder makes a new project each
+    time it runs, and a name baked in here silently turns the whole harness into
+    twelve skips that still report zero failures.
+    """
+    rows = frappe.db.sql(
+        """
+        SELECT project, COUNT(*) AS n FROM (
+            SELECT project FROM `tabBOQ` WHERE docstatus = 1
+            UNION ALL SELECT project FROM `tabCost Estimation` WHERE docstatus = 1
+            UNION ALL SELECT project FROM `tabInterim Payment Certificate` WHERE docstatus = 1
+            UNION ALL SELECT project FROM `tabDaily Site Report` WHERE docstatus = 1
+            UNION ALL SELECT project FROM `tabMaterial Consumption Entry` WHERE docstatus = 1
+        ) x WHERE project IS NOT NULL GROUP BY project ORDER BY n DESC LIMIT 1
+        """,
+        as_dict=True,
+    )
+    return rows[0].project if rows else None
 DOCTYPES = [
     "BOQ", "Cost Estimation", "Variation Order", "Interim Payment Certificate",
     "Retention Release", "Subcontract Agreement", "Subcontractor Work Order",
@@ -30,12 +49,19 @@ def run():
     frappe.set_user("Administrator")
     failures = []
 
+    project = _busiest_project()
+    if not project:
+        print("  no submitted CMS documents on any project — nothing to exercise")
+        frappe.destroy()
+        return [("(all)", "-", "no data")]
+    print(f"  exercising {project}\n")
+
     for doctype in DOCTYPES:
         names = frappe.get_all(
-            doctype, filters={"project": PROJECT, "docstatus": 1}, pluck="name", limit=1
+            doctype, filters={"project": project, "docstatus": 1}, pluck="name", limit=1
         ) if frappe.get_meta(doctype).get_field("project") else []
         if not names:
-            print(f"  skip   {doctype:<36} nothing submitted on {PROJECT}")
+            print(f"  skip   {doctype:<36} nothing submitted on {project}")
             continue
         try:
             _cycle(doctype, names[0])

@@ -38,9 +38,33 @@ class BOQ(Document):
         self.capture_rate_build_ups()
 
     def before_submit(self):
+        self.validate_work_items()
+        self.validate_analysis_company()
         self.validate_analyses_approved()
         self.validate_minimum_margin()
         self.status = "Submitted"
+
+    def validate_work_items(self):
+        """Every priced line must be a line of work, not a material.
+
+        Only the type check here. A bill may legitimately price work the cost
+        library has no analysis for — the bill is the sales side, and
+        `validate_analyses_approved` already covers the lines that do name one.
+        The missing-analysis check belongs on the Cost Estimation, which is what
+        the take-off reads.
+        """
+        from construction_management_suite.utils.validations import validate_work_item
+
+        for item in self.items:
+            validate_work_item(item.item_code, item.idx)
+
+    def validate_analysis_company(self):
+        """No line priced from another company's rate library."""
+        from construction_management_suite.utils.validations import (
+            validate_rate_analysis_company,
+        )
+
+        validate_rate_analysis_company(self)
 
     def on_submit(self):
         self._update_project_boq_link()

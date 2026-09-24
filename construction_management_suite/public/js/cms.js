@@ -49,6 +49,12 @@ CMS.quickCreateSMR = function (project) {
 
 frappe.ui.form.on("Project", {
     refresh(frm) {
+        // A job's store belongs to the job's own company, and a warehouse from
+        // another one would be filled onto every material document and then
+        // refused by ERPNext at the far end.
+        frm.set_query("cms_default_warehouse", () => ({
+            filters: { company: frm.doc.company, is_group: 0 },
+        }));
         if (frm.is_new()) return;
 
         const make = (label, doctype, extra) => {
@@ -132,7 +138,7 @@ function render_headline(frm) {
  */
 
 CMS.PROJECT_FIELDS = [
-    "company", "customer", "cost_center", "cms_contract_value",
+    "company", "customer", "cost_center", "cms_default_warehouse", "cms_contract_value",
     "cms_retention_percent", "cms_client_po", "expected_start_date", "expected_end_date",
 ];
 
@@ -164,6 +170,25 @@ CMS.fillFromProject = function (frm, map, projectField) {
         if (CMS.has(frm, "currency") && !frm.doc.currency && p.company) {
             return CMS.currencyFromCompany(frm, p.company);
         }
+    });
+};
+
+/**
+ * The store a project keeps, cached on the form.
+ *
+ * A job has one site store the way it has one cost centre, and a project that
+ * runs several deliberately names none — then this answers null and the entry
+ * still has to say which. Never fills a field somebody has already answered.
+ */
+CMS.projectStore = function (frm, projectField) {
+    const project = frm.doc[projectField || "project"];
+    if (!project) return Promise.resolve(null);
+    const cache = frm.__cms_store;
+    if (cache && cache.project === project) return Promise.resolve(cache.warehouse);
+    return frappe.db.get_value("Project", project, "cms_default_warehouse").then(r => {
+        const store = (r.message || {}).cms_default_warehouse || null;
+        frm.__cms_store = { project, warehouse: store };
+        return store;
     });
 };
 
@@ -215,6 +240,10 @@ CMS.clearForeignProject = function (frm, fieldname) {
  * Draft analysis is a legitimate pick while a tender is still being priced.
  */
 CMS.rateAnalysisQuery = function (frm, tablefield) {
+    // Asked once per page and remembered: the picker's callback has to answer
+    // synchronously, and the setting cannot be read with frappe.db — the
+    // Single is readable by managers only.
+    CMS.loadRateScope();
     frm.set_query("rate_analysis_ref", tablefield || "items", (doc, cdt, cdn) => {
         const row = locals[cdt][cdn];
         // is_active covers retirement on its own; an Obsolete analysis is
@@ -223,7 +252,21 @@ CMS.rateAnalysisQuery = function (frm, tablefield) {
         // With no item chosen, filtering on an empty item_code would match only
         // analyses that have none — which reads as a broken picker.
         if (row.item_code) filters.item_code = row.item_code;
+        // The server refuses another company's analysis while the library is
+        // company-specific, so never offer one.
+        if (CMS._rateScope && doc.company) filters.company = doc.company;
         return { filters };
+    });
+};
+
+/** Is the rate library private per company? Cached; defaults to yes. */
+CMS._rateScope = 1;
+CMS.loadRateScope = function () {
+    if (CMS._rateScopeLoaded) return;
+    CMS._rateScopeLoaded = true;
+    frappe.call({
+        method: "construction_management_suite.api.boq.rate_library_is_company_scoped",
+        callback: (r) => { CMS._rateScope = Number(r.message) ? 1 : 0; },
     });
 };
 
@@ -292,9 +335,69 @@ CMS.itemHasCompany = function () {
     return CMS._item_company;
 };
 
-/** The company scope for an Item picker, read off the form at search time. */
+/* ── …and say whether they are asking for work or for material ──
+ *
+ * Both come out of the same Item master, and on a material row they sit side
+ * by side — `item_code` is the cement, `work_item` is the plastering it is
+ * for. A line of WORK is a service item (Maintain Stock off): the thing the
+ * job builds, priced by a Rate Analysis. MATERIAL is a stock item: the thing
+ * a store issues. Offering either list where the other belongs is how cement
+ * ends up attributed to cement, and how a bill gets priced against something
+ * that has no analysis behind it.
+ *
+ * Keyed by "DocType.fieldname" for the exceptions; anything called
+ * `work_item` is work wherever it appears, so new documents are covered
+ * without being listed.
+ */
+CMS.ITEM_KIND = {
+    // Lines of work — what the job builds and what it is paid for.
+    "BOQ Item.item_code": "work",
+    "BOQ Template Item.item_code": "work",
+    "Variation Order Item.item_code": "work",
+    "Cost Estimation Item.item_code": "work",
+    "Rate Analysis.item_code": "work",
+    "IPC Item.item_code": "work",
+    "Subcontract Item.item_code": "work",
+    "Subcontractor Work Order Item.item_code": "work",
+    "Subcontractor Payment Item.item_code": "work",
+    // Material — what a store issues against that work.
+    "Material Consumption Item.item_code": "material",
+    "Material Forecast Item.item_code": "material",
+    "Site Transfer Item.item_code": "material",
+    "Site Material Request Item.item_code": "material",
+    "Site Report Material.item_code": "material",
+};
+
+CMS.itemKind = function (doctype, fieldname, row) {
+    if (fieldname === "work_item" || fieldname === "cms_work_item") return "work";
+    // A resource is material only when the row says it is; labour, plant and
+    // subcontract legitimately name a service item or none at all.
+    if (doctype === "Rate Analysis Resource" && fieldname === "resource_item") {
+        return row && row.resource_type === "Material" ? "material" : null;
+    }
+    return CMS.ITEM_KIND[`${doctype}.${fieldname}`] || null;
+};
+
+/**
+ * The scope for one Item picker: the form's company, and the kind of item the
+ * field is asking for. Read at search time, so a row's own type is current.
+ */
+CMS.itemQuery = function (doctype, fieldname) {
+    return function (doc, cdt, cdn) {
+        const filters = [];
+        // Nothing to scope to — a template or a settings page has no company.
+        if (CMS._itemScoped && doc && doc.company) {
+            filters.push(["company", "in", [doc.company, ""]]);
+        }
+        const kind = CMS.itemKind(doctype, fieldname, cdt ? locals[cdt][cdn] : null);
+        if (kind === "work") filters.push(["is_stock_item", "=", 0]);
+        if (kind === "material") filters.push(["is_stock_item", "=", 1]);
+        return { filters };
+    };
+};
+
+/** Kept for callers outside this file. */
 CMS.itemCompanyFilter = function (doc) {
-    // Nothing to scope to — a template or a settings page has no company.
     if (!doc || !doc.company) return {};
     return { filters: [["company", "in", [doc.company, ""]]] };
 };
@@ -303,18 +406,18 @@ CMS.itemCompanyFilter = function (doc) {
 CMS.scopeItemPickers = function (frm) {
     if (!frm || !frm.meta || !CMS.APP_MODULES.includes(frm.meta.module)) return;
     const fields = frm.meta.fields || [];
-    if (!fields.some(df => df.fieldname === "company")) return;
 
     CMS.itemHasCompany().then((scoped) => {
-        if (!scoped) return;
+        CMS._itemScoped = scoped;
         fields.forEach((df) => {
             if (df.fieldtype === "Link" && df.options === "Item") {
-                frm.set_query(df.fieldname, CMS.itemCompanyFilter);
+                frm.set_query(df.fieldname, CMS.itemQuery(frm.doctype, df.fieldname));
             } else if (df.fieldtype === "Table" && frm.fields_dict[df.fieldname]) {
                 const child = frappe.get_meta(df.options);
                 ((child && child.fields) || []).forEach((cdf) => {
                     if (cdf.fieldtype === "Link" && cdf.options === "Item") {
-                        frm.set_query(cdf.fieldname, df.fieldname, CMS.itemCompanyFilter);
+                        frm.set_query(cdf.fieldname, df.fieldname,
+                                      CMS.itemQuery(df.options, cdf.fieldname));
                     }
                 });
             }
@@ -764,4 +867,151 @@ function render_build_up(frm, data) {
 
     new frappe.ui.Dialog({ title: __("Rate Build-up"), size: "large",
                            fields: [{ fieldtype: "HTML", options: html }] }).show();
+}
+
+/* ══════════════════ Work breakdown ══════════════════
+ * A bill or an estimate at all three of its levels at once: the section, the
+ * work under it, and what that work is priced to consume. The grid shows one
+ * level and the build-up dialog shows another one line at a time, so until now
+ * the view a quantity surveyor actually reads could only be had by exporting.
+ *
+ * Read from the saved document, not from the grid in front of you — the
+ * resources come from the frozen build-up on each line, which only exists once
+ * the line has been saved. Hence the reminder and the refresh.
+ */
+
+CMS.renderWorkBreakdown = function (frm, fieldname) {
+    const field = frm.fields_dict[fieldname || "breakdown_html"];
+    if (!field) return;
+    const $wrapper = field.$wrapper.empty();
+
+    if (frm.is_new()) {
+        $wrapper.html(`<div class="text-muted">${__("Save the document to see its breakdown.")}</div>`);
+        return;
+    }
+    $wrapper.html(`<div class="text-muted">${__("Loading…")}</div>`);
+    frappe.call({
+        method: "construction_management_suite.api.boq.get_work_breakdown",
+        args: { doctype: frm.doctype, docname: frm.doc.name },
+        callback: (r) => {
+            if (!r.message) return;
+            $wrapper.html(CMS.workBreakdownHTML(r.message));
+            bind_breakdown(frm, $wrapper);
+        },
+    });
+};
+
+CMS.workBreakdownHTML = function (data) {
+    const cur = data.currency;
+    const money = (v) => format_currency(flt(v), cur);
+    const num = (v, p) => format_number(flt(v), null, p === undefined ? 3 : p);
+    const esc = (v) => frappe.utils.escape_html(v == null ? "" : String(v));
+    const cost = data.shows_selling;   // a bill has a selling side AND a cost side
+    const span = cost ? 7 : 6;
+    const titleSpan = span - (cost ? 2 : 1);
+
+    if (!data.sections.length) {
+        return `<div class="text-muted">${__("No lines on this document yet.")}</div>`;
+    }
+
+    const rows = [];
+    data.sections.forEach((section, si) => {
+        rows.push(`
+            <tr class="cms-wb-section">
+                <td colspan="${titleSpan}">${esc(section.title)}</td>
+                <td class="cms-wb-num">${money(section.amount)}</td>
+                ${cost ? `<td class="cms-wb-num">${money(section.cost_amount)}</td>` : ""}
+            </tr>`);
+
+        section.lines.forEach((line, li) => {
+            const key = `${si}-${li}`;
+            const priced = line.resources.length;
+            rows.push(`
+                <tr class="cms-wb-work" data-key="${key}">
+                    <td>
+                        <span class="cms-wb-toggle">${priced ? "▸" : "&nbsp;"}</span>
+                        <b>${esc(line.item_no || line.item_code || "")}</b>
+                    </td>
+                    <td>
+                        ${esc(line.item_no ? line.item_code : "")}
+                        ${line.item_no && line.item_code ? " — " : ""}
+                        ${esc(line.description || "")}
+                        ${line.source === "Live analysis"
+                            ? `<span class="cms-wb-tag">${__("live rate")}</span>` : ""}
+                        ${line.source === "No analysis"
+                            ? `<span class="cms-wb-tag warn">${__("no analysis")}</span>` : ""}
+                    </td>
+                    <td>${esc(line.uom || "")}</td>
+                    <td class="cms-wb-num">${num(line.qty)}</td>
+                    <td class="cms-wb-num">${money(line.rate)}</td>
+                    <td class="cms-wb-num">${money(line.amount)}</td>
+                    ${cost ? `<td class="cms-wb-num">${money(line.cost_amount)}</td>` : ""}
+                </tr>`);
+
+            line.resources.forEach(res => {
+                rows.push(`
+                    <tr class="cms-wb-res" data-parent="${key}" hidden>
+                        <td class="cms-wb-type">${esc(res.type || "")}</td>
+                        <td class="cms-wb-indent">
+                            ${esc(res.item || "")}${res.item && res.description ? " — " : ""}
+                            <span class="text-muted">${esc(res.description || "")}</span>
+                        </td>
+                        <td>${esc(res.uom || "")}</td>
+                        <td class="cms-wb-num">
+                            ${num(res.total_qty)}
+                            <div class="cms-wb-per">${num(res.qty_per_unit, 4)} / ${esc(line.uom || __("unit"))}</div>
+                        </td>
+                        <td class="cms-wb-num">${money(res.rate)}</td>
+                        <td class="cms-wb-num">${money(res.amount)}</td>
+                        ${cost ? "<td></td>" : ""}
+                    </tr>`);
+            });
+        });
+    });
+
+    return `
+        <div class="cms-wb">
+            <div class="cms-wb-bar">
+                <a class="cms-wb-all" data-open="1">${__("Expand all")}</a>
+                <span class="text-muted">${__("As saved — resources come from each line's frozen build-up.")}</span>
+            </div>
+            <table class="cms-wb-table">
+                <thead>
+                    <tr>
+                        <th style="width:12%">${__("Item")}</th>
+                        <th>${__("Description")}</th>
+                        <th style="width:7%">${__("UOM")}</th>
+                        <th style="width:12%" class="cms-wb-num">${__("Qty")}</th>
+                        <th style="width:12%" class="cms-wb-num">${__("Rate")}</th>
+                        <th style="width:14%" class="cms-wb-num">${cost ? __("Amount") : __("Cost")}</th>
+                        ${cost ? `<th style="width:14%" class="cms-wb-num">${__("Cost")}</th>` : ""}
+                    </tr>
+                </thead>
+                <tbody>${rows.join("")}</tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="${titleSpan}">${__("Total")}</td>
+                        <td class="cms-wb-num">${money(data.totals.amount)}</td>
+                        ${cost ? `<td class="cms-wb-num">${money(data.totals.cost_amount)}</td>` : ""}
+                    </tr>
+                </tfoot>
+            </table>
+        </div>`;
+};
+
+/** One work line's resources, or all of them. */
+function bind_breakdown(frm, $wrapper) {
+    $wrapper.on("click", ".cms-wb-work", function () {
+        const key = $(this).data("key");
+        const open = $(this).hasClass("open");
+        $(this).toggleClass("open", !open).find(".cms-wb-toggle").text(open ? "▸" : "▾");
+        $wrapper.find(`.cms-wb-res[data-parent="${key}"]`).prop("hidden", open);
+    });
+    $wrapper.on("click", ".cms-wb-all", function () {
+        const open = Number($(this).data("open"));
+        $(this).data("open", open ? 0 : 1).text(open ? __("Collapse all") : __("Expand all"));
+        $wrapper.find(".cms-wb-work").toggleClass("open", Boolean(open))
+            .find(".cms-wb-toggle").text(open ? "▾" : "▸");
+        $wrapper.find(".cms-wb-res").prop("hidden", !open);
+    });
 }
