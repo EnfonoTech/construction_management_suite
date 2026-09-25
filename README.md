@@ -66,10 +66,14 @@ the Interim Payment Certificate under another name.
 
 Not built, and worth knowing before you scope a project around this app:
 
-- **No WIP journals.** Work-in-progress is not posted at month end.
-- **`Cost Code` is not a tree.** It carries a `parent_cost_code` field, but the
-  doctype is not `is_tree`, there is no nested-set bookkeeping, and nothing
-  rolls a child's spend up to its parent. Treat it as a flat coding list.
+- **No WIP journals, by decision.** Work-in-progress is not posted at month
+  end and is not going to be: the recognition basis is an accounting policy —
+  cost-to-cost against certified value — and the accountant makes the
+  adjustment by hand where it is needed. `Project Budget` carries a WIP account
+  and amount for them to record it against; nothing computes or posts either.
+- **No cash-flow projection.** The Cash Flow Schedule that used to sit on
+  Project Budget was an empty grid nothing wrote to or read, and it has been
+  removed rather than left to imply a feature.
 
 Two test harnesses ship with the app, both under `construction_management_suite/tests`:
 
@@ -229,9 +233,7 @@ construction_management_suite.api.boq.apply_rate_analysis_to_boq(rate_analysis, 
 | Daily | `project_costing.utils.calculate_daily_variance` | Recalculate budget variance for all active projects |
 | Daily | `progress_billing.utils.check_retention_release` | Notify when DLP periods expire |
 | Daily | `material_planning.utils.recompute_forecasts` | Update ordered quantities on Material Forecasts |
-| Weekly | `project_costing.utils.refresh_cash_flow_projections` | Refresh cash flow projections |
 | Weekly | `subcontractor_management.utils.generate_aging_report` | Log subcontractor payment aging |
-| Monthly | `project_costing.utils.create_monthly_wip_entries` | Create WIP journal entries |
 
 ---
 
@@ -247,7 +249,7 @@ construction_management_suite/
 │   │   ├── doctype/boq_template/
 │   │   └── report/boq_summary/
 │   ├── estimation/                   # Rate Analysis & Cost Estimation
-│   ├── project_costing/              # Budget, Cost Codes, WIP, Cash Flow
+│   ├── project_costing/              # Budget, Cost Codes
 │   ├── site_management/              # Daily Reports, Attendance, SMR
 │   ├── progress_billing/             # IPC, Retention Release
 │   ├── subcontractor_management/     # Agreements, Work Orders, Payment Certs

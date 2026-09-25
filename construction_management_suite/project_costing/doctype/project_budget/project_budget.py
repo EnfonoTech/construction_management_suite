@@ -18,9 +18,38 @@ class ProjectBudget(Document):
     def validate(self):
         set_auto_title(self, "budget_title", [_("Budget"), project_label(self.project), self.fiscal_year if self.get("fiscal_year") else None])
         validate_project_company(self)
+        self.validate_cost_codes()
         self.fetch_actual_costs()
         self.fetch_committed_costs()
         self.calculate_variance()
+
+    def validate_cost_codes(self):
+        """A budget line belongs to a leaf, never to a heading.
+
+        `Cost Code` is a tree: a group is a heading that totals what is beneath
+        it. Budgeting against the heading as well as against its children makes
+        the report add the same money twice — once where it was entered and
+        once in the roll-up — and there is no way to tell from the figures which
+        happened.
+        """
+        groups = [
+            item for item in self.items
+            if item.cost_code and frappe.db.get_value("Cost Code", item.cost_code, "is_group")
+        ]
+        if not groups:
+            return
+        frappe.throw(
+            "<br>".join(
+                _("Row {0}: {1} is a heading, not a cost code.").format(item.idx, item.cost_code)
+                for item in groups[:10]
+            )
+            + _(
+                "<br><br>A heading totals the codes beneath it, so budgeting against "
+                "it as well would count the same money twice. Budget against one of "
+                "its children."
+            ),
+            title=_("{0} line(s) budgeted against a heading").format(len(groups)),
+        )
 
     def fetch_actual_costs(self):
         """Sum expense-account GL entries tagged to this project."""

@@ -221,7 +221,11 @@ From then on the budget is the thing you watch:
 - **Refresh Actuals** pulls real spend from the ledger — expense-account entries tagged to the project — and outstanding Purchase Orders as committed cost
 - Rows that name a **Cost Code** get the actuals broken down onto them. Where several rows lead back to one account the ledger cannot tell them apart, so the spend is apportioned between them in proportion to what each was budgeted, and the document says it did
 - **Variance** is budget less actual, per row and for the project
-- The **Project Cost Variance** report is the same picture, printable
+- The **Project Cost Variance** report is the same picture as a tree: open a heading to see the codes beneath it, and the heading shows what they come to
+
+**Cost Codes nest.** Tick *Is Group* on a code to make it a heading — 01 Substructure — and give the codes beneath it 01 as their parent. A heading carries no budget of its own; it totals what is under it, and a budget line against one is refused, because the same money would be counted twice. Open **Cost Code** from the workspace to see the whole breakdown as a tree.
+
+Give each code a **Debit Account**. That account's ledger entries for the project are what a budget row's *actual* is read from, so a code with no account reads as nothing spent however much the job spent — the variance report says so at the top when it happens.
 
 A submitted budget is also what the purchasing blocker measures against: raise a Purchase Order that takes the project past its budget and the system says so.
 

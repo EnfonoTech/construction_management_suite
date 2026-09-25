@@ -5,6 +5,8 @@
  "doctype": "DocType",
  "document_type": "Document",
  "engine": "InnoDB",
+ "is_tree": 1,
+ "nsm_parent_field": "parent_cost_code",
  "field_order": [
   "cost_code",
   "cost_code_name",
@@ -16,7 +18,10 @@
   "disabled",
   "section_account_map",
   "debit_account",
-  "credit_account"
+  "credit_account",
+  "lft",
+  "rgt",
+  "old_parent"
  ],
  "fields": [
   {
@@ -38,7 +43,9 @@
    "fieldname": "parent_cost_code",
    "fieldtype": "Link",
    "label": "Parent Cost Code",
-   "options": "Cost Code"
+   "options": "Cost Code",
+   "ignore_user_permissions": 1,
+   "search_index": 1
   },
   {
    "fieldname": "cost_category",
@@ -86,6 +93,37 @@
    "fieldtype": "Link",
    "label": "Credit Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "label": "lft",
+   "hidden": 1,
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "label": "rgt",
+   "hidden": 1,
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Link",
+   "label": "Old Parent",
+   "options": "Cost Code",
+   "hidden": 1,
+   "print_hide": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "ignore_user_permissions": 1
   }
  ],
  "links": [],
@@ -114,6 +152,7 @@
    "read": 1
   }
  ],
+ "search_fields": "cost_code_name,cost_category",
  "title_field": "cost_code_name",
  "track_changes": 1
 }

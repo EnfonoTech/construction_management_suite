@@ -426,7 +426,7 @@ Four Script Reports are installed:
 | Material Position | Material Planning | Material Forecast |
 | Project Cost Variance | Project Costing | Project Budget |
 
-Three report folders contain only an `__init__.py` and install nothing: `progress_billing/report/billing_summary`, `project_costing/report/cash_flow_projection`, `project_costing/report/profitability_analysis`. They are placeholders, not features.
+Every report folder now installs a report. The three that held only an `__init__.py` — `billing_summary`, `cash_flow_projection`, `profitability_analysis` — have been removed rather than left as placeholders that read as features.
 
 **A report needs its `.js`.** `BOQ Summary` and `Project Cost Variance` have no `.js`, so the filters their Python reads (`filters.get("project")`) are dead — nothing ever supplies them. `Resource Take-off` and `Material Position` ship theirs.
 
@@ -659,11 +659,10 @@ now lives in the quantity rather than in a field nothing read.
 | Gap | Effect |
 | --- | --- |
 | No returns or wastage path | Material issued and later returned has no document |
-| `Cost Code` is not a tree | `parent_cost_code` exists, but the doctype is not `is_tree`, there is no nested set, and nothing rolls a child's spend to its parent |
 
 ### Reports
 
-Three report folders are empty placeholders: `billing_summary`, `cash_flow_projection`, `profitability_analysis`. `Project Cash Flow Item` exists with nothing populating it.
+The Cash Flow Schedule is gone. `Project Cash Flow Item` was a child table on Project Budget that nothing wrote to and nothing read; building it properly needs a billing programme nobody enters, so the doctype, its section on the form and the `cash_flow_projection` folder were all removed. `billing_summary` and `profitability_analysis` went the same way.
 
 ### Buying side
 
