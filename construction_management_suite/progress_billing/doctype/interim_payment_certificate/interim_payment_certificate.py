@@ -17,7 +17,10 @@ from construction_management_suite.utils.billing import (
     validate_tax_template_company,
 )
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
-from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.validations import (
+    validate_one_row_per_work_item,
+    validate_project_company,
+)
 from construction_management_suite.utils.titles import (
     month_of,
     project_label,
@@ -32,6 +35,7 @@ class InterimPaymentCertificate(Document):
     def validate(self):
         set_auto_title(self, "ipc_title", [_("IPC #{0}").format(self.ipc_number) if self.ipc_number else _("Certificate"), project_label(self.project), month_of(self.billing_period_to)])
         validate_project_company(self)
+        validate_one_row_per_work_item(self.items)
         self.set_contract_value()
         self.set_previous_position()
         self.set_previous_claimed()

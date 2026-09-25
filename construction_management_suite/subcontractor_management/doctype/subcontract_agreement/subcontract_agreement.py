@@ -5,7 +5,10 @@ from frappe.utils import flt
 
 from construction_management_suite.utils.accounting import get_cost_center
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
-from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.validations import (
+    validate_one_row_per_work_item,
+    validate_project_company,
+)
 from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
@@ -37,6 +40,7 @@ class SubcontractAgreement(Document):
         set_auto_title(self, "agreement_title", [self.subcontractor, project_label(self.project), self.scope_summary if self.get("scope_summary") else None])
         self.set_missing_defaults()
         validate_project_company(self)
+        validate_one_row_per_work_item(self.items)
         self.calculate_items()
         self.check_against_estimate()
         self.calculate_advance()

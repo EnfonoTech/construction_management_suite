@@ -23,10 +23,17 @@ CMS_BUYING.forEach((doctype) => {
             // warning that goes with it.
             frm.set_query("item_code", "items", (doc, cdt, cdn) => {
                 const row = CMS.row(cdt, cdn);
-                const filters = { is_purchase_item: 1 };
-                const planned = materials_for(frm, row.cms_work_item);
-                if (planned.length) filters.name = ["in", planned];
-                return { query: "erpnext.controllers.queries.item_query", filters };
+                const project = row.project || CMS.queryDoc(doc, frm).project || project_of(frm);
+                if (row.cms_work_item && project) {
+                    return {
+                        query: "construction_management_suite.api.boq.materials_for_work",
+                        filters: { project, work_item: row.cms_work_item },
+                    };
+                }
+                return {
+                    query: "erpnext.controllers.queries.item_query",
+                    filters: { is_purchase_item: 1 },
+                };
             });
 
             frm.set_query("cms_work_item", "items", (doc, cdt, cdn) => {
@@ -113,7 +120,6 @@ function show_the_plan(frm) {
             const data = r.message;
             if (!data) return;
             frm.__cms_plan_rendered = true;
-            frm.__cms_plan_lines = data.lines || [];
             render_budget_headline(frm, data);
             render_position(frm, data);
         },
@@ -185,10 +191,29 @@ function render_position(frm, data) {
 }
 
 
-/** The materials the plan holds for one line of work, from the panel's own data. */
-function materials_for(frm, work) {
-    if (!work) return [];
-    return (frm.__cms_plan_lines || [])
-        .filter((l) => l.work === work && flt(l.required))
-        .map((l) => l.item_code);
-}
+/**
+ * A stock movement is the same question asked later.
+ *
+ * `cms_work_item` sits on Stock Entry Detail too — an issue to site, a transfer
+ * between stores — so the same two pickers are scoped there. The budget and
+ * the plan panel are not: a transfer commits no money, and the take-off figure
+ * that belongs on a movement is the one the Material Consumption Entry already
+ * shows.
+ */
+frappe.ui.form.on("Stock Entry", {
+    refresh(frm) {
+        frm.set_query("cms_work_item", "items", (doc, cdt, cdn) => ({
+            query: "construction_management_suite.api.boq.work_items_for_project",
+            filters: { project: CMS.row(cdt, cdn).project || frm.doc.project },
+        }));
+        frm.set_query("item_code", "items", (doc, cdt, cdn) => {
+            const row = CMS.row(cdt, cdn);
+            const project = row.project || frm.doc.project;
+            if (!row.cms_work_item || !project) return {};
+            return {
+                query: "construction_management_suite.api.boq.materials_for_work",
+                filters: { project, work_item: row.cms_work_item },
+            };
+        });
+    },
+});

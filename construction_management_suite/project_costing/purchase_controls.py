@@ -26,6 +26,7 @@ def validate_purchase_document(doc, method=None):
     normal way to buy on site — was checked against nothing at all: not the
     budget, not the estimated rate, not the plan.
     """
+    check_project_is_estimated(doc)
     check_against_the_plan(doc)
     check_against_project_budget(doc)
     check_rates_against_estimate(doc)
@@ -33,6 +34,39 @@ def validate_purchase_document(doc, method=None):
 
 # Kept: the hook name that shipped.
 validate_purchase_order = validate_purchase_document
+
+
+def check_project_is_estimated(doc):
+    """Say so when material is being bought for a project nobody has costed.
+
+    `require_estimate` was wired to the forecast and the consumption entry only,
+    and `check_against_the_plan` walked away from a project with no estimate on
+    the grounds that "the module already makes that complaint where it matters".
+    On the buying chain it did not: a Material Request for material on an
+    unestimated project saved with nothing said at all — which is the silence
+    the whole work-item rework was meant to replace, on the side it matters most.
+
+    Scoped the same way the plan check is: material lines, and an invoice only
+    when it moves stock. Buying a service, or spending with no project on the
+    line, is not asking anything of the estimate.
+    """
+    from construction_management_suite.utils.validations import require_estimate
+
+    if doc.doctype == "Purchase Invoice" and not doc.get("update_stock"):
+        return
+
+    projects = []
+    for row in doc.get("items") or []:
+        project = row.get("project") or doc.get("project")
+        item = row.get("item_code")
+        if not project or project in projects or not item:
+            continue
+        if not frappe.db.get_value("Item", item, "is_stock_item"):
+            continue
+        projects.append(project)
+
+    for project in projects:
+        require_estimate(project, _("buying material for it"))
 
 
 def check_against_the_plan(doc):
@@ -78,8 +112,9 @@ def check_against_the_plan(doc):
             plans[project] = _plan_for(project, current_estimate, take_off_by_line)
         plan = plans[project]
         if plan is None:
-            # No estimate at all — a different complaint, and one the module
-            # already makes where it matters. Nothing to compare against here.
+            # No estimate at all. `check_project_is_estimated` has already said
+            # so, at whatever severity the site set; there is nothing here to
+            # compare the line against.
             continue
         works, take_off = plan
         work = row.get("cms_work_item")

@@ -307,17 +307,68 @@ def validate_one_estimate_per_project(doc):
     )
 
 
+def validate_one_row_per_work_item(rows, item_field="item_code", what=None):
+    """One line of work may appear once on a document.
+
+    Every figure this module carries from one document to the next is matched
+    by the work Item and nothing else: what a bill priced, what an estimate
+    costed, what has been certified to date, what an order has left to bill.
+    The row's own name is not used, deliberately — it does not survive a bill
+    being revised, and the Item does.
+
+    That only holds while the Item identifies one row. Put the same work on a
+    document twice and the match becomes a guess: `_previously_claimed_by_line`
+    sums both rows' certified quantity and then subtracts that total from each
+    of them, so half the work is billed twice and the other half never.
+
+    Two sections needing the same work is a real thing on a bill; the answer is
+    one line carrying the full quantity, or two Items that say which is which.
+    """
+    seen = {}
+    for row in rows or []:
+        code = row.get(item_field)
+        if not code:
+            continue
+        if code in seen:
+            frappe.throw(
+                _(
+                    "{0} is on rows {1} and {2}.<br><br>Every quantity and amount "
+                    "this module carries forward — certified to date, ordered, "
+                    "billed — is matched to a line by its Item, so one line of work "
+                    "has to appear once. Put the whole quantity on a single row, or "
+                    "give the second one its own Item."
+                ).format(code, seen[code], row.idx),
+                title=what or _("The same work is on two rows"),
+            )
+        seen[code] = row.idx
+
+
+def runs_without_a_cost_plan(project):
+    """Has this project said it is not being estimated at all?
+
+    A day's repair or a small fit-out has no BOQ and no cost estimation, and
+    nobody intends to write one. Without a way to say so, every check that
+    needs a plan reads that as an omission and stands in the way of ordinary
+    work. The project says it once, on itself, and the checks that need a plan
+    stand down — for that job only, which is why this is not a site setting.
+    """
+    if not project:
+        return False
+    return bool(frappe.db.get_value("Project", project, "cms_no_cost_plan"))
+
+
 def require_estimate(project, what=None):
     """Refuse material and procurement work on a project with no cost plan.
 
-    Two states, and they must not be confused. A project nobody has estimated
+    Three states, and they must not be confused. A project nobody has estimated
     has no plan to buy against at all. A project whose estimate is mid-amendment
     has one — it is simply cancelled for the moment — and blocking there would
-    turn every routine revision into an outage across the whole job.
+    turn every routine revision into an outage across the whole job. And a
+    project that is deliberately run without one is not missing anything.
     """
     from construction_management_suite.utils.settings import action_for, enforce
 
-    if not project or current_estimate(project):
+    if not project or current_estimate(project) or runs_without_a_cost_plan(project):
         return
 
     subject = what or _("This document")

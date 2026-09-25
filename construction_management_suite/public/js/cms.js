@@ -450,7 +450,7 @@ CMS.itemQuery = function (doctype, fieldname, frm) {
         // A line of work on a document that names a project is one of THAT
         // project's lines of work. Anything else is a reference to nothing, and
         // every per-work figure quietly leaves the document out.
-        const project = row.project || d.project;
+        const project = row.project || d.project || d.to_project;
         if (kind === "work" && project) {
             return {
                 query: "construction_management_suite.api.boq.work_items_for_project",
@@ -458,7 +458,22 @@ CMS.itemQuery = function (doctype, fieldname, frm) {
             };
         }
         if (kind === "work") filters.push(["is_stock_item", "=", 0]);
-        if (kind === "material") filters.push(["is_stock_item", "=", 1]);
+        if (kind === "material") {
+            // Once the row says which work it is for, the material list is
+            // that work's own. Clearing the work widens it again, which is how
+            // something the plan never foresaw is still requested or issued.
+            const work = row.work_item || row.cms_work_item;
+            if (work && project) {
+                return {
+                    query: "construction_management_suite.api.boq.materials_for_work",
+                    filters: {
+                        project, work_item: work,
+                        company: (CMS._itemScoped && d.company) || null,
+                    },
+                };
+            }
+            filters.push(["is_stock_item", "=", 1]);
+        }
         return { filters };
     };
 };

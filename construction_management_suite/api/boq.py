@@ -1505,6 +1505,55 @@ def work_items_for_project(doctype, txt, searchfield, start, page_len, filters):
 
 
 @frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def materials_for_work(doctype, txt, searchfield, start, page_len, filters):
+    """The materials the plan holds for one line of work.
+
+    Once a row says which work it is for, the question "which item?" has one
+    short answer — the resources behind that work's rate analysis — and the
+    picker should give it. Offering every item on the site instead is how the
+    wrong cement grade, or a material belonging to another trade, gets bought
+    against work that never asked for it; and the person typing has no way to
+    know, because the plan lives two screens away.
+
+    Falls back to every stock item when the work has nothing behind it, the
+    same way the work picker falls back when a project has no estimate: an
+    empty picker is a dead end, and a job does buy things nobody foresaw. The
+    plan check still says so on save.
+    """
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        take_off_by_line,
+    )
+    from construction_management_suite.utils.validations import current_estimate
+
+    f = filters or {}
+    project, work, company = f.get("project"), f.get("work_item"), f.get("company")
+
+    planned = []
+    if project and work and current_estimate(project):
+        planned = sorted({code for (code, w) in take_off_by_line(project) if w == work and code})
+
+    where = ["i.is_stock_item = 1", "i.disabled = 0", "(i.name LIKE %(txt)s OR i.item_name LIKE %(txt)s)"]
+    values = {"txt": "%%%s%%" % (txt or ""), "start": start, "page_len": page_len}
+    if planned:
+        where.append("i.name IN %(planned)s")
+        values["planned"] = planned
+    # An item master that has been given a company belongs to one — the same
+    # scope every other picker in this module applies.
+    if company and frappe.get_meta("Item").has_field("company"):
+        where.append("IFNULL(i.company, '') IN ('', %(company)s)")
+        values["company"] = company
+
+    return frappe.db.sql(
+        """SELECT i.name, i.item_name FROM `tabItem` i
+           WHERE {where} ORDER BY i.name LIMIT %(start)s, %(page_len)s""".format(
+            where=" AND ".join(where)
+        ),
+        values,
+    )
+
+
+@frappe.whitelist()
 def line_against_plan(project, item_code, work_item=None, qty=0):
     """What the plan says about this material for this work, as the row is typed.
 
@@ -1520,9 +1569,16 @@ def line_against_plan(project, item_code, work_item=None, qty=0):
     from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
         take_off_by_line,
     )
-    from construction_management_suite.utils.validations import current_estimate
+    from construction_management_suite.utils.validations import (
+        current_estimate,
+        runs_without_a_cost_plan,
+    )
 
     if not current_estimate(project):
+        # A project run deliberately without one is not missing anything, and
+        # saying so on every line would be the noise this whole panel avoids.
+        if runs_without_a_cost_plan(project):
+            return {}
         return {"state": "no-plan", "message": _("{0} has no Cost Estimation to buy against.").format(project)}
 
     plan = take_off_by_line(project)

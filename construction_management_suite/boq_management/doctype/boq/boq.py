@@ -8,7 +8,10 @@ from construction_management_suite.utils.settings import (
     enforce,
     enforce_setting,
 )
-from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.validations import (
+    validate_one_row_per_work_item,
+    validate_project_company,
+)
 from construction_management_suite.utils.titles import (
     month_of,
     project_label,
@@ -27,6 +30,7 @@ class BOQ(Document):
     def validate(self):
         set_auto_title(self, "boq_title", [_("BOQ"), project_label(self.project) or self.client, self.client_po, _("Rev {0}").format(self.revision_no) if self.revision_no else None])
         validate_project_company(self)
+        validate_one_row_per_work_item(self.items)
         self.set_rate_source()
         self.set_currency_from_project()
         self.set_item_numbers()

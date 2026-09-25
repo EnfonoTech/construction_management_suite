@@ -9,7 +9,10 @@ from construction_management_suite.utils.billing import (
     billing_item,
     default_tax_template,
 )
-from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.validations import (
+    validate_one_row_per_work_item,
+    validate_project_company,
+)
 from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
@@ -34,6 +37,7 @@ class SubcontractorPaymentCertificate(Document):
         load_tax_template(self)
         set_auto_title(self, "certificate_title", [self.subcontractor, project_label(self.project), month_of(self.submission_date)])
         validate_project_company(self)
+        validate_one_row_per_work_item(self.items)
         self.validate_period()
         self.set_work_numbers()
         self.set_previous_certified()

@@ -184,6 +184,20 @@ def create_custom_fields_on_erpnext():
                 "description": "Blank if the job runs more than one store",
                 "insert_after": "cost_center",
             },
+            # Not every job is worth estimating. A day's repair, a call-out, a
+            # small fit-out — there is no BOQ, no cost estimation and nobody
+            # intends to write one, and on those the module's "this project has
+            # no cost plan" refusals are noise standing between a buyer and a
+            # purchase order. Ticked, the project says so once and the checks
+            # that need a plan stand down for it; everything else — the budget,
+            # the cost centre, the store — still applies.
+            {
+                "fieldname": "cms_no_cost_plan",
+                "label": "Runs Without a Cost Plan",
+                "fieldtype": "Check",
+                "description": "Small jobs with no BOQ or estimate — stop asking for one",
+                "insert_after": "cms_default_warehouse",
+            },
         ],
         "Purchase Order": [
             {
@@ -274,6 +288,7 @@ _OWN_CUSTOM_FIELDS = (
     "cms_retention_release_ref", "cms_subcontract_certificate_ref",
     "cms_forecast_ref", "cms_site_request_ref", "cms_site_ref",
     "cms_consumption_ref", "cms_work_item", "cms_default_warehouse",
+    "cms_no_cost_plan",
 )
 
 

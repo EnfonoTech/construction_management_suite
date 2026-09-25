@@ -142,6 +142,8 @@ doctype_js = {
     "Purchase Order": "public/js/buying.js",
     "Purchase Receipt": "public/js/buying.js",
     "Purchase Invoice": "public/js/buying.js",
+    # For the two work pickers only — see the foot of buying.js.
+    "Stock Entry": "public/js/buying.js",
 }
 
 # Permission query conditions — row-level security by company

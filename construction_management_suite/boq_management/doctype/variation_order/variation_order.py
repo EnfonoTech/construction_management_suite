@@ -2,7 +2,10 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowdate
-from construction_management_suite.utils.validations import validate_project_company
+from construction_management_suite.utils.validations import (
+    validate_one_row_per_work_item,
+    validate_project_company,
+)
 from construction_management_suite.utils.titles import (
     month_of,
     project_label,
@@ -24,6 +27,7 @@ class VariationOrder(Document):
         # A variation prices work, the same as the bill it varies.
         validate_item_kinds(self.items, material_field=None, work_field="item_code")
         validate_project_company(self)
+        validate_one_row_per_work_item(self.items)
         self.set_vo_number()
         set_auto_title(self, "vo_title", [_("VO #{0}").format(self.vo_number) if self.vo_number else _("Variation"), project_label(self.project), self.variation_type])
         self.calculate_items()
