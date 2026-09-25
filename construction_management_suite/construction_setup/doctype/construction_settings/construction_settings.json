@@ -23,6 +23,8 @@
   "column_break_pur",
   "purchase_rate_action",
   "purchase_rate_tolerance_percent",
+  "foreign_work_item_action",
+  "unplanned_material_action",
   "section_billing",
   "over_certification_action",
   "column_break_bil",
@@ -33,8 +35,6 @@
   "retention_release_item",
   "column_break_items",
   "subcontract_billing_item",
-  "sales_taxes_template",
-  "purchase_taxes_template",
   "section_stock",
   "consumption_expense_account",
   "section_site",
@@ -167,6 +167,20 @@
    "default": "10"
   },
   {
+   "fieldname": "foreign_work_item_action",
+   "fieldtype": "Select",
+   "label": "Buying For Work Not On This Project",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Stop"
+  },
+  {
+   "fieldname": "unplanned_material_action",
+   "fieldtype": "Select",
+   "label": "Buying Material The Plan Does Not Include",
+   "options": "Ignore\nWarn\nStop",
+   "default": "Warn"
+  },
+  {
    "fieldname": "section_billing",
    "fieldtype": "Section Break",
    "label": "Progress Billing"
@@ -222,18 +236,6 @@
    "fieldtype": "Percent",
    "label": "Default Subcontract Retention %",
    "default": "10"
-  },
-  {
-   "fieldname": "sales_taxes_template",
-   "fieldtype": "Link",
-   "label": "Sales Taxes Template",
-   "options": "Sales Taxes and Charges Template"
-  },
-  {
-   "fieldname": "purchase_taxes_template",
-   "fieldtype": "Link",
-   "label": "Purchase Taxes Template",
-   "options": "Purchase Taxes and Charges Template"
   },
   {
    "fieldname": "section_stock",

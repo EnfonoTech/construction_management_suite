@@ -3,8 +3,9 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
-from construction_management_suite.utils.accounting import get_warehouse
-from construction_management_suite.utils.titles import project_label, set_auto_title
+from construction_management_suite.utils.accounting import get_cost_center, get_warehouse
+from construction_management_suite.utils.billing import stamp_accounting
+from construction_management_suite.utils.titles import project_label, set_auto_title, short_date
 from construction_management_suite.utils.validations import (
     validate_item_kinds,
     validate_project_company,
@@ -21,8 +22,7 @@ class SiteMaterialRequest(Document):
 
     def validate(self):
         set_auto_title(self, "request_title",
-                       [_("Site request"), project_label(self.project),
-                        frappe.utils.formatdate(self.request_date) if self.request_date else None])
+                       [project_label(self.project), short_date(self.request_date)])
         validate_project_company(self)
         validate_item_kinds(self.items)
         validate_uom_convertible(self.items)
@@ -131,6 +131,11 @@ class SiteMaterialRequest(Document):
             frappe.throw(_("Nothing to request — every row has zero quantity"))
 
         mr.cms_site_request_ref = self.name
+        # The job's own cost centre, not whichever default ERPNext would reach
+        # for. A Material Request has no cost centre of its own, so this lands
+        # on the rows only.
+        stamp_accounting(mr, project=self.project,
+                         cost_center=get_cost_center(self.project, self.company))
         mr.insert(ignore_permissions=True)
         # Submitted, unlike the invoices and orders this app raises: those are
         # accounting events a human signs off, a request is not. Left as a draft

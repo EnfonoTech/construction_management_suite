@@ -18,8 +18,24 @@ class SubcontractorWorkOrder(Document):
     def validate(self):
         set_auto_title(self, "work_order_title", [_("Work Order"), self.subcontractor, project_label(self.project)])
         validate_project_company(self)
+        self.set_work_numbers()
         self.calculate_totals()
         self.set_status()
+
+    def set_work_numbers(self):
+        """Fill the bill number beside each work item. Display only.
+
+        Filled only when the scope was pulled from the agreement, so an order
+        whose lines were typed showed nothing — and the certificate raised from
+        it inherited the blank.
+        """
+        from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+            work_no_map,
+        )
+
+        numbers = work_no_map(self.project) if self.project else {}
+        for row in self.items:
+            row.work_no = numbers.get(row.item_code)
 
     @frappe.whitelist()
     def get_scope_from_agreement(self):

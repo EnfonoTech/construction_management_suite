@@ -5,14 +5,16 @@ from frappe.utils import flt, nowdate
 
 from construction_management_suite.utils.accounting import get_cost_center
 from construction_management_suite.utils.billing import (
-    calculate_taxes as calculate_document_taxes,
-    money,
-    carry_taxes,
-    refuse_empty,
-    company_setting,
-    load_tax_template,
     add_line,
     billing_item,
+    calculate_taxes as calculate_document_taxes,
+    carry_taxes,
+    default_tax_template,
+    load_tax_template,
+    money,
+    refuse_empty,
+    stamp_accounting,
+    validate_tax_template_company,
 )
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
 from construction_management_suite.utils.validations import validate_project_company
@@ -50,7 +52,8 @@ class InterimPaymentCertificate(Document):
         if not flt(self.retention_percent):
             self.retention_percent = flt(cms_setting("default_retention_percent", 0))
         if not self.taxes_and_charges and not self.taxes:
-            self.taxes_and_charges = company_setting(self.company, "sales_taxes_template")
+            self.taxes_and_charges = default_tax_template(self)
+        validate_tax_template_company(self)
         load_tax_template(self)
         if flt(self.contract_value) or not self.boq_ref:
             return
@@ -339,6 +342,7 @@ class InterimPaymentCertificate(Document):
 
         refuse_empty(si, self)
         carry_taxes(self, si, cost_center)
+        stamp_accounting(si, project=self.project, cost_center=cost_center)
 
         si.insert(ignore_permissions=True)
         self.db_set("sales_invoice_ref", si.name)

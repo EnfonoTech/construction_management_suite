@@ -1,6 +1,6 @@
 frappe.ui.form.on("Subcontractor Payment Certificate", {
     onload(frm) {
-        CMS.defaultTaxTemplate(frm, "purchase_taxes_template");
+        CMS.defaultTaxTemplate(frm);
     },
 
     taxes_and_charges(frm) { CMS.loadTaxTemplate(frm); },
@@ -49,9 +49,13 @@ frappe.ui.form.on("Subcontractor Payment Certificate", {
             const a = r.message;
             if (!a) return;
             ["project", "subcontractor", "company", "currency"].forEach(f => CMS.fillIfBlank(frm, f, a[f]));
+            // The company arrives with the agreement, and the default template
+            // is the company's — so it can only be asked for once that lands.
+            CMS.defaultTaxTemplate(frm);
             CMS.fillIfBlank(frm, "retention_percent", a.retention_percent);
 
         });
+        CMS.revealActions(frm);
     },
     certified_amount(frm) { CMS.recalc(frm); },
     retention_percent(frm) { CMS.recalc(frm); },

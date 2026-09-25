@@ -21,13 +21,28 @@ from construction_management_suite.utils.settings import cms_setting
 
 # Non-stock service items the generated invoices are written against. Created on
 # install; a site can point the settings at its own instead.
+# The items the generated invoices are written against. The description is what
+# the client and the subcontractor read on the invoice, so it says what is being
+# paid for in the trade's own terms — not that an app created it.
 DEFAULT_ITEMS = {
-    "progress_billing_item": ("SRV-PROGRESS-BILLING", "Progress Billing"),
+    "progress_billing_item": (
+        "SRV-PROGRESS-BILLING",
+        "Progress Billing",
+        "Work certified this period, net of retention and advance recovery.",
+    ),
     # Its own item, not progress billing: releasing retention is returning money
     # already earned and withheld, not billing new work, and an income report
     # that cannot tell the two apart overstates the period it lands in.
-    "retention_release_item": ("SRV-RETENTION-RELEASE", "Retention Release"),
-    "subcontract_billing_item": ("SRV-SUBCONTRACT", "Subcontract Work"),
+    "retention_release_item": (
+        "SRV-RETENTION-RELEASE",
+        "Retention Release",
+        "Retention held on earlier certificates, released under the contract.",
+    ),
+    "subcontract_billing_item": (
+        "SRV-SUBCONTRACT",
+        "Subcontract Work",
+        "Work certified under a subcontract, net of retention and advance recovery.",
+    ),
 }
 
 
@@ -60,7 +75,7 @@ def billing_item(setting_name):
     item = cms_setting(setting_name)
     if item and frappe.db.exists("Item", item):
         return item
-    fallback = DEFAULT_ITEMS.get(setting_name, (None, None))[0]
+    fallback = DEFAULT_ITEMS.get(setting_name, (None,))[0]
     return fallback if fallback and frappe.db.exists("Item", fallback) else None
 
 
@@ -83,38 +98,64 @@ def add_line(doc, item_code, description, amount, cost_center=None, qty=1, rate=
 
 
 def company_setting(company, fieldname):
-    """An account or tax template from Construction Settings, checked against
-    the document's company.
+    """An account named in Construction Settings, checked against the company.
 
-    One global value, because this site runs a single construction company. An
-    Account and a tax template both belong to a Company in ERPNext, so if a
-    second one is ever added the callers report the setting as unusable rather
-    than posting to the wrong books — see add_deduction and apply_taxes.
+    One global value, because the setting is one field. An Account belongs to a
+    Company in ERPNext, so on a site running a second company the caller is told
+    the setting is unusable rather than posting to the wrong books — see
+    add_deduction.
+
+    Tax templates are NOT read from here any more: ERPNext already keeps a
+    default per company on the template itself, which is the answer on a
+    multi-company site and the one users expect from every other document. See
+    `default_tax_template`.
     """
     value = cms_setting(fieldname)
     if not value or not company:
         return value or None
-    doctype = "Account" if fieldname.endswith("_account") else (
-        "Sales Taxes and Charges Template" if fieldname.startswith("sales")
-        else "Purchase Taxes and Charges Template")
-    owner = frappe.db.get_value(doctype, value, "company")
+    owner = frappe.db.get_value("Account", value, "company")
     return value if not owner or owner == company else None
 
 
-def apply_taxes(doc, setting_name, company=None):
-    """Attach the configured tax template, if the company has named one."""
-    template = company_setting(company or doc.get("company"), setting_name)
-    if not template:
-        return
+def default_tax_template(doc):
+    """The company's own default tax template — ERPNext's, not ours.
+
+    The module used to name one tax template per site in its settings, which is
+    wrong the moment a second company exists: the template carries the accounts,
+    and the accounts belong to a company. ERPNext already answers this with
+    `is_default` on the template, per company, and every standard document reads
+    it that way. So do these.
+
+    A company with no default marked simply gets no template, and the user picks
+    one — the same as a Sales Invoice.
+    """
+    from erpnext.controllers.accounts_controller import get_default_taxes_and_charges
+
     field = doc.meta.get_field("taxes_and_charges")
-    if not field or not frappe.db.exists(field.options, template):
-        return
-    doc.taxes_and_charges = template
-    child = "Sales Taxes and Charges" if doc.doctype == "Sales Invoice" else "Purchase Taxes and Charges"
-    for row in frappe.get_all(child, filters={"parent": template}, fields=["*"], order_by="idx"):
-        for key in ("name", "parent", "parenttype", "parentfield", "creation", "modified", "owner", "modified_by", "idx"):
-            row.pop(key, None)
-        doc.append("taxes", row)
+    if not field or not doc.get("company"):
+        return None
+    defaults = get_default_taxes_and_charges(
+        field.options, doc.get("taxes_and_charges"), doc.company
+    ) or {}
+    return defaults.get("taxes_and_charges")
+
+
+# Descriptions this app has written before now. Replaced on upgrade, because
+# they go out on invoices — the first said only that an app had created the
+# item, the second said the right thing at three times the length. A
+# description somebody else has written is left alone.
+_SUPERSEDED = (
+    "Created by Construction Management Suite",
+    "Value of work executed during the period, measured and certified against "
+    "the contract bill of quantities and any approved variations. Billed net of "
+    "retention and of any advance recovered in the period.",
+    "Release of retention withheld from earlier payment certificates, due on "
+    "practical completion or on expiry of the defects liability period under "
+    "the contract.",
+    "Subcontracted work certified as executed under a subcontract agreement, "
+    "valued at the agreed rates and net of subcontract retention and of any "
+    "advance recovered.",
+)
 
 
 def create_service_items():
@@ -122,7 +163,7 @@ def create_service_items():
     group = "Services" if frappe.db.exists("Item Group", "Services") else "All Item Groups"
     uom = "Nos" if frappe.db.exists("UOM", "Nos") else frappe.db.get_value("UOM", {}, "name")
     created = []
-    for setting_name, (code, name) in DEFAULT_ITEMS.items():
+    for setting_name, (code, name, description) in DEFAULT_ITEMS.items():
         if not frappe.db.exists("Item", code):
             frappe.get_doc({
                 "doctype": "Item",
@@ -133,12 +174,20 @@ def create_service_items():
                 "is_stock_item": 0,
                 "is_sales_item": 1,
                 "is_purchase_item": 1,
-                "description": _("Created by Construction Management Suite"),
+                "description": _(description),
             }).insert(ignore_permissions=True)
             created.append(code)
+        elif _is_ours(frappe.db.get_value("Item", code, "description")):
+            frappe.db.set_value("Item", code, "description", _(description))
         if not cms_setting(setting_name):
             frappe.db.set_single_value("Construction Settings", setting_name, code)
     return created
+
+
+def _is_ours(description):
+    """Is this a description this app wrote, rather than one a user did?"""
+    text = (description or "").replace("<div>", "").replace("</div>", "").strip()
+    return not text or text in _SUPERSEDED
 
 
 def load_tax_template(doc):
@@ -218,15 +267,76 @@ def _previous_row(doc, row, fieldname):
     return doc.taxes[idx - 1].get(fieldname)
 
 
-def carry_taxes(source, target, cost_center=None):
-    """Copy a document's tax rows onto the ERPNext document it raises.
+def validate_tax_template_company(doc):
+    """A tax template belongs to a company, and so does the account under it.
 
-    The certificate is the source: whatever was agreed and taxed there is what
-    gets invoiced, so the two cannot say different things.
+    The module default is already checked against the document's company by
+    `company_setting`, but a template picked by hand was not checked at all —
+    so an agreement for one company could carry another company's VAT, and the
+    order or invoice it raises would post to books it has no business in.
+    ERPNext refuses it at the far end, on a document the user did not write.
+    """
+    template = doc.get("taxes_and_charges")
+    if not template or not doc.get("company"):
+        return
+    field = doc.meta.get_field("taxes_and_charges")
+    if not field:
+        return
+    owner = frappe.db.get_value(field.options, template, "company")
+    if not owner or owner == doc.company:
+        return
+    frappe.throw(
+        _(
+            "{0} belongs to {1}, but this document is for {2}.<br><br>Its tax "
+            "accounts are {1}'s, so the invoice or order raised from here would "
+            "post to the wrong company's books."
+        ).format(template, owner, doc.company),
+        title=_("Tax template belongs to another company"),
+    )
+
+
+def stamp_accounting(target, project=None, cost_center=None):
+    """Put the job's accounting dimensions on a document this app raises.
+
+    Every document here is built field by field and inserted, which skips the
+    form entirely — so anything the form would have fetched has to be said out
+    loud. The cost centre was being written onto the rows and left blank on the
+    document, where ERPNext shows it and where a user looks for it; the project
+    was on some rows and not others, and a Sales Invoice line with no project
+    is invisible to every project-wise report.
+
+    Only fills a blank, and only where the field exists: a Material Request has
+    no cost centre of its own and must not be given one.
+    """
+    for fieldname, value in (("cost_center", cost_center), ("project", project)):
+        if not value:
+            continue
+        if target.meta.get_field(fieldname) and not target.get(fieldname):
+            target.set(fieldname, value)
+        for row in target.get("items") or []:
+            if row.meta.get_field(fieldname) and not row.get(fieldname):
+                row.set(fieldname, value)
+
+
+def carry_taxes(source, target, cost_center=None):
+    """Copy a document's tax rows onto the document it raises.
+
+    The source is what was agreed and taxed — an agreement, a certificate — so
+    the order or invoice it raises cannot say something different.
+
+    A **purchase** tax row carries two more mandatory fields than a sales one,
+    `category` and `add_deduct_tax`, and they were not copied. It went unnoticed
+    for as long as every target was inserted on the server, because `insert()`
+    fills a missing default; a document mapped and handed to the browser
+    unsaved never goes through insert, so its rows arrived without them and the
+    form refused to save with two mandatory-field errors nobody could act on.
     """
     target.taxes_and_charges = source.taxes_and_charges
+    child = target.meta.get_field("taxes")
+    child_meta = frappe.get_meta(child.options) if child else None
+
     for row in source.get("taxes") or []:
-        target.append("taxes", {
+        line = {
             "charge_type": row.charge_type,
             "account_head": row.account_head,
             "description": row.description,
@@ -235,7 +345,13 @@ def carry_taxes(source, target, cost_center=None):
             "row_id": row.row_id,
             "cost_center": row.cost_center or cost_center,
             "included_in_print_rate": row.included_in_print_rate,
-        })
+        }
+        # ERPNext's own defaults as the fallback, so a row copied from a source
+        # that predates this is still complete.
+        for fieldname, fallback in (("category", "Total"), ("add_deduct_tax", "Add")):
+            if child_meta and child_meta.get_field(fieldname):
+                line[fieldname] = row.get(fieldname) or fallback
+        target.append("taxes", line)
 
 
 def check_advance_recovery(doc, advance, recovered, billed, contract, label):

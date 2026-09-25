@@ -216,6 +216,12 @@ def create_material_request_from_forecast(forecast_name):
                 "cms_work_item": item.work_item,
             })
 
+    from construction_management_suite.utils.accounting import get_cost_center
+    from construction_management_suite.utils.billing import stamp_accounting
+
+    stamp_accounting(mr, project=forecast.project,
+                     cost_center=get_cost_center(forecast.project, forecast.company))
+
     if not mr.items:
         frappe.msgprint(_("No items require ordering — all quantities already covered"))
         return None
@@ -568,11 +574,19 @@ def get_completed_work(agreement, certificate=None, work_order=None):
 
     # Several orders may release the same work item, so the built quantity is
     # summed per item before the claim is netted off it.
+    #
+    # This summed the FIRST order twice. `setdefault` stored a copy of the row,
+    # so `e is not r` was true even for the row that had just created the
+    # entry, and its quantity was added to itself: a single order for 12 came
+    # out as 24. It survived on the sample data because the second certificate
+    # netted off the first, and 24 less 12 already claimed reads as right.
     built = {}
     for r in rows:
-        e = built.setdefault(r.ref, dict(r))
-        if e is not r:
-            e["done"] = flt(e["done"]) + flt(r.done)
+        entry = built.get(r.ref)
+        if entry is None:
+            built[r.ref] = dict(r)
+        else:
+            entry["done"] = flt(entry["done"]) + flt(r.done)
 
     lines = []
     for r in built.values():
@@ -603,15 +617,41 @@ def make_payment_certificate(source_name, target_doc=None):
     from frappe.model.mapper import get_mapped_doc
 
     def postprocess(source, target):
+        from construction_management_suite.utils.billing import carry_taxes
+
         # get_mapped_doc copies every field the two doctypes share, naming_series
         # included — so a certificate raised from a work order came out named
         # SWO-2026-0005 and burnt a number from the order's series.
         _own_naming_series(target)
-        target.retention_percent = flt(
-            frappe.db.get_value("Subcontract Agreement", source.subcontract_agreement,
-                                "retention_percent")
-        )
+        agreement = frappe.get_doc("Subcontract Agreement", source.subcontract_agreement)
+        target.retention_percent = flt(agreement.retention_percent)
         target.submission_date = frappe.utils.nowdate()
+
+        # The tax the work was let at is the tax it is certified at. Without
+        # this the certificate arrived untaxed and the invoice behind it too,
+        # while the agreement plainly said 5%.
+        carry_taxes(agreement, target)
+
+        # The period this certificate covers: from the day after the last one
+        # on the same agreement, or the order's own start, to today. Both were
+        # left blank, on a document whose whole purpose is to say what was
+        # built between two dates.
+        last = frappe.db.get_value(
+            "Subcontractor Payment Certificate",
+            {"subcontract_agreement": agreement.name, "docstatus": 1},
+            "period_to",
+            order_by="period_to desc",
+        )
+        target.period_to = frappe.utils.nowdate()
+        target.period_from = (
+            frappe.utils.add_days(last, 1) if last else source.get("start_date")
+        )
+        # A second certificate on the same day would otherwise start tomorrow
+        # and end today. One day is a short period; a backwards one is not a
+        # period at all.
+        if target.period_from and frappe.utils.getdate(target.period_from) > frappe.utils.getdate(target.period_to):
+            target.period_from = target.period_to
+
         lines = get_completed_work(source.subcontract_agreement, work_order=source.name)
         if not lines:
             frappe.throw(
@@ -620,6 +660,10 @@ def make_payment_certificate(source_name, target_doc=None):
                 title=_("Nothing to certify"),
             )
         for line in lines:
+            # Which order this was built under. The field existed on the line
+            # and nothing ever filled it, so a certificate could not say where
+            # its quantities came from.
+            line["work_order_ref"] = source.name
             target.append("items", line)
 
     return get_mapped_doc(
@@ -1412,3 +1456,186 @@ def get_estimate_position(cost_estimation):
     out["planned_value"] = flt(position.get("allowed_value"))
     out["consumed_value"] = flt(position.get("used_value"))
     return out
+
+
+# ── Helping the buyer get it right, rather than telling them afterwards ─────
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def work_items_for_project(doctype, txt, searchfield, start, page_len, filters):
+    """The lines of work a project is actually doing.
+
+    `cms_work_item` offered every service item on the site, so a purchase for
+    one job could be attributed to another job's work — and nothing said so
+    until the server refused the save, by which time the whole document had
+    been typed. The picker now offers the project's own estimate.
+
+    A project with no estimate falls back to every service item: an empty
+    picker on a job nobody has costed yet is a dead end, and the missing
+    estimate is its own complaint.
+    """
+    from construction_management_suite.utils.validations import current_estimate
+
+    project = (filters or {}).get("project")
+    estimate = current_estimate(project) if project else None
+    like = "%%%s%%" % (txt or "")
+
+    if not estimate:
+        # No plan to scope to, so the only rule left is the one that always
+        # holds: a line of work is a service item. This used to live on the
+        # custom field as a `link_filters`, which quietly disabled this query
+        # altogether — see setup._work_ref_fields.
+        return frappe.db.sql(
+            """SELECT name, item_name FROM `tabItem`
+               WHERE is_stock_item = 0 AND disabled = 0
+                 AND (name LIKE %(txt)s OR item_name LIKE %(txt)s)
+               ORDER BY name LIMIT %(start)s, %(page_len)s""",
+            {"txt": like, "start": start, "page_len": page_len},
+        )
+
+    return frappe.db.sql(
+        """SELECT i.item_code, i.description
+           FROM `tabCost Estimation Item` i
+           WHERE i.parent = %(estimate)s
+             AND (i.item_code LIKE %(txt)s OR i.description LIKE %(txt)s)
+           ORDER BY i.idx LIMIT %(start)s, %(page_len)s""",
+        {"estimate": estimate, "txt": like, "start": start, "page_len": page_len},
+    )
+
+
+@frappe.whitelist()
+def line_against_plan(project, item_code, work_item=None, qty=0):
+    """What the plan says about this material for this work, as the row is typed.
+
+    Said at the moment of choosing rather than at the moment of saving, and
+    only when there is something to say. A line that matches the plan is not
+    worth a message — the buyer is doing their job, and an app that comments on
+    correct work teaches people to dismiss it without reading. It speaks when
+    the material is not in the plan, when it is planned for different work, or
+    when the quantity goes past what is left to buy.
+    """
+    if not project or not item_code:
+        return {}
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        take_off_by_line,
+    )
+    from construction_management_suite.utils.validations import current_estimate
+
+    if not current_estimate(project):
+        return {"state": "no-plan", "message": _("{0} has no Cost Estimation to buy against.").format(project)}
+
+    plan = take_off_by_line(project)
+    key = (item_code, work_item or None)
+    entry = plan.get(key)
+    if not entry:
+        elsewhere = sorted({w for (code, w) in plan if code == item_code and w})
+        if not elsewhere:
+            return {
+                "state": "unplanned",
+                "message": _("{0} is not in {1}'s plan{2}.").format(
+                    item_code, project, _(" for {0}").format(work_item) if work_item else ""
+                ),
+            }
+        if not work_item:
+            # The plan is keyed by material AND work, so a line that has not
+            # said which work it is for matches nothing — which is not the same
+            # as being unplanned. Nothing is wrong here and nothing is said:
+            # the material is planned, and the work can be named next.
+            return {"state": "needs-work"}
+        return {
+            "state": "wrong-work",
+            "message": _("{0} is not planned for {1} — the plan has it under {2}.").format(
+                item_code, work_item, ", ".join(elsewhere[:3])
+            ),
+        }
+
+    outstanding = {
+        (r["item_code"], r["cms_work_item"]): r for r in take_off_outstanding(project)
+    }
+    left = flt((outstanding.get(key) or {}).get("qty"))
+    answer = {
+        "state": "planned",
+        "planned": flt(entry["qty"]),
+        "uom": entry["uom"],
+        "left": left,
+    }
+    if flt(qty) > left + 0.0001:
+        answer["state"] = "over"
+        answer["message"] = _(
+            "{0} {1} on this line, but the plan has {2} for {3} and only {4} is "
+            "still to buy."
+        ).format(
+            frappe.utils.fmt_money(flt(qty), precision=2), entry["uom"] or "",
+            frappe.utils.fmt_money(flt(entry["qty"]), precision=2),
+            work_item or project,
+            frappe.utils.fmt_money(left, precision=2),
+        )
+    return answer
+
+
+@frappe.whitelist()
+def get_buying_context(project):
+    """What the buyer needs on screen while writing a purchase: the money left,
+    and where each material stands against the plan.
+
+    Both figures existed already — one on the Project Budget, one in the
+    Material Position report — and neither was anywhere near the document being
+    written. A buyer had to leave the order, read two screens and come back,
+    which nobody does; so orders were written against a plan nobody was looking
+    at, and the first anyone heard of it was a refusal on save.
+    """
+    if not project:
+        return {}
+    frappe.has_permission("Project", "read", doc=project, throw=True)
+    from construction_management_suite.material_planning.report.material_position.material_position import (
+        execute as material_position,
+    )
+
+    company = frappe.db.get_value("Project", project, "company")
+    currency = frappe.get_cached_value("Company", company, "default_currency")
+
+    budget = frappe.db.get_value(
+        "Project Budget",
+        {"project": project, "docstatus": ("<", 2)},
+        ["name", "status", "total_budget", "total_actual_cost"],
+        as_dict=True,
+    ) or {}
+    # Read live rather than from the budget's stored figure, which only moves
+    # when somebody saves the budget.
+    committed = flt(
+        frappe.db.sql(
+            """SELECT SUM(grand_total - advance_paid) FROM `tabPurchase Order`
+               WHERE project = %s AND docstatus = 1 AND status NOT IN ('Completed', 'Closed', 'Cancelled')""",
+            project,
+        )[0][0]
+    )
+
+    lines = []
+    for row in material_position({"project": project, "by_work": 1})[1]:
+        if not row.get("item_code"):
+            continue
+        lines.append({
+            "item_code": row.get("item_code"),
+            "work": row.get("work"),
+            "uom": row.get("uom"),
+            "required": flt(row.get("required")),
+            "ordered": flt(row.get("ordered")),
+            "received": flt(row.get("received")),
+            "consumed": flt(row.get("consumed")),
+            "balance": flt(row.get("balance")),
+        })
+
+    return {
+        "project": project,
+        "currency": currency,
+        "budget": {
+            "name": budget.get("name"),
+            "status": budget.get("status"),
+            "total": flt(budget.get("total_budget")),
+            "actual": flt(budget.get("total_actual_cost")),
+            "committed": committed,
+            "left": flt(budget.get("total_budget")) - flt(budget.get("total_actual_cost")) - committed,
+        },
+        "lines": lines,
+    }

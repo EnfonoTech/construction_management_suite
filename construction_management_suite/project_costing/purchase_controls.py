@@ -17,9 +17,126 @@ from construction_management_suite.utils.accounting import get_warehouse
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
 
 
-def validate_purchase_order(doc, method=None):
+def validate_purchase_document(doc, method=None):
+    """Everything this module says before a project's money is spent.
+
+    Hooked on the order, the receipt and the invoice alike. It used to run on
+    the Purchase Order only, so buying straight through a Purchase Invoice with
+    Update Stock — which is a purchase and a receipt in one document, and a
+    normal way to buy on site — was checked against nothing at all: not the
+    budget, not the estimated rate, not the plan.
+    """
+    check_against_the_plan(doc)
     check_against_project_budget(doc)
     check_rates_against_estimate(doc)
+
+
+# Kept: the hook name that shipped.
+validate_purchase_order = validate_purchase_document
+
+
+def check_against_the_plan(doc):
+    """Refuse material bought for work this project is not doing.
+
+    Two different mistakes, and they deserve different answers.
+
+    A line naming a **work item that is not on the project's estimate** is a
+    reference to nothing: the project never priced that work, so every figure
+    reported per work item — Material Position, the take-off, the consumption
+    check — silently excludes it. That is stopped.
+
+    A line naming a **material the plan does not include for that work** is not
+    necessarily wrong. Jobs buy things nobody foresaw. But it is the moment the
+    job departs from its estimate, and it should be said out loud rather than
+    discovered in the variance three months later.
+    """
+    from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        take_off_by_line,
+    )
+    from construction_management_suite.utils.validations import current_estimate
+
+    foreign_action = action_for("foreign_work_item_action", "Stop")
+    unplanned_action = action_for("unplanned_material_action")
+    if foreign_action == "Ignore" and unplanned_action == "Ignore":
+        return
+
+    # A purchase invoice that moves no stock is buying a service or an expense,
+    # not material against a plan.
+    if doc.doctype == "Purchase Invoice" and not doc.get("update_stock"):
+        return
+
+    plans, foreign, unplanned = {}, [], []
+    for row in doc.get("items") or []:
+        project = row.get("project") or doc.get("project")
+        item = row.get("item_code")
+        if not project or not item:
+            continue
+        # A subcontract order buys work, not material; the work item IS the line.
+        if not frappe.db.get_value("Item", item, "is_stock_item"):
+            continue
+        if project not in plans:
+            plans[project] = _plan_for(project, current_estimate, take_off_by_line)
+        plan = plans[project]
+        if plan is None:
+            # No estimate at all — a different complaint, and one the module
+            # already makes where it matters. Nothing to compare against here.
+            continue
+        works, take_off = plan
+        work = row.get("cms_work_item")
+        if work and work not in works:
+            foreign.append((row, work, project))
+            continue
+        if (item, work or None) in take_off:
+            continue
+        # The take-off is keyed by material AND work. A line that has not said
+        # which work it is for matches no key, and calling that "not in the
+        # plan" was wrong — the material may be planned under every work there
+        # is. Judge an unattributed line on the material alone.
+        if not work and any(code == item for code, _w in take_off):
+            continue
+        unplanned.append((row, work, project))
+
+    if foreign and foreign_action != "Ignore":
+        enforce(
+            foreign_action,
+            "<br>".join(
+                _("Row {0}: {1} is being bought for {2}, which is not work on {3}.").format(
+                    r.idx, r.item_code, work, project
+                )
+                for r, work, project in foreign[:10]
+            )
+            + _("<br><br>Pick a line of work from that project's Cost Estimation, or "
+                "clear the reference — as it stands the purchase is attributed to "
+                "work the project is not doing, and every per-work figure ignores it."),
+            title=_("{0} line(s) for work not on this project").format(len(foreign)),
+        )
+
+    if unplanned and unplanned_action != "Ignore":
+        enforce(
+            unplanned_action,
+            "<br>".join(
+                _("Row {0}: {1} is not in {2}'s plan{3}.").format(
+                    r.idx, r.item_code, project,
+                    _(" for {0}").format(work) if work else "",
+                )
+                for r, work, project in unplanned[:10]
+            )
+            + _("<br><br>The Cost Estimation does not price this material against that "
+                "work, so it is a departure from the plan: nothing nets it off a "
+                "take-off and it lands in the variance."),
+            title=_("{0} line(s) the plan does not include").format(len(unplanned)),
+        )
+
+
+def _plan_for(project, current_estimate, take_off_by_line):
+    """What a project is priced to buy: its work items, and its take-off."""
+    estimate = current_estimate(project)
+    if not estimate:
+        return None
+    works = set(
+        frappe.get_all("Cost Estimation Item", filters={"parent": estimate}, pluck="item_code")
+    )
+    return works, take_off_by_line(project)
 
 
 def set_project_warehouse(doc, method=None):
@@ -139,11 +256,19 @@ def check_rates_against_estimate(doc):
 
 
 def _amount_by_project(doc):
-    """Purchase Orders carry the project per line, not on the header."""
+    """What this document spends per project. The project is on the line.
+
+    A receipt or an invoice that came from an order is spending money the order
+    already committed, so those lines are left out — counting both would read
+    as double the spend and cry over-budget on every second document.
+    """
     totals = {}
     for row in doc.get("items") or []:
-        if row.get("project"):
-            totals[row.project] = totals.get(row.project, 0) + flt(row.get("base_amount") or row.get("amount"))
+        if not row.get("project"):
+            continue
+        if row.get("purchase_order") or row.get("po_detail"):
+            continue
+        totals[row.project] = totals.get(row.project, 0) + flt(row.get("base_amount") or row.get("amount"))
     return totals
 
 
@@ -174,3 +299,36 @@ def _fmt(value, doc):
     return frappe.format_value(
         flt(value), {"fieldtype": "Currency", "options": "currency"}, doc
     )
+
+
+def close_subcontract_order(doc, method=None):
+    """Finish a subcontract order once its last invoice is in.
+
+    ERPNext closes a purchase order when it has been both received and billed.
+    A subcontract is a service: nothing can receive it, `per_received` stays at
+    zero and the order sits at "To Receive" however much has been billed — so
+    every subcontract order on the site stayed open for ever. Closing it is
+    ERPNext's own answer to that, and being billed in full is when it is true.
+
+    Only orders this module raised, and only ever to close: reopening one is a
+    decision, and ERPNext has a button for it.
+    """
+    orders = {row.purchase_order for row in doc.get("items") or [] if row.get("purchase_order")}
+    for name in orders:
+        order = frappe.db.get_value(
+            "Purchase Order", name,
+            ["docstatus", "status", "per_billed", "cms_subcontract_ref"],
+            as_dict=True,
+        )
+        if not order or not order.cms_subcontract_ref:
+            continue
+        if order.docstatus != 1 or order.status in ("Closed", "Cancelled"):
+            continue
+        if flt(order.per_billed) < 99.995:
+            continue
+        frappe.get_doc("Purchase Order", name).update_status("Closed")
+        frappe.msgprint(
+            _("Purchase Order {0} closed — billed in full, and a subcontract has "
+              "nothing left to receive.").format(name),
+            alert=True,
+        )

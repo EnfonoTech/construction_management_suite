@@ -41,6 +41,8 @@
   "taxes_and_charges",
   "taxes",
   "total_taxes_and_charges",
+  "total_withheld",
+  "invoice_amount",
   "total_payable",
   "amended_from"
  ],
@@ -265,9 +267,24 @@
    "read_only": 1
   },
   {
+   "fieldname": "total_withheld",
+   "fieldtype": "Currency",
+   "label": "Withheld This Period",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoice_amount",
+   "fieldtype": "Currency",
+   "label": "Invoice Value",
+   "options": "currency",
+   "read_only": 1,
+   "bold": 1
+  },
+  {
    "fieldname": "total_payable",
    "fieldtype": "Currency",
-   "label": "Total Payable",
+   "label": "Payable Now",
    "options": "currency",
    "read_only": 1,
    "bold": 1
@@ -350,5 +367,6 @@
    "color": "Red",
    "title": "Cancelled"
   }
- ]
+ ],
+ "default_print_format": "Subcontractor Payment Certificate"
 }

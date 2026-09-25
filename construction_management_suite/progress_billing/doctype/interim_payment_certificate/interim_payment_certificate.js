@@ -1,6 +1,6 @@
 frappe.ui.form.on("Interim Payment Certificate", {
     onload(frm) {
-        CMS.defaultTaxTemplate(frm, "sales_taxes_template");
+        CMS.defaultTaxTemplate(frm);
     },
 
     refresh(frm) {
@@ -51,12 +51,14 @@ frappe.ui.form.on("Interim Payment Certificate", {
     },
 
     company(frm) {
+        CMS.defaultTaxTemplate(frm);
         CMS.filterProjects(frm);
         CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
     boq_ref(frm) {
         if (frm.doc.boq_ref && !(frm.doc.items || []).length) get_items(frm);
+        CMS.revealActions(frm);
     },
 
     taxes_and_charges(frm) { CMS.loadTaxTemplate(frm); },

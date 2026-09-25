@@ -10,8 +10,9 @@ from construction_management_suite.utils.accounting import (
     get_cost_center,
     get_warehouse,
 )
+from construction_management_suite.utils.billing import stamp_accounting
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
-from construction_management_suite.utils.titles import project_label, set_auto_title
+from construction_management_suite.utils.titles import project_label, set_auto_title, short_date
 from construction_management_suite.utils.validations import (
     require_estimate,
     validate_item_kinds,
@@ -23,8 +24,7 @@ from construction_management_suite.utils.validations import (
 class MaterialConsumptionEntry(Document):
     def validate(self):
         set_auto_title(self, "consumption_title",
-                       [_("Consumption"), project_label(self.project),
-                        frappe.utils.formatdate(self.posting_date) if self.posting_date else None])
+                       [project_label(self.project), short_date(self.posting_date)])
         validate_project_company(self)
         require_estimate(self.project, _("material can be issued against it"))
         if not self.warehouse:
@@ -185,6 +185,7 @@ class MaterialConsumptionEntry(Document):
                 # The movement says which work burnt it, not just which project.
                 "cms_work_item": item.work_item,
             })
+        stamp_accounting(se, project=self.project, cost_center=cost_center)
         se.insert(ignore_permissions=True)
         se.submit()
         self.db_set("stock_entry_ref", se.name)

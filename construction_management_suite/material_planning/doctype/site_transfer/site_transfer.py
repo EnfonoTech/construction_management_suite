@@ -4,7 +4,8 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from construction_management_suite.utils.accounting import get_cost_center, get_warehouse
-from construction_management_suite.utils.titles import project_label, set_auto_title
+from construction_management_suite.utils.billing import stamp_accounting
+from construction_management_suite.utils.titles import project_label, set_auto_title, short_date
 from construction_management_suite.utils.validations import (
     validate_item_kinds,
     validate_project_company,
@@ -16,9 +17,9 @@ class SiteTransfer(Document):
     def validate(self):
         # Both ends, because which job it came off is half the story.
         set_auto_title(self, "transfer_title",
-                       [_("Transfer"), project_label(self.from_project),
-                        _("to {0}").format(project_label(self.to_project)) if self.to_project else None,
-                        frappe.utils.formatdate(self.transfer_date) if self.transfer_date else None])
+                       [" → ".join(p for p in (project_label(self.from_project),
+                                               project_label(self.to_project)) if p),
+                        short_date(self.transfer_date)])
         validate_project_company(self, ("from_project", "to_project"))
         validate_item_kinds(self.items)
         validate_uom_convertible(self.items)
@@ -128,6 +129,7 @@ class SiteTransfer(Document):
                 "project": self.to_project,
                 "cms_work_item": item.get("work_item"),
             })
+        stamp_accounting(se, project=self.to_project, cost_center=cost_center)
         se.insert(ignore_permissions=True)
         se.submit()
         self.db_set("stock_entry_ref", se.name)

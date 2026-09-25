@@ -73,6 +73,7 @@ frappe.ui.form.on("Subcontractor Work Order", {
             ["project", "subcontractor", "company", "currency", "start_date", "end_date"]
                 .forEach(f => CMS.fillIfBlank(frm, f, a[f]));
         });
+        CMS.revealActions(frm);
     },
     items_remove(frm) { CMS.recalc(frm); },
 

@@ -1,11 +1,12 @@
 frappe.ui.form.on("Subcontract Agreement", {
     onload(frm) {
-        CMS.defaultTaxTemplate(frm, "purchase_taxes_template");
+        CMS.defaultTaxTemplate(frm);
     },
 
     taxes_and_charges(frm) { CMS.loadTaxTemplate(frm); },
 
     taxes_remove(frm) { CMS.recalc(frm); },
+    subcontract_value(frm) { CMS.recalc(frm); },
 
     refresh(frm) {
         frm.set_query("boq_ref", () => ({
@@ -44,19 +45,17 @@ frappe.ui.form.on("Subcontract Agreement", {
     },
 
     company(frm) {
+        CMS.defaultTaxTemplate(frm);
         CMS.filterProjects(frm);
         CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },
-    subcontract_value(frm) { CMS.recalc(frm); },
     advance_percent(frm) { CMS.recalc(frm); },
     items_remove(frm) { CMS.recalc(frm); },
 
 });
 
 
-
-/** Offer the line total as the contract value while the agreement is still a draft. */
 
 CMS.liveRows("Subcontract Item", ["qty", "rate"]);
 

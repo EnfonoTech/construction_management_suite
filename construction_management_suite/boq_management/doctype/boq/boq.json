@@ -418,5 +418,6 @@
  ],
  "title_field": "boq_title",
  "track_changes": 1,
- "track_seen": 1
+ "track_seen": 1,
+ "default_print_format": "BOQ"
 }

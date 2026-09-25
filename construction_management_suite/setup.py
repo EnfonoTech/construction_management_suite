@@ -1,4 +1,3 @@
-import json
 
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
@@ -110,9 +109,17 @@ def _work_ref_fields(after):
     correctable.
 
     Two Item links now sit on the same row — `item_code` is the cement,
-    `cms_work_item` is the painting it is for. Hence the explicit label and the
-    query restricted to service items; without them people attribute cement to
-    cement.
+    `cms_work_item` is the painting it is for. Hence the explicit label; the
+    list is narrowed in `public/js/buying.js`, not here.
+
+    **No `link_filters`.** It used to carry one, restricting the picker to
+    service items, and it made a custom query impossible: frappe's
+    `apply_link_field_filters` calls the field's `get_query` with no arguments,
+    keeps only its `filters`, throws away its `query` and replaces the function
+    with a plain filter. So the project-scoped query was silently discarded and
+    `project` went to the standard Item search, which answered "Unknown column
+    tabItem.project". The query now supplies both the scope and the service-item
+    restriction itself.
     """
     return [
         {
@@ -120,9 +127,9 @@ def _work_ref_fields(after):
             "label": "For Work",
             "fieldtype": "Link",
             "options": "Item",
-            # A line of work is a service item. Without this the picker offers
-            # the cement you are already buying on the same row.
-            "link_filters": json.dumps([["Item", "is_stock_item", "=", 0]]),
+            # No link_filters, deliberately — see above. It is a JSON column
+            # with a check constraint, so it cannot be blanked by passing an
+            # empty string either; the patch sets it to NULL.
             "insert_after": after,
         },
     ]

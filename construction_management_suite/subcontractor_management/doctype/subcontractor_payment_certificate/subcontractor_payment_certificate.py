@@ -1,21 +1,23 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, nowdate
+from frappe.utils import flt, formatdate, getdate, nowdate
 
 from construction_management_suite.utils.accounting import get_cost_center
 from construction_management_suite.utils.billing import (
     add_line,
     billing_item,
+    default_tax_template,
 )
 from construction_management_suite.utils.validations import validate_project_company
 from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
-    money,
     carry_taxes,
-    refuse_empty,
-    company_setting,
     load_tax_template,
+    money,
+    refuse_empty,
+    stamp_accounting,
+    validate_tax_template_company,
 )
 from construction_management_suite.utils.titles import (
     month_of,
@@ -27,10 +29,13 @@ from construction_management_suite.utils.titles import (
 class SubcontractorPaymentCertificate(Document):
     def validate(self):
         if not self.taxes_and_charges and not self.taxes:
-            self.taxes_and_charges = company_setting(self.company, "purchase_taxes_template")
+            self.taxes_and_charges = default_tax_template(self)
+        validate_tax_template_company(self)
         load_tax_template(self)
         set_auto_title(self, "certificate_title", [self.subcontractor, project_label(self.project), month_of(self.submission_date)])
         validate_project_company(self)
+        self.validate_period()
+        self.set_work_numbers()
         self.set_previous_certified()
         self.calculate_totals()
         self.validate_payable()
@@ -45,8 +50,26 @@ class SubcontractorPaymentCertificate(Document):
         return " — ".join(str(p).strip() for p in parts if p and str(p).strip())
 
     def calculate_document_taxes(self):
-        """Taxes on the agreed value, passed through to the document this raises."""
-        tax = calculate_document_taxes(self, self.net_payable)
+        """Tax on what is invoiced, which is the certified value — not the net.
+
+        The invoice this raises is for the work certified, at its gross value.
+        Retention and the recoveries are withheld from the payment, not taken
+        off the supply, so they do not reduce the taxable amount: the tax point
+        is certification, and the retained part is taxed now and paid later.
+
+        `total_payable` stays what it always was — what to pay this month — so
+        it is the net plus that tax, and the difference between it and the
+        invoice is exactly what is being withheld.
+        """
+        tax = calculate_document_taxes(self, self.certified_amount)
+        # Two different figures, and the document used to show only one of them.
+        # The supplier invoices the certified value plus its tax; what you pay
+        # this month is that less what is being withheld. The difference is the
+        # retention, which stays outstanding against the invoice until released.
+        self.invoice_amount = flt(self.certified_amount) + tax
+        self.total_withheld = (
+            flt(self.retention_deduction) + flt(self.advance_recovery) + flt(self.other_deductions)
+        )
         self.total_payable = flt(self.net_payable) + tax
 
     @frappe.whitelist()
@@ -64,6 +87,28 @@ class SubcontractorPaymentCertificate(Document):
             self.append("items", line)
             added += 1
         return added
+
+    def validate_period(self):
+        """A certificate covers a period, and a period runs forwards."""
+        if not (self.period_from and self.period_to):
+            return
+        if getdate(self.period_from) > getdate(self.period_to):
+            frappe.throw(
+                _("The period runs from {0} to {1}, which is backwards.").format(
+                    formatdate(self.period_from), formatdate(self.period_to)
+                ),
+                title=_("Check the period"),
+            )
+
+    def set_work_numbers(self):
+        """Fill the bill number beside each work item. Display only."""
+        from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+            work_no_map,
+        )
+
+        numbers = work_no_map(self.project) if self.project else {}
+        for row in self.items:
+            row.work_no = numbers.get(row.item_code)
 
     def calculate_totals(self):
         self.gross_amount_claimed = sum(flt(i.amount_claimed) for i in self.items)
@@ -164,6 +209,29 @@ class SubcontractorPaymentCertificate(Document):
         )
         self.previous_amount_certified = flt(total[0][0]) if total else 0
 
+    def order_rows(self):
+        """The agreement's Purchase Order lines, by item, with the order's name.
+
+        Matching on the item is what lets the invoice bill the order rather
+        than sit beside it. Where an order releases the same work item on two
+        lines the first is used — a second line for the same item is the order
+        being amended, and the amendment carries its own row.
+        """
+        order = frappe.db.get_value(
+            "Subcontract Agreement", self.subcontract_agreement, "purchase_order_ref"
+        )
+        if not order or frappe.db.get_value("Purchase Order", order, "docstatus") != 1:
+            return None, {}
+        rows = {}
+        for row in frappe.get_all(
+            "Purchase Order Item",
+            filters={"parent": order},
+            fields=["name", "item_code"],
+            order_by="idx",
+        ):
+            rows.setdefault(row.item_code, row.name)
+        return order, rows
+
     def _create_purchase_invoice(self):
         pi = frappe.new_doc("Purchase Invoice")
         pi.supplier = self.subcontractor
@@ -172,12 +240,52 @@ class SubcontractorPaymentCertificate(Document):
         pi.project = self.project
         pi.cms_subcontract_certificate_ref = self.name
         cost_center = get_cost_center(self.project, self.company)
-        work = billing_item("subcontract_billing_item")
-        add_line(pi, work, self.invoice_line_description(),
-                 self.net_payable, cost_center=cost_center)
+
+        # One line per certified item, at its gross value, pointed at the order
+        # row it bills. A single net line could not be: ERPNext refuses a
+        # `po_detail` whose item does not match, so nothing relieved the order
+        # and it stayed open at 0% billed for ever.
+        #
+        # Retention and the recoveries are NOT deducted here. They are withheld
+        # from the payment: the invoice stands at its gross and the withheld
+        # part remains outstanding against it until it is released, which is
+        # then simply another payment against the same invoice.
+        order, po_rows = self.order_rows()
+        claimed = flt(self.gross_amount_claimed)
+        # An engineer who certifies less than was claimed is certifying every
+        # line down in proportion; the measured quantities stay as measured.
+        factor = flt(self.certified_amount) / claimed if claimed else 1
+
+        for row in self.items:
+            if flt(row.amount_claimed) <= 0:
+                continue
+            qty = flt(row.qty_completed) or 1
+            line = {
+                "item_code": row.item_code,
+                "description": row.description or row.item_code,
+                "qty": qty,
+                "rate": flt(row.amount_claimed) * factor / qty,
+                "project": self.project,
+                "cost_center": cost_center,
+            }
+            if row.uom:
+                line["uom"] = row.uom
+                line["conversion_factor"] = 1
+            if row.item_code in po_rows:
+                line["purchase_order"] = order
+                line["po_detail"] = po_rows[row.item_code]
+            pi.append("items", line)
+
+        if not pi.items:
+            # Nothing measured — a certificate for a lump sum still has to be
+            # payable, so fall back to the module's own billing item.
+            add_line(pi, billing_item("subcontract_billing_item"),
+                     self.invoice_line_description(), self.certified_amount,
+                     cost_center=cost_center)
 
         refuse_empty(pi, self)
         carry_taxes(self, pi, cost_center)
+        stamp_accounting(pi, project=self.project, cost_center=cost_center)
         pi.insert(ignore_permissions=True)
         self.db_set("purchase_invoice_ref", pi.name)
         frappe.msgprint(_("Purchase Invoice {0} created").format(pi.name))

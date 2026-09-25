@@ -1,6 +1,16 @@
 frappe.query_reports["BOQ Resource Analysis"] = {
     filters: [
         {
+            // The estimate is what the job is bought and built against, and a
+            // job with no BOQ at all is the normal case — so that is the default.
+            fieldname: "source",
+            label: __("Priced From"),
+            fieldtype: "Select",
+            options: ["Cost Estimation", "BOQ"].join("\n"),
+            default: "Cost Estimation",
+            reqd: 1,
+        },
+        {
             fieldname: "company",
             label: __("Company"),
             fieldtype: "Link",
@@ -22,6 +32,7 @@ frappe.query_reports["BOQ Resource Analysis"] = {
             label: __("BOQ"),
             fieldtype: "Link",
             options: "BOQ",
+            depends_on: 'eval:doc.source == "BOQ"',
             get_query: () => {
                 const filters = { docstatus: ["<", 2] };
                 const project = frappe.query_report.get_filter_value("project");

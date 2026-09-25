@@ -1,6 +1,6 @@
 frappe.ui.form.on("Retention Release", {
     onload(frm) {
-        CMS.defaultTaxTemplate(frm, "sales_taxes_template");
+        CMS.defaultTaxTemplate(frm);
     },
 
     taxes_and_charges(frm) { CMS.loadTaxTemplate(frm); },
@@ -19,6 +19,7 @@ frappe.ui.form.on("Retention Release", {
     },
 
     company(frm) {
+        CMS.defaultTaxTemplate(frm);
         CMS.filterProjects(frm);
         CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);

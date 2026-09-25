@@ -49,18 +49,30 @@ fixtures = [
 _PROJECT_WAREHOUSE = (
     "construction_management_suite.project_costing.purchase_controls.set_project_warehouse"
 )
+# Budget, estimated rate, and whether the plan includes what is being bought.
+# On every buying document, not the order alone: a Purchase Invoice with Update
+# Stock is a purchase and a receipt in one, and it was checked against nothing.
+_PURCHASE_CONTROLS = (
+    "construction_management_suite.project_costing.purchase_controls.validate_purchase_document"
+)
 
 doc_events = {
     "Purchase Order": {
         "before_validate": _PROJECT_WAREHOUSE,
-        "validate": "construction_management_suite.project_costing.purchase_controls.validate_purchase_order",
+        "validate": _PURCHASE_CONTROLS,
     },
-    # The same question on every document that receives or asks for material
-    # against a job. before_validate, because ERPNext refuses a blank warehouse
-    # in its own validate — see set_project_warehouse.
-    "Material Request": {"before_validate": _PROJECT_WAREHOUSE},
-    "Purchase Receipt": {"before_validate": _PROJECT_WAREHOUSE},
-    "Purchase Invoice": {"before_validate": _PROJECT_WAREHOUSE},
+    # The same questions on every document that receives or asks for material
+    # against a job. before_validate for the warehouse, because ERPNext refuses
+    # a blank one in its own validate — see set_project_warehouse.
+    "Material Request": {"before_validate": _PROJECT_WAREHOUSE, "validate": _PURCHASE_CONTROLS},
+    "Purchase Receipt": {"before_validate": _PROJECT_WAREHOUSE, "validate": _PURCHASE_CONTROLS},
+    "Purchase Invoice": {
+        "before_validate": _PROJECT_WAREHOUSE,
+        "validate": _PURCHASE_CONTROLS,
+        # A subcontract order can never be received, so being billed in full is
+        # the only thing that can finish it.
+        "on_submit": "construction_management_suite.project_costing.purchase_controls.close_subcontract_order",
+    },
 }
 
 # Scheduled Tasks
@@ -125,7 +137,12 @@ website_context = {}
 page_js = {}
 
 # Buying straight off the estimate, with no forecast in between.
-doctype_js = {"Material Request": "public/js/material_request.js"}
+doctype_js = {
+    "Material Request": ["public/js/material_request.js", "public/js/buying.js"],
+    "Purchase Order": "public/js/buying.js",
+    "Purchase Receipt": "public/js/buying.js",
+    "Purchase Invoice": "public/js/buying.js",
+}
 
 # Permission query conditions — row-level security by company
 permission_query_conditions = {

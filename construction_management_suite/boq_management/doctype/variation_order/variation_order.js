@@ -10,6 +10,8 @@ frappe.ui.form.on("Variation Order", {
         }
     },
 
+    boq_ref(frm) { CMS.revealActions(frm); },
+
     company(frm) {
         CMS.filterProjects(frm);
         CMS.clearForeignProject(frm);

@@ -224,7 +224,9 @@ enforce(action, _("Row {0}: ...").format(item.idx), title=_("Over-certification"
 
 `scope_rate_analysis_by_company` is a Check rather than an action: on, an item's analysis is looked up inside the document's company, the pickers filter to it and a line pointing at another company's analysis is refused.
 
-Defaults that are values rather than actions are read the same way: `default_rate_source`, `default_selling_price_list`, `default_contingency_percent`, `default_retention_percent`, `default_subcontract_retention_percent`, the three billing items, the two tax templates, `consumption_expense_account`.
+Defaults that are values rather than actions are read the same way: `default_rate_source`, `default_selling_price_list`, `default_contingency_percent`, `default_retention_percent`, `default_subcontract_retention_percent`, the three billing items, `consumption_expense_account`.
+
+**Tax templates are not among them.** They were, and it was wrong: a template carries accounts and accounts belong to a company, so one site-wide template put one company's VAT on another company's agreement. `billing.default_tax_template(doc)` reads ERPNext's own per-company default (`is_default` on the template) through `get_default_taxes_and_charges`, and `validate_tax_template_company` refuses a template from another company on all four doctypes that carry tax.
 
 ### Two traps in a Single
 
@@ -581,6 +583,12 @@ A patch that writes to a Single must also clear the document cache afterwards, f
    edited workspace with an untouched timestamp is a silent no-op on migrate.
    This is not theoretical: it is what made the first attempt at this change
    appear to do nothing.
+
+This applies to **every** standard record this app ships as a JSON file — the
+workspace, the five print formats, anything added later. Edit the file, bump
+`modified`, migrate, and check the record in the database rather than the file
+on disk. Both times it has been forgotten, the change looked applied and was
+not.
 4. Bump `modified` on any standard JSON you touch.
 
 ### Change a calculation

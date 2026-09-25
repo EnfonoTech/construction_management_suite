@@ -24,6 +24,7 @@ frappe.ui.form.on("Material Consumption Entry", {
         }
     },
     project(frm) { CMS.fillFromProject(frm, { company: "company", warehouse: "cms_default_warehouse" }); },
+    daily_site_report_ref(frm) { CMS.revealActions(frm); },
     company(frm) {
         CMS.filterByCompany(frm, "warehouse", { is_group: 0 });
         CMS.filterProjects(frm);

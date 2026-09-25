@@ -9,8 +9,10 @@ from construction_management_suite.utils.validations import validate_project_com
 from construction_management_suite.utils.billing import (
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
-    company_setting,
+    default_tax_template,
     load_tax_template,
+    stamp_accounting,
+    validate_tax_template_company,
 )
 from construction_management_suite.utils.titles import (
     month_of,
@@ -29,8 +31,9 @@ class SubcontractAgreement(Document):
 
     def validate(self):
         if not self.taxes_and_charges and not self.taxes:
-            self.taxes_and_charges = company_setting(self.company, "purchase_taxes_template")
+            self.taxes_and_charges = default_tax_template(self)
         load_tax_template(self)
+        validate_tax_template_company(self)
         set_auto_title(self, "agreement_title", [self.subcontractor, project_label(self.project), self.scope_summary if self.get("scope_summary") else None])
         self.set_missing_defaults()
         validate_project_company(self)
@@ -121,6 +124,26 @@ class SubcontractAgreement(Document):
         self.fetch_payment_summary()
         for field in ("total_claimed", "total_certified", "total_paid", "balance_due"):
             self.db_set(field, flt(self.get(field)), update_modified=False)
+        self.mark_finished()
+
+    def mark_finished(self):
+        """An agreement certified in full is finished, and so is its order.
+
+        Left to a human this never happened: the status was not even editable
+        once the agreement was signed, so every subcontract order on the site
+        stayed open whatever had been certified against it.
+        """
+        if self.docstatus != 1 or self.status in ("Completed", "Terminated", "Cancelled"):
+            return
+        value = flt(self.subcontract_value)
+        if not value or flt(self.total_certified) + 0.005 < value:
+            return
+        self.db_set("status", "Completed", update_modified=False)
+        # The order is NOT closed here. The certificate has only just raised its
+        # invoice, as a draft, and a closed order cannot be invoiced against —
+        # closing it now makes the invoice unsubmittable. The order closes when
+        # the last invoice against it is submitted; see
+        # project_costing.purchase_controls.close_subcontract_order.
 
     def fetch_payment_summary(self):
         if self.is_new():
@@ -141,6 +164,48 @@ class SubcontractAgreement(Document):
         self.total_certified = flt(data.total_certified)
         self.total_paid = flt(data.total_paid)
         self.balance_due = flt(self.subcontract_value) - flt(self.total_paid)
+
+    def on_update_after_submit(self):
+        self.close_order_when_finished()
+
+    def close_order_when_finished(self):
+        """Finish the order when the agreement is finished.
+
+        A subcontract order is for a service, and a service cannot be received
+        — `per_received` never moves, so even an order billed to the last fils
+        sits at "To Receive" for ever. ERPNext's own answer to that is to close
+        it, which is what an agreement reaching Completed or Terminated means.
+
+        This is the path for an agreement that ends with work uncertified; one
+        certified in full closes its order as the last invoice is submitted.
+
+        Only ever closes; re-opening one is a decision for whoever reopens the
+        agreement, and ERPNext has a button for it.
+        """
+        if self.status not in ("Completed", "Terminated"):
+            return
+        order = self.purchase_order_ref
+        if not order:
+            return
+        state = frappe.db.get_value("Purchase Order", order, ["docstatus", "status"], as_dict=True)
+        if not state or state.docstatus != 1 or state.status in ("Closed", "Cancelled"):
+            return
+        # A closed order refuses to be invoiced, so never close one with an
+        # invoice still waiting to be submitted against it.
+        if frappe.db.exists(
+            "Purchase Invoice Item", {"purchase_order": order, "docstatus": 0}
+        ):
+            frappe.msgprint(
+                _("{0} is left open: an unsubmitted invoice still bills against it.")
+                .format(order),
+                alert=True,
+            )
+            return
+        frappe.get_doc("Purchase Order", order).update_status("Closed")
+        frappe.msgprint(
+            _("Purchase Order {0} closed — this agreement is {1}.").format(order, _(self.status)),
+            alert=True,
+        )
 
     def before_submit(self):
         self.status = "Active"
@@ -178,6 +243,14 @@ class SubcontractAgreement(Document):
                 "cost_center": cost_center,
                 "schedule_date": po.schedule_date,
             })
+        # The tax the agreement was signed with is the tax the order is placed
+        # at. The certificate path has always carried it; this one imported the
+        # helper and never called it, so an agreed VAT reached the supplier's
+        # order as nothing at all.
+        carry_taxes(self, po, cost_center)
+        # Written on the rows and left blank on the document, which is where
+        # ERPNext shows it and where a buyer looks for it.
+        stamp_accounting(po, project=self.project, cost_center=cost_center)
         po.insert(ignore_permissions=True)
         self.db_set("purchase_order_ref", po.name)
         frappe.msgprint(_("Purchase Order {0} created").format(po.name))

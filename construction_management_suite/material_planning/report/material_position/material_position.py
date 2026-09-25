@@ -89,11 +89,13 @@ def build_rows(filters):
 	requested = _sum("""
 		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty
 		FROM `tabMaterial Request Item` i JOIN `tabMaterial Request` m ON m.name = i.parent
+		JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
 		WHERE i.project = %(p)s AND m.docstatus = 1
 		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
 	ordered, ordered_value = _sum_value("""
 		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Order Item` i JOIN `tabPurchase Order` o ON o.name = i.parent
+		JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
 		WHERE i.project = %(p)s AND o.docstatus = 1
 		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
 	# Stock comes in two ways: a Purchase Receipt, or a Purchase Invoice that
@@ -104,10 +106,12 @@ def build_rows(filters):
 		SELECT code, work, SUM(qty) AS qty, SUM(value) AS value FROM (
 			SELECT i.item_code AS code, i.cms_work_item AS work, i.qty AS qty, i.base_amount AS value
 			FROM `tabPurchase Receipt Item` i JOIN `tabPurchase Receipt` r ON r.name = i.parent
+			JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
 			WHERE i.project = %(p)s AND r.docstatus = 1
 			UNION ALL
 			SELECT i.item_code, i.cms_work_item, i.qty, i.base_amount
 			FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
+			JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
 			WHERE i.project = %(p)s AND v.docstatus = 1 AND v.update_stock = 1
 		) x GROUP BY code, work""", project, by_work)
 
@@ -115,6 +119,7 @@ def build_rows(filters):
 	invoiced, invoiced_value = _sum_value("""
 		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
+		JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
 		WHERE i.project = %(p)s AND v.docstatus = 1
 		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
 	# Material also arrives by transfer, and the Received column read purchase

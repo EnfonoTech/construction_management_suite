@@ -122,10 +122,19 @@ class BOQ(Document):
             self.selling_price_list = cms_setting("default_selling_price_list")
 
     def set_currency_from_project(self):
-        if self.project and not self.currency:
-            project_currency = frappe.db.get_value("Project", self.project, "currency")
-            if project_currency:
-                self.currency = project_currency
+        """The job's currency, which in ERPNext belongs to its company.
+
+        This read `Project.currency`, a field ERPNext does not have — the query
+        throws with "Unknown column". It survived only because a bill almost
+        always has its currency by the time this runs, so the branch was never
+        taken. A bill created by API or import, with a project and no currency,
+        would have hit it.
+        """
+        if not self.project or self.currency:
+            return
+        company = frappe.db.get_value("Project", self.project, "company") or self.company
+        if company:
+            self.currency = frappe.get_cached_value("Company", company, "default_currency")
 
     def set_item_numbers(self):
         """Give every new line a reference that survives the rows moving.

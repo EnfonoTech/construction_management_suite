@@ -142,9 +142,47 @@ CMS.PROJECT_FIELDS = [
     "cms_retention_percent", "cms_client_po", "expected_start_date", "expected_end_date",
 ];
 
+/**
+ * A grid row, safely.
+ *
+ * A link field's query is set up as the field is rendered, and Frappe calls it
+ * with the row's doctype and name before that row is necessarily in `locals` —
+ * so `locals[cdt][cdn]` throws "can't access property undefined" and takes the
+ * whole picker down with it: no filter, no list, no way to choose anything.
+ */
+CMS.row = function (cdt, cdn) {
+    return (cdt && locals[cdt] && locals[cdt][cdn]) || {};
+};
+
+/**
+ * The document a link query is running against.
+ *
+ * Frappe calls a `get_query` with `(this.frm && this.frm.doc, doctype, name)`,
+ * and a field can be rendered before its form is attached — so `doc` arrives
+ * undefined and reading `doc.company` takes the picker down with it. The form
+ * is in the closure and is the reliable answer; the argument is a shortcut.
+ */
+CMS.queryDoc = function (doc, frm) {
+    return doc || (frm && frm.doc) || {};
+};
+
 /** Does this form actually have that field? Avoids set_value warnings. */
 CMS.has = function (frm, fieldname) {
     return Boolean(frm.meta.fields.find(f => f.fieldname === fieldname));
+};
+
+/**
+ * Re-run refresh so actions that depend on a link field appear as it is set.
+ *
+ * Every picker in this app — Get Work from the Estimate, Get from the Take-off,
+ * Get Scope from Agreement — is added in `refresh` and gated on some link being
+ * present. Nothing re-ran refresh when somebody set that link, so on a new
+ * document the button stayed invisible until the first save, and people
+ * concluded it did not exist. `refresh` clears the custom buttons before
+ * re-adding them, so calling it again cannot duplicate one.
+ */
+CMS.revealActions = function (frm) {
+    frm.refresh();
 };
 
 /** Set a field only when it is still empty, so typed input is never clobbered. */
@@ -170,7 +208,7 @@ CMS.fillFromProject = function (frm, map, projectField) {
         if (CMS.has(frm, "currency") && !frm.doc.currency && p.company) {
             return CMS.currencyFromCompany(frm, p.company);
         }
-    });
+    }).then(() => CMS.revealActions(frm));
 };
 
 /**
@@ -245,7 +283,7 @@ CMS.rateAnalysisQuery = function (frm, tablefield) {
     // Single is readable by managers only.
     CMS.loadRateScope();
     frm.set_query("rate_analysis_ref", tablefield || "items", (doc, cdt, cdn) => {
-        const row = locals[cdt][cdn];
+        const row = CMS.row(cdt, cdn);
         // is_active covers retirement on its own; an Obsolete analysis is
         // forced inactive on save, so one filter says both.
         const filters = { is_active: 1 };
@@ -254,7 +292,9 @@ CMS.rateAnalysisQuery = function (frm, tablefield) {
         if (row.item_code) filters.item_code = row.item_code;
         // The server refuses another company's analysis while the library is
         // company-specific, so never offer one.
-        if (CMS._rateScope && doc.company) filters.company = doc.company;
+        if (CMS._rateScope && CMS.queryDoc(doc, frm).company) {
+            filters.company = CMS.queryDoc(doc, frm).company;
+        }
         return { filters };
     });
 };
@@ -293,10 +333,25 @@ CMS.loadTaxTemplate = function (frm) {
     });
 };
 
-/** On a new document, take the module default and load its rows straight away. */
-CMS.defaultTaxTemplate = function (frm, setting) {
+/**
+ * On a new document, take the COMPANY's default template and load its rows.
+ *
+ * The module used to name one template per site in its own settings, which is
+ * wrong as soon as there are two companies: the template carries the accounts,
+ * and the accounts belong to a company. ERPNext keeps `is_default` on the
+ * template, per company, and every standard document reads it that way.
+ *
+ * Also runs when the company is set, because on a new document the company
+ * usually arrives after the form does — from the project.
+ */
+CMS.defaultTaxTemplate = function (frm) {
     if (!frm.is_new() || frm.doc.taxes_and_charges || (frm.doc.taxes || []).length) return;
-    frappe.db.get_single_value("Construction Settings", setting).then((template) => {
+    const field = frm.fields_dict.taxes_and_charges;
+    if (!field || !frm.doc.company) return;
+    frappe.db.get_value(field.df.options,
+        { company: frm.doc.company, is_default: 1, disabled: 0 }, "name"
+    ).then((r) => {
+        const template = (r.message || {}).name;
         if (!template) return;
         frm.set_value("taxes_and_charges", template).then(() => CMS.loadTaxTemplate(frm));
     });
@@ -382,14 +437,26 @@ CMS.itemKind = function (doctype, fieldname, row) {
  * The scope for one Item picker: the form's company, and the kind of item the
  * field is asking for. Read at search time, so a row's own type is current.
  */
-CMS.itemQuery = function (doctype, fieldname) {
+CMS.itemQuery = function (doctype, fieldname, frm) {
     return function (doc, cdt, cdn) {
+        const d = CMS.queryDoc(doc, frm);
+        const row = CMS.row(cdt, cdn);
         const filters = [];
         // Nothing to scope to — a template or a settings page has no company.
-        if (CMS._itemScoped && doc && doc.company) {
-            filters.push(["company", "in", [doc.company, ""]]);
+        if (CMS._itemScoped && d.company) {
+            filters.push(["company", "in", [d.company, ""]]);
         }
-        const kind = CMS.itemKind(doctype, fieldname, cdt ? locals[cdt][cdn] : null);
+        const kind = CMS.itemKind(doctype, fieldname, row);
+        // A line of work on a document that names a project is one of THAT
+        // project's lines of work. Anything else is a reference to nothing, and
+        // every per-work figure quietly leaves the document out.
+        const project = row.project || d.project;
+        if (kind === "work" && project) {
+            return {
+                query: "construction_management_suite.api.boq.work_items_for_project",
+                filters: { project },
+            };
+        }
         if (kind === "work") filters.push(["is_stock_item", "=", 0]);
         if (kind === "material") filters.push(["is_stock_item", "=", 1]);
         return { filters };
@@ -411,13 +478,13 @@ CMS.scopeItemPickers = function (frm) {
         CMS._itemScoped = scoped;
         fields.forEach((df) => {
             if (df.fieldtype === "Link" && df.options === "Item") {
-                frm.set_query(df.fieldname, CMS.itemQuery(frm.doctype, df.fieldname));
+                frm.set_query(df.fieldname, CMS.itemQuery(frm.doctype, df.fieldname, frm));
             } else if (df.fieldtype === "Table" && frm.fields_dict[df.fieldname]) {
                 const child = frappe.get_meta(df.options);
                 ((child && child.fields) || []).forEach((cdf) => {
                     if (cdf.fieldtype === "Link" && cdf.options === "Item") {
                         frm.set_query(cdf.fieldname, df.fieldname,
-                                      CMS.itemQuery(df.options, cdf.fieldname));
+                                      CMS.itemQuery(df.options, cdf.fieldname, frm));
                     }
                 });
             }
@@ -425,8 +492,46 @@ CMS.scopeItemPickers = function (frm) {
     });
 };
 
+/**
+ * A tax template belongs to a company, and so do the accounts under it.
+ *
+ * The picker offered every template on the site, which on a two-company site
+ * is how an agreement for one company ends up carrying the other's VAT — and
+ * the order or invoice it raises then posts to books it has nothing to do
+ * with. The server refuses that now; this is so it is never offered.
+ */
+CMS.scopeTaxTemplates = function (frm) {
+    if (!frm || !frm.meta || !CMS.APP_MODULES.includes(frm.meta.module)) return;
+    if (!frm.meta.fields.some(df => df.fieldname === "taxes_and_charges")) return;
+    frm.set_query("taxes_and_charges", (doc) => {
+        const d = CMS.queryDoc(doc, frm);
+        return { filters: d.company ? { company: d.company } : {} };
+    });
+};
+
+/**
+ * A document handed over by a Create button arrives with its lines and none of
+ * its totals.
+ *
+ * Every figure below the grid is computed on the server as the document saves,
+ * so a mapped one — a certificate from a work order, an estimate from a bill —
+ * opened showing a full schedule and a blank net payable until the user touched
+ * a field or saved. The arithmetic already exists in the browser; it simply was
+ * never run on arrival. Only on a new document: re-running it on a saved one
+ * would mark a form dirty that nobody had edited.
+ */
+CMS.calcOnArrival = function (frm) {
+    if (!frm || !frm.is_new() || !CMS.calc[frm.doctype]) return;
+    if (!(frm.doc.items || frm.doc.resources || []).length) return;
+    CMS.recalc(frm);
+};
+
 // Every form, without a handler per doctype: form.js triggers this on render.
-$(document).on("form-refresh", (e, frm) => CMS.scopeItemPickers(frm));
+$(document).on("form-refresh", (e, frm) => {
+    CMS.scopeItemPickers(frm);
+    CMS.scopeTaxTemplates(frm);
+    CMS.calcOnArrival(frm);
+});
 
 /**
  * Offer only the batches of this row's item that the store actually holds.
@@ -437,13 +542,15 @@ $(document).on("form-refresh", (e, frm) => CMS.scopeItemPickers(frm));
  */
 CMS.batchQuery = function (frm, tablefield, warehouseField) {
     frm.set_query("batch_no", tablefield, (doc, cdt, cdn) => {
-        const row = locals[cdt][cdn];
+        const row = CMS.row(cdt, cdn);
         return {
             query: "erpnext.controllers.queries.get_batch_no",
             filters: {
                 item_code: row.item_code,
-                warehouse: row.warehouse || doc[warehouseField] || null,
-                posting_date: doc.posting_date || doc.transfer_date || doc.report_date,
+                warehouse: row.warehouse || CMS.queryDoc(doc, frm)[warehouseField] || null,
+                posting_date: CMS.queryDoc(doc, frm).posting_date
+                    || CMS.queryDoc(doc, frm).transfer_date
+                    || CMS.queryDoc(doc, frm).report_date,
                 include_expired_batches: 1,
             },
         };
@@ -647,6 +754,25 @@ CMS.calc["Subcontract Agreement"] = function (doc) {
         doc.subcontract_value = doc.items.reduce((t, r) => t + flt(r.amount), 0);
     }
     doc.advance_amount = flt(doc.subcontract_value) * flt(doc.advance_percent) / 100;
+
+    // Mirrors SubcontractAgreement.calculate_document_taxes. The only document
+    // with a taxes table whose tax was not computed in the browser: picking a
+    // template loaded the rows and the totals stayed as they were until a save.
+    let running = flt(doc.subcontract_value);
+    (doc.taxes || []).forEach((r) => {
+        let amount = 0;
+        if (r.charge_type === "Actual") amount = flt(r.tax_amount);
+        else if (r.charge_type === "On Net Total") amount = flt(doc.subcontract_value) * flt(r.rate) / 100;
+        else if (r.charge_type === "On Previous Row Amount")
+            amount = flt((doc.taxes[cint(r.row_id) - 1] || {}).tax_amount) * flt(r.rate) / 100;
+        else if (r.charge_type === "On Previous Row Total")
+            amount = flt((doc.taxes[cint(r.row_id) - 1] || {}).total) * flt(r.rate) / 100;
+        r.tax_amount = amount;
+        running += amount;
+        r.total = running;
+    });
+    doc.total_taxes_and_charges = (doc.taxes || []).reduce((t, r) => t + flt(r.tax_amount), 0);
+    doc.total_with_taxes = flt(doc.subcontract_value) + flt(doc.total_taxes_and_charges);
 };
 
 CMS.calc["Subcontractor Payment Certificate"] = function (doc) {
@@ -658,11 +784,14 @@ CMS.calc["Subcontractor Payment Certificate"] = function (doc) {
     doc.net_payable = flt(doc.certified_amount) - flt(doc.retention_deduction)
         - flt(doc.advance_recovery) - flt(doc.other_deductions);
 
-    let running = flt(doc.net_payable);
+    // Tax is on what gets invoiced — the certified value — not on the net.
+    // Retention and the recoveries are withheld from the payment, not taken
+    // off the supply. See SubcontractorPaymentCertificate.calculate_document_taxes.
+    let running = flt(doc.certified_amount);
     (doc.taxes || []).forEach((r) => {
         let amount = 0;
         if (r.charge_type === "Actual") amount = flt(r.tax_amount);
-        else if (r.charge_type === "On Net Total") amount = flt(doc.net_payable) * flt(r.rate) / 100;
+        else if (r.charge_type === "On Net Total") amount = flt(doc.certified_amount) * flt(r.rate) / 100;
         else if (r.charge_type === "On Previous Row Amount")
             amount = flt((doc.taxes[cint(r.row_id) - 1] || {}).tax_amount) * flt(r.rate) / 100;
         else if (r.charge_type === "On Previous Row Total")
@@ -672,6 +801,10 @@ CMS.calc["Subcontractor Payment Certificate"] = function (doc) {
         r.total = running;
     });
     doc.total_taxes_and_charges = (doc.taxes || []).reduce((t, r) => t + flt(r.tax_amount), 0);
+    // What the supplier invoices, and what you actually pay this month.
+    doc.invoice_amount = flt(doc.certified_amount) + flt(doc.total_taxes_and_charges);
+    doc.total_withheld = flt(doc.retention_deduction) + flt(doc.advance_recovery)
+        + flt(doc.other_deductions);
     doc.total_payable = flt(doc.net_payable) + flt(doc.total_taxes_and_charges);
 };
 
@@ -748,7 +881,7 @@ CMS.liveRows = function (childDoctype, fields) {
  */
 CMS.uomQuery = function (frm, tablefield, itemfield) {
     frm.set_query("uom", tablefield, (doc, cdt, cdn) => {
-        const row = locals[cdt][cdn];
+        const row = CMS.row(cdt, cdn);
         return {
             query: "erpnext.controllers.queries.get_item_uom_query",
             filters: { item_code: row[itemfield || "item_code"] },

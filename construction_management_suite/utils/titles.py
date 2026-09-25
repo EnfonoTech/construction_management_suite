@@ -32,3 +32,14 @@ def project_label(project):
         return None
     name = frappe.db.get_value("Project", project, "project_name")
     return name or project
+
+
+def short_date(date):
+    """'23 Sep 26' — enough to tell two entries apart, short enough for a list.
+
+    The year stays: a job runs for three of them, and '23 Sep' on a document
+    raised in a previous one is a trap rather than a saving.
+    """
+    if not date:
+        return None
+    return formatdate(date, "d MMM yy")

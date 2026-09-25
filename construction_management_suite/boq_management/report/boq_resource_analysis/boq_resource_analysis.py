@@ -1,8 +1,17 @@
-"""Explode a Bill of Quantities into the resources underneath it.
+"""Explode a priced document into the resources underneath it.
 
-A BOQ says "180 m³ of concrete at 62.500". This report says what that is made
-of and, more usefully, how much of each thing the whole bill needs — the
-material take-off. The column that does that work is `total_qty`:
+A line says "180 m³ of concrete at 62.500". This report says what that is made
+of and, more usefully, how much of each thing the whole job needs — the
+material take-off, plus the labour, plant and subcontract content the take-off
+itself leaves out.
+
+It reads the **Cost Estimation** by default and the BOQ on request. The two
+answer different questions: the estimate is what the job is planned to cost and
+is what it is bought and built against, the bill is what the client is charged.
+A job with no BOQ at all — bought and run off an estimate — is the normal case
+now, and this report used to return nothing for one.
+
+The column that does the work is `total_qty`:
 
     total_qty = boq_qty x qty_per_unit
 
@@ -23,6 +32,8 @@ from construction_management_suite.api.boq import NO_ANALYSIS, resources_behind_
 
 UNLINKED_SUFFIX = " (not linked to an Item)"
 
+SOURCES = ("Cost Estimation", "BOQ")
+
 GROUP_BY_FIELD = {
 	"BOQ Item": "boq_item",
 	"Resource Item": "resource_key",
@@ -35,6 +46,8 @@ GROUP_BY_FIELD = {
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
+	if filters.get("source") not in SOURCES:
+		filters.source = SOURCES[0]
 	# The checkbox defaults to on in the .js, but a server-side run — a script,
 	# an export, a scheduled job — passes no filters at all and was silently
 	# getting the unexploded bill.
@@ -58,16 +71,21 @@ def execute(filters=None):
 
 
 def get_columns(filters):
+	source = filters.get("source") or SOURCES[0]
+	# The fieldnames stay as they are, so saved views and the grouping map keep
+	# working; only what the user reads changes with the source.
+	rate_label = _("Rate") if source == "BOQ" else _("Unit Cost")
+	amount_label = _("Amount") if source == "BOQ" else _("Cost")
 	columns = [
-		{"label": _("BOQ"), "fieldname": "boq", "fieldtype": "Link", "options": "BOQ", "width": 130},
+		{"label": _(source), "fieldname": "boq", "fieldtype": "Link", "options": source, "width": 150},
 		{"label": _("Section"), "fieldname": "boq_section", "fieldtype": "Data", "width": 120},
 		{"label": _("Work Category"), "fieldname": "work_category", "fieldtype": "Data", "width": 110},
-		{"label": _("BOQ Item"), "fieldname": "boq_item", "fieldtype": "Link", "options": "Item", "width": 130},
+		{"label": _("Work Item"), "fieldname": "boq_item", "fieldtype": "Link", "options": "Item", "width": 130},
 		{"label": _("Description"), "fieldname": "description", "fieldtype": "Data", "width": 220},
-		{"label": _("BOQ Qty"), "fieldname": "boq_qty", "fieldtype": "Float", "width": 90},
+		{"label": _("Qty"), "fieldname": "boq_qty", "fieldtype": "Float", "width": 90},
 		{"label": _("UOM"), "fieldname": "boq_uom", "fieldtype": "Link", "options": "UOM", "width": 70},
-		{"label": _("BOQ Rate"), "fieldname": "boq_rate", "fieldtype": "Currency", "options": "currency", "width": 100},
-		{"label": _("BOQ Amount"), "fieldname": "boq_amount", "fieldtype": "Currency", "options": "currency", "width": 120},
+		{"label": rate_label, "fieldname": "boq_rate", "fieldtype": "Currency", "options": "currency", "width": 100},
+		{"label": amount_label, "fieldname": "boq_amount", "fieldtype": "Currency", "options": "currency", "width": 120},
 	]
 	if not filters.get("show_resources"):
 		return columns
@@ -119,6 +137,9 @@ def get_rows(filters):
 
 
 def get_boq_lines(filters):
+	if (filters.get("source") or SOURCES[0]) == "Cost Estimation":
+		return get_estimate_lines(filters)
+
 	conditions = ["b.docstatus < 2"]
 	params = {}
 	# A revision leaves the bill it replaces at docstatus 1, status 'Revised', so
@@ -157,6 +178,46 @@ def get_boq_lines(filters):
 		JOIN `tabBOQ` b ON b.name = i.parent
 		WHERE {conditions}
 		ORDER BY b.name, i.idx
+		""".format(conditions=" AND ".join(conditions)),
+		params,
+		as_dict=True,
+	)
+
+
+def get_estimate_lines(filters):
+	"""The same shape, read from the cost plan instead of the bill.
+
+	A project has one submitted Cost Estimation — enforced — so there is no
+	superseded-revision problem to filter for here, only docstatus.
+	"""
+	conditions = ["e.docstatus = 1"]
+	params = {}
+	for field, column in (("company", "e.company"), ("project", "e.project")):
+		if filters.get(field):
+			conditions.append(f"{column} = %({field})s")
+			params[field] = filters[field]
+
+	return frappe.db.sql(
+		"""
+		SELECT
+			e.name          AS boq,
+			e.currency      AS currency,
+			i.name          AS boq_item_row,
+			i.idx           AS boq_idx,
+			i.item_code     AS boq_item,
+			i.description   AS description,
+			i.uom           AS boq_uom,
+			i.qty           AS boq_qty,
+			i.unit_cost     AS boq_rate,
+			i.total_cost    AS boq_amount,
+			i.boq_section   AS boq_section,
+			NULL            AS work_category,
+			i.rate_analysis_ref AS rate_analysis_ref,
+			i.rate_build_up AS rate_build_up
+		FROM `tabCost Estimation Item` i
+		JOIN `tabCost Estimation` e ON e.name = i.parent
+		WHERE {conditions}
+		ORDER BY e.name, i.idx
 		""".format(conditions=" AND ".join(conditions)),
 		params,
 		as_dict=True,

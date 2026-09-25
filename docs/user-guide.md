@@ -84,7 +84,9 @@ The certificates raise a **single-line** invoice, and that line needs an Item. T
 | Retention Release Item | `SRV-RETENTION-RELEASE` | Retention Release |
 | Subcontract Billing Item | `SRV-SUBCONTRACT` | Subcontractor Payment Certificate |
 
-Point them at your own service items if you already have them — the setup never overwrites a choice you have made. Set **Sales Taxes Template** and **Purchase Taxes Template** too: a new certificate loads that template's rows the moment it opens, so VAT is on the document before anyone types a figure.
+Point them at your own service items if you already have them — the setup never overwrites a choice you have made.
+
+**Tax is not set here.** A certificate, a release and an agreement take the **default tax template of their own company** — ERPNext's `Is Default` tick on the template itself — exactly as a Sales Invoice does. Tick one Sales and one Purchase template as default per company and every document opens with the rows already on it. A company with none simply asks you to pick, and a template belonging to another company is refused: its accounts are that company's, and the invoice behind the certificate would post to the wrong books.
 
 **Material Consumption Account** is the expense account site issues are charged to. Left blank, the company's default expense account is used.
 

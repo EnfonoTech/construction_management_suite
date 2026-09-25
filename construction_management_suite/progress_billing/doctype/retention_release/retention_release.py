@@ -8,13 +8,15 @@ from construction_management_suite.utils.titles import project_label
 from construction_management_suite.utils.validations import validate_project_company
 from construction_management_suite.utils.billing import (
     add_line,
-    money,
     billing_item,
     calculate_taxes as calculate_document_taxes,
     carry_taxes,
-    refuse_empty,
-    company_setting,
+    default_tax_template,
     load_tax_template,
+    money,
+    refuse_empty,
+    stamp_accounting,
+    validate_tax_template_company,
 )
 
 
@@ -32,9 +34,10 @@ class RetentionRelease(Document):
         from construction_management_suite.utils.titles import project_label, set_auto_title
 
         set_auto_title(self, "release_title",
-                       [_("Retention"), project_label(self.project), self.release_type])
+                       [project_label(self.project), self.release_type])
         if not self.taxes_and_charges and not self.taxes:
-            self.taxes_and_charges = company_setting(self.company, "sales_taxes_template")
+            self.taxes_and_charges = default_tax_template(self)
+        validate_tax_template_company(self)
         load_tax_template(self)
         validate_project_company(self)
         self.set_retention_position()
@@ -137,6 +140,7 @@ class RetentionRelease(Document):
         )
         refuse_empty(si, self)
         carry_taxes(self, si, cost_center)
+        stamp_accounting(si, project=self.project, cost_center=cost_center)
         si.insert(ignore_permissions=True)
         self.db_set("sales_invoice_ref", si.name)
         self.db_set("status", "Invoiced")

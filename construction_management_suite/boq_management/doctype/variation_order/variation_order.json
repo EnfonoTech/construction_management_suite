@@ -347,5 +347,6 @@
    "color": "Red",
    "title": "Cancelled"
   }
- ]
+ ],
+ "default_print_format": "Variation Order"
 }
