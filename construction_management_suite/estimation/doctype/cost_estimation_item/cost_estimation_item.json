@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "boq_section",
+  "work_category",
   "item_code",
   "description",
   "uom",
@@ -29,6 +30,12 @@
    "label": "Section",
    "in_list_view": 1,
    "columns": 1
+  },
+  {
+   "fieldname": "work_category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "\nCivil\nMechanical\nElectrical\nPlumbing\nFinishes\nExternal Works\nProvisional"
   },
   {
    "fieldname": "item_code",

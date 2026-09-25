@@ -1171,13 +1171,19 @@ CMS.workBreakdownHTML = function (data) {
 
 /** One work line's resources, or all of them. */
 function bind_breakdown(frm, $wrapper) {
-    $wrapper.on("click", ".cms-wb-work", function () {
+    // `refresh` fires many times on one form, and `.empty()` clears the
+    // children without touching handlers bound on the wrapper itself — so
+    // every refresh used to add another delegated click. Two of them toggle a
+    // row open and straight back closed, which is why expanding worked, then
+    // did not, then did again. Namespaced so they can be taken off first.
+    $wrapper.off(".cmswb");
+    $wrapper.on("click.cmswb", ".cms-wb-work", function () {
         const key = $(this).data("key");
         const open = $(this).hasClass("open");
         $(this).toggleClass("open", !open).find(".cms-wb-toggle").text(open ? "▸" : "▾");
         $wrapper.find(`.cms-wb-res[data-parent="${key}"]`).prop("hidden", open);
     });
-    $wrapper.on("click", ".cms-wb-all", function () {
+    $wrapper.on("click.cmswb", ".cms-wb-all", function () {
         const open = Number($(this).data("open"));
         $(this).data("open", open ? 0 : 1).text(open ? __("Collapse all") : __("Expand all"));
         $wrapper.find(".cms-wb-work").toggleClass("open", Boolean(open))

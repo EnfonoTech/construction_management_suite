@@ -25,6 +25,14 @@ frappe.ui.form.on("Cost Estimation", {
             ).then(r => {
                 if (r.message && r.message.name) {
                     CMS.linkButton(frm, __("Project Budget"), "Project Budget", r.message.name);
+                } else {
+                    // Submitting used to raise one unasked. Not every job is run
+                    // to a budget, and a document nobody asked for is a document
+                    // nobody maintains — so it is a button. Once one exists it is
+                    // kept in step automatically; see cost_estimation.py.
+                    frm.add_custom_button(__("Project Budget"), () => {
+                        frm.call("create_project_budget").then(() => frm.reload_doc());
+                    }, __("Create"));
                 }
             });
             downstream_buttons(frm);

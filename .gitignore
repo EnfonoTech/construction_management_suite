@@ -17,3 +17,5 @@ Thumbs.db
 *.xls
 *.csv
 ~$*
+# Planning notes that quote those rates back — same reason.
+docs/import-plan.md

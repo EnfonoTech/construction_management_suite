@@ -50,7 +50,9 @@ class CostEstimation(Document):
         self.status = "Cancelled"
 
     def on_submit(self):
-        self._create_project_budget()
+        # Keeps an existing budget in step; does not conjure one. See
+        # `_create_project_budget`.
+        self._create_project_budget(create=False)
 
     # Recomputed and persisted when a line is priced after approval.
     ROW_FIELDS = (
@@ -200,14 +202,25 @@ class CostEstimation(Document):
             if flt(self.selling_price) > 0 else 0
         )
 
-    def _create_project_budget(self):
-        """On approval, seed a Project Budget — or bring the draft one up to date.
+    @frappe.whitelist()
+    def create_project_budget(self):
+        """Raise the budget from this estimate, because somebody asked for it."""
+        self._create_project_budget(create=True)
+        return True
 
-        An estimate is revised by cancelling and amending it, so the budget has
-        to follow it. This returned the moment any budget existed, which meant
-        every revision from then on left the budget stating the superseded
-        figure — and the variance report, the project cockpit and the estimate's
-        own headline all read that figure.
+    def _create_project_budget(self, create=True):
+        """Bring the project's budget onto this estimate — and, if asked, raise it.
+
+        Submitting an estimate used to create a Project Budget whether anyone
+        wanted one or not. Not every job is run to a budget, and a document that
+        appears unasked is a document nobody maintains; the estimate also ended
+        up doing two things on submit, one of them invisible. So creation is now
+        a button — **Create Project Budget**, on the submitted estimate.
+
+        Keeping an existing one in step is not optional and stays automatic. An
+        estimate is revised by cancelling and amending it, and a budget left on
+        the superseded figure is read by the variance report, the project
+        cockpit and the estimate's own headline.
 
         A submitted budget is not rewritten behind anyone's back: it is a
         commitment somebody approved, and ERPNext's amend flow is how it moves.
@@ -234,6 +247,8 @@ class CostEstimation(Document):
             )
             return
 
+        if not existing and not create:
+            return
         budget = (
             frappe.get_doc("Project Budget", existing.name)
             if existing

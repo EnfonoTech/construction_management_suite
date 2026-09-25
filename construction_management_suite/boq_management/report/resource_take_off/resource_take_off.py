@@ -211,7 +211,7 @@ def get_estimate_lines(filters):
 			i.unit_cost     AS boq_rate,
 			i.total_cost    AS boq_amount,
 			i.boq_section   AS boq_section,
-			NULL            AS work_category,
+			i.work_category AS work_category,
 			i.rate_analysis_ref AS rate_analysis_ref,
 			i.rate_build_up AS rate_build_up
 		FROM `tabCost Estimation Item` i
