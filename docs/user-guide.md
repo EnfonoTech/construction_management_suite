@@ -119,7 +119,7 @@ Every Item picker in the module offers only the right one of the two, and the se
 2. Add resource rows. Each row has a **type** — Material, Labour, Equipment, Subcontract or Overhead — a quantity and a rate. Waste is not a separate field: it belongs in the quantity, put there by whoever measured it.
 3. The five type totals and the **rate per unit** compute as you type.
 
-**Every material row must name a real Item.** A row with only a description is skipped by the take-off entirely, so the analysis looks priced and orders nothing — the app refuses to approve one. It is also what lets *BOQ Resource Analysis* and *Material Position* say how many bags of cement the whole job needs.
+**Every material row must name a real Item.** A row with only a description is skipped by the take-off entirely, so the analysis looks priced and orders nothing — the app refuses to approve one. It is also what lets *Resource Take-off* and *Material Position* say how many bags of cement the whole job needs.
 
 An analysis belongs to a **company**, and by default an item's rate is looked up inside the company being priced for. Two builders on one site keep their own labour and plant rates that way. A single-company site, or one keeping a deliberately shared library, turns *Rate Analysis Is Company-Specific* off.
 
@@ -485,7 +485,7 @@ Open any Project and the construction position sits above the form: contract, bi
 | Report | Answers |
 | --- | --- |
 | **BOQ Summary** | The bill by section and category, with certified progress |
-| **BOQ Resource Analysis** | What a bill explodes into — every resource under every line, scaled by quantity, grouped how you like |
+| **Resource Take-off** | What a priced document explodes into — every resource under every line, scaled by quantity, grouped how you like. Reads the Cost Estimation by default, the BOQ on request |
 | **Material Position** | Per material: needed, forecast, requested, ordered, received, consumed, left, estimated rate against actual |
 | **Project Cost Variance** | Budget against actual and committed, by cost code |
 

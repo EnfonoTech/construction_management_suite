@@ -131,6 +131,18 @@ def _work_ref_fields(after):
             # with a check constraint, so it cannot be blanked by passing an
             # empty string either; the patch sets it to NULL.
             "insert_after": after,
+            # A grid column, not something found by opening the row. It shipped
+            # hidden, so the reference every per-work figure depends on was
+            # invisible to the person filling the document in — and a field
+            # nobody sees is a field nobody fills.
+            #
+            # It sits after the Item and not before it: `item_code` is the
+            # first field of Material Request Item and Purchase Invoice Item,
+            # so nothing can be inserted ahead of it there, and a column that
+            # led on two of the four buying documents and followed on the other
+            # two would be worse than one that is always in the same place.
+            "in_list_view": 1,
+            "columns": 2,
         },
     ]
 

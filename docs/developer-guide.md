@@ -422,13 +422,13 @@ Four Script Reports are installed:
 | Report | Module | `ref_doctype` |
 | --- | --- | --- |
 | BOQ Summary | BOQ Management | BOQ |
-| BOQ Resource Analysis | BOQ Management | BOQ |
+| Resource Take-off | BOQ Management | Cost Estimation |
 | Material Position | Material Planning | Material Forecast |
 | Project Cost Variance | Project Costing | Project Budget |
 
 Three report folders contain only an `__init__.py` and install nothing: `progress_billing/report/billing_summary`, `project_costing/report/cash_flow_projection`, `project_costing/report/profitability_analysis`. They are placeholders, not features.
 
-**A report needs its `.js`.** `BOQ Summary` and `Project Cost Variance` have no `.js`, so the filters their Python reads (`filters.get("project")`) are dead — nothing ever supplies them. `BOQ Resource Analysis` and `Material Position` ship theirs.
+**A report needs its `.js`.** `BOQ Summary` and `Project Cost Variance` have no `.js`, so the filters their Python reads (`filters.get("project")`) are dead — nothing ever supplies them. `Resource Take-off` and `Material Position` ship theirs.
 
 ### Print formats
 

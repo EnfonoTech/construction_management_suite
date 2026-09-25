@@ -1,4 +1,4 @@
-frappe.query_reports["BOQ Resource Analysis"] = {
+frappe.query_reports["Resource Take-off"] = {
     filters: [
         {
             // The estimate is what the job is bought and built against, and a

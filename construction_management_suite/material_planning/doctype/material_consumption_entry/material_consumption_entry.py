@@ -85,7 +85,7 @@ class MaterialConsumptionEntry(Document):
     def check_against_take_off(self):
         """Flag consuming more of a material than the bill was priced to need.
 
-        The take-off is the figure the BOQ Resource Analysis report shows: every
+        The take-off is the figure the Resource Take-off report shows: every
         submitted BOQ line's quantity times what its analysis says the line
         consumes per unit. Going past it is not an error — a
         variation adds work and breakage happens — but it is the moment a job
@@ -283,7 +283,7 @@ def _take_off_rows(project, boq=None, source=None, types=STOCK_TYPES):
     """Walk a project's priced lines and yield the resources under each.
 
     Frozen `rate_build_up` where a line has one, the live analysis otherwise —
-    the same precedence the BOQ Resource Analysis report uses. Everything that
+    the same precedence the Resource Take-off report uses. Everything that
     answers "what is this job supposed to consume" reads through here, so the
     forecast, the consumption check and that report cannot disagree.
 
