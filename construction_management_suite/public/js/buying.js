@@ -85,6 +85,9 @@ function say_where_it_stands(frm, cdt, cdn) {
             const indicator = {
                 over: "orange", unplanned: "orange",
                 "wrong-work": "orange", "no-plan": "red",
+                // Not a warning. Somebody declared the swap, and the line is
+                // told what it counts against so nobody wonders later.
+                substitute: "green",
             }[answer.state] || "blue";
             frappe.show_alert({
                 message: `${__("Row {0}", [row.idx])}: ${answer.message}`,

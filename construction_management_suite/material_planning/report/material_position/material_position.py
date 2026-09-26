@@ -72,6 +72,13 @@ def build_rows(filters):
 		}
 	else:
 		take_off = {d["item_code"]: d for d in take_off_detail(project, boq=filters.get("boq"))}
+	# A substitute is counted under the material it stands in for, so buying the
+	# other brand of paint nets off the planned one rather than sitting beside it
+	# as unplanned with the plan still showing everything outstanding. Built from
+	# the plan's own codes: only a substitution for something this job planned is
+	# folded, never the reverse.
+	stand_in = _stand_in_for(take_off, by_work)
+
 	# What the bill was sold at, beside what the estimate plans to consume. Where
 	# the estimate is the source the two can differ — that difference is the
 	# point of the column. Where the bill is the source they are the same figure.
@@ -85,19 +92,19 @@ def build_rows(filters):
 		SELECT i.item_code AS code, i.work_item AS work, SUM(i.net_qty_required) AS qty
 		FROM `tabMaterial Forecast Item` i JOIN `tabMaterial Forecast` f ON f.name = i.parent
 		WHERE f.project = %(p)s AND f.docstatus = 1
-		GROUP BY i.item_code, i.work_item""", project, by_work)
+		GROUP BY i.item_code, i.work_item""", project, by_work, stand_in)
 	requested = _sum("""
 		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty
 		FROM `tabMaterial Request Item` i JOIN `tabMaterial Request` m ON m.name = i.parent
 		JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
 		WHERE i.project = %(p)s AND m.docstatus = 1
-		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
+		GROUP BY i.item_code, i.cms_work_item""", project, by_work, stand_in)
 	ordered, ordered_value = _sum_value("""
 		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Order Item` i JOIN `tabPurchase Order` o ON o.name = i.parent
 		JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
 		WHERE i.project = %(p)s AND o.docstatus = 1
-		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
+		GROUP BY i.item_code, i.cms_work_item""", project, by_work, stand_in)
 	# Stock comes in two ways: a Purchase Receipt, or a Purchase Invoice that
 	# updates stock — some purchases never get a receipt. ERPNext will not let
 	# an invoice update stock when any line came from a receipt, so the two
@@ -113,7 +120,7 @@ def build_rows(filters):
 			FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
 			JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
 			WHERE i.project = %(p)s AND v.docstatus = 1 AND v.update_stock = 1
-		) x GROUP BY code, work""", project, by_work)
+		) x GROUP BY code, work""", project, by_work, stand_in)
 
 	# What the suppliers have actually billed, receipt or not.
 	invoiced, invoiced_value = _sum_value("""
@@ -121,7 +128,7 @@ def build_rows(filters):
 		FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
 		JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
 		WHERE i.project = %(p)s AND v.docstatus = 1
-		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
+		GROUP BY i.item_code, i.cms_work_item""", project, by_work, stand_in)
 	# Material also arrives by transfer, and the Received column read purchase
 	# receipts alone — so a store moved onto site showed as never delivered.
 	# Older entries carry the project on the header only, newer ones on the row.
@@ -135,14 +142,14 @@ def build_rows(filters):
 		  AND IFNULL(i.t_warehouse, '') != ''
 		  AND (i.project = %(p)s OR (IFNULL(i.project, '') = '' AND e.project = %(p)s))
 		  AND IFNULL(t.from_project, '') != %(p)s
-		GROUP BY i.item_code, i.cms_work_item""", project, by_work)
+		GROUP BY i.item_code, i.cms_work_item""", project, by_work, stand_in)
 
 	consumed, consumed_value = _sum_value("""
 		SELECT i.item_code AS code, i.work_item AS work, SUM(i.qty) AS qty, SUM(i.amount) AS value
 		FROM `tabMaterial Consumption Item` i
 		JOIN `tabMaterial Consumption Entry` e ON e.name = i.parent
 		WHERE e.project = %(p)s AND e.docstatus = 1
-		GROUP BY i.item_code, i.work_item""", project, by_work)
+		GROUP BY i.item_code, i.work_item""", project, by_work, stand_in)
 
 	codes = (set(take_off) | set(forecast) | set(requested) | set(ordered)
 	         | set(received) | set(transferred) | set(invoiced) | set(consumed))
@@ -199,27 +206,47 @@ def build_rows(filters):
 	return rows
 
 
-def _key(row, by_work):
-	"""Item alone, or item and the line of work it was for."""
-	return (row.code, row.get("work") or None) if by_work else row.code
+def _stand_in_for(take_off, by_work):
+	"""The substitutes this project's plan can absorb, mapped to what they replace."""
+	from construction_management_suite.utils.alternatives import stand_in_map
+
+	planned = {k[0] if by_work else k for k in take_off}
+	return {
+		substitute: original
+		for substitute, original in stand_in_map().items()
+		if original in planned and substitute not in planned
+	}
 
 
-def _sum(sql, project, by_work=False):
+def _key(row, by_work, stand_in=None):
+	"""Item alone, or item and the line of work it was for.
+
+	A substitute is counted under the item it stands in for. Every quantity the
+	report reads — ordered, received, transferred, invoiced, consumed — comes
+	through here, so folding once here is what makes the other brand of paint
+	net off the planned one instead of appearing beside it as unplanned
+	material with the plan still showing 100% outstanding.
+	"""
+	code = (stand_in or {}).get(row.code, row.code)
+	return (code, row.get("work") or None) if by_work else code
+
+
+def _sum(sql, project, by_work=False, stand_in=None):
 	out = {}
 	for r in frappe.db.sql(sql, {"p": project}, as_dict=True):
 		if not r.code:
 			continue
-		k = _key(r, by_work)
+		k = _key(r, by_work, stand_in)
 		out[k] = out.get(k, 0) + flt(r.qty)
 	return out
 
 
-def _sum_value(sql, project, by_work=False):
+def _sum_value(sql, project, by_work=False, stand_in=None):
 	qty, value = {}, {}
 	for r in frappe.db.sql(sql, {"p": project}, as_dict=True):
 		if not r.code:
 			continue
-		k = _key(r, by_work)
+		k = _key(r, by_work, stand_in)
 		qty[k] = qty.get(k, 0) + flt(r.qty)
 		value[k] = value.get(k, 0) + flt(r.value)
 	return qty, value

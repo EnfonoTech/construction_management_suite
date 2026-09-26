@@ -1584,6 +1584,25 @@ def line_against_plan(project, item_code, work_item=None, qty=0):
     plan = take_off_by_line(project)
     key = (item_code, work_item or None)
     entry = plan.get(key)
+
+    if not entry:
+        # Somebody declared this interchangeable with something the plan holds
+        # for that work. It is the same material from a different tin, so it
+        # counts against the planned line and is said once, quietly, rather
+        # than warned about on every row.
+        from construction_management_suite.utils.alternatives import stands_in_for
+
+        planned_here = {code for code, w in plan if w == (work_item or None)}
+        original = stands_in_for(item_code, planned_here)
+        if original:
+            entry = plan.get((original, work_item or None))
+            key = (original, work_item or None)
+            substitute_for = original
+        else:
+            substitute_for = None
+    else:
+        substitute_for = None
+
     if not entry:
         elsewhere = sorted({w for (code, w) in plan if code == item_code and w})
         if not elsewhere:
@@ -1616,6 +1635,12 @@ def line_against_plan(project, item_code, work_item=None, qty=0):
         "uom": entry["uom"],
         "left": left,
     }
+    if substitute_for:
+        answer["state"] = "substitute"
+        answer["message"] = _(
+            "{0} is standing in for {1}, which is what the plan holds for this "
+            "work. It counts against that line."
+        ).format(item_code, substitute_for)
     if flt(qty) > left + 0.0001:
         answer["state"] = "over"
         answer["message"] = _(

@@ -71,9 +71,25 @@ UOM = {
     "days": "Day", "month": "Month",
 }
 
-# A work Item per section; a material Item per description.
-WORK_CODE = "MM-{section}"
-MATERIAL_CODE = "MM-M-{n:03d}"
+# An Item is called what the sheet calls it.
+#
+# A generated code — MM-M-014 — is stable and unreadable, and every purchase
+# order, stock report and take-off line then needs a lookup to mean anything to
+# the person reading it. The sheet's own wording is what the site uses out loud,
+# so it is what the code says: "60x60 CM Porcelain Floor Tiles", not MM-M-014.
+#
+# The price is that a code carries meaning that can be edited. Renaming an Item
+# is a supported operation and the description stays in `item_name` either way,
+# so the trade is worth making.
+CODE_SWAPS = (
+    # Frappe itself only refuses < and >. These three are swapped because they
+    # read badly in a name, not because they are illegal: * is the trade's own
+    # multiplication sign, " its inches mark, and / breaks a desk URL into two
+    # path segments.
+    ("*", "x"),
+    ('"', "in"),
+    ("/", "-"),
+)
 
 # The trade each section belongs to, which is what the Resource Take-off groups
 # by. The sheet's own lettering already runs in trade order — civil first, then
@@ -97,6 +113,16 @@ SECTION_CATEGORY = dict(
 def _app_dir():
     """The repo root, where the workbook sits — one level above the module."""
     return os.path.dirname(frappe.get_app_path("construction_management_suite"))
+
+
+def item_code_for(description):
+    """The sheet's own wording, in a form a document name can carry."""
+    code = re.sub(r"\s+", " ", str(description or "")).strip()
+    for bad, good in CODE_SWAPS:
+        code = code.replace(bad, good)
+    code = re.sub(r"[<>]", "", code)
+    code = re.sub(r"[\s\-]{2,}", " ", code).strip(" -")
+    return code[:140]
 
 
 def _uom(raw):
@@ -179,6 +205,11 @@ def load(sections=None):
 # ── Building ───────────────────────────────────────────────────────────────
 
 
+def _work_code(sec):
+    """A line of work is called what the trade section is called."""
+    return item_code_for(sec["title"])
+
+
 def _material_codes(sections):
     """One code per distinct material description, across every section read.
 
@@ -189,15 +220,24 @@ def _material_codes(sections):
     for which trade". Numbered in first-seen order and keyed on the normalised
     description, never on the text itself, which will be edited.
     """
-    codes, n = {}, 0
+    codes, taken = {}, {}
     for sec in sections.values():
         for row in sec["rows"]:
             if row["type"] != "Material":
                 continue
             key = row["description"].strip().lower()
-            if key not in codes:
-                n += 1
-                codes[key] = MATERIAL_CODE.format(n=n)
+            if key in codes:
+                continue
+            code = item_code_for(row["description"])
+            # Two descriptions that differ only in punctuation land on the same
+            # code. Rare — none on this sheet — but a silent merge would put two
+            # materials' quantities on one Item, so they are kept apart.
+            if code.lower() in taken:
+                taken[code.lower()] += 1
+                code = f"{code} ({taken[code.lower()]})"
+            else:
+                taken[code.lower()] = 1
+            codes[key] = code
     return codes
 
 
@@ -245,7 +285,7 @@ def _analysis_for(sec, codes, company, currency, dry=True, log=None):
     tile types in three units — so one lot of the section is the unit, the
     sheet's own figures go in undivided, and the take-off reproduces them.
     """
-    work = WORK_CODE.format(section=sec["section"])
+    work = _work_code(sec)
     resources, skipped = [], []
     for row in sec["rows"]:
         kind = row["type"] or "Material"
@@ -378,8 +418,7 @@ def run(sections=None, project=None, company=None, dry=1, submit=0):
     # ── items ──────────────────────────────────────────────────────────────
     for code in sorted(picked):
         sec = picked[code]
-        _ensure_item(WORK_CODE.format(section=code), f"{code} — {sec['title']}",
-                     "work", "Ls", company, dry, log)
+        _ensure_item(_work_code(sec), sec["title"], "work", "Ls", company, dry, log)
     seen = set()
     for sec in picked.values():
         for row in sec["rows"]:
@@ -400,7 +439,7 @@ def run(sections=None, project=None, company=None, dry=1, submit=0):
         lines.append({
             "boq_section": f"{code} — {sec['title']}",
             "work_category": SECTION_CATEGORY.get(code),
-            "item_code": WORK_CODE.format(section=code),
+            "item_code": _work_code(picked[code]),
             "description": sec["title"],
             "uom": "Ls",
             "qty": 1,
@@ -427,9 +466,10 @@ def run(sections=None, project=None, company=None, dry=1, submit=0):
             doc.submit()
 
     # ── what happened ──────────────────────────────────────────────────────
-    made = [l for l in log if l[0] == "item" and l[4] == "new"]
-    print(f"\nwork items      : {sum(1 for l in made if l[1].count('-') == 1)}"
-          f"   (of {len(picked)} sections)")
+    made = {l[1] for l in log if l[0] == "item" and l[4] == "new"}
+    works = {_work_code(sec) for sec in picked.values()}
+    print(f"\nwork items      : {len(works)}"
+          f"   ({len(made & works)} new)")
     print(f"material items  : {len(seen)} distinct, from "
           f"{sum(1 for s in picked.values() for r in s['rows'] if r['type'] == 'Material')} rows")
     shared = sum(1 for c, u in units.items()

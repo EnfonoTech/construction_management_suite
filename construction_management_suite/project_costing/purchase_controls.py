@@ -123,6 +123,13 @@ def check_against_the_plan(doc):
             continue
         if (item, work or None) in take_off:
             continue
+        # An item somebody declared interchangeable with a planned one is not a
+        # departure from the plan; it is the same material out of a different
+        # tin. Only a substitution for something planned for THIS work counts —
+        # the alternative table says two items are equivalent, not that either
+        # belongs to every trade.
+        if _stands_in(item, work, take_off):
+            continue
         # The take-off is keyed by material AND work. A line that has not said
         # which work it is for matches no key, and calling that "not in the
         # plan" was wrong — the material may be planned under every work there
@@ -161,6 +168,16 @@ def check_against_the_plan(doc):
                 "take-off and it lands in the variance."),
             title=_("{0} line(s) the plan does not include").format(len(unplanned)),
         )
+
+
+def _stands_in(item, work, take_off):
+    """Is this item an accepted substitute for something planned for that work?"""
+    from construction_management_suite.utils.alternatives import stands_in_for
+
+    planned = {code for code, w in take_off if w == (work or None)} if work else {
+        code for code, _w in take_off
+    }
+    return bool(stands_in_for(item, planned))
 
 
 def _plan_for(project, current_estimate, take_off_by_line):
