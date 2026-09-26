@@ -210,11 +210,17 @@ A **Cost Estimation** is the internal counterpart of the bill: not what the clie
 
 Each line carries the five cost components per unit; the document adds them up, applies **contingency** as a percentage on top, and compares the result to the selling price so you can see the margin before you commit.
 
-**Contingency** is the allowance for what you cannot foresee — ground conditions, weather, rework. It defaults to your site setting (5%) and sits on the total, not on any one line.
+**Contingency** is the allowance for what you cannot foresee — ground conditions, weather, rework. It defaults to your site setting and sits on the total, not on any one line. Set it to nought where the figures you were given already are the budget — an estimate built from somebody else's cost sheet should total what that sheet totals.
 
-### Approving it seeds the budget
+Each line can also carry a **Category** — Civil, Mechanical, Electrical, Plumbing, Finishes, External Works, Provisional. It comes across automatically from a BOQ line, and it is what **Resource Take-off** groups by when you ask it to.
 
-Submitting a Cost Estimation creates a **Project Budget** from its lines, and an amendment brings the budget with it — a draft budget is rewritten from the estimate that owns it, keeping any cost code you set against a line that survived. A budget somebody has already **submitted** is not rewritten behind your back: the estimate says so and leaves it to you. Amend the budget and use **Refresh from Estimate** to bring it onto the new plan.
+### The budget is yours to ask for
+
+A submitted Cost Estimation offers **Create → Project Budget**, which builds one from its lines. It is a button rather than something submitting does for you: not every job is run to a budget, and a document nobody asked for is a document nobody maintains.
+
+Once a budget exists it is **kept in step automatically**. Amend the estimate and the draft budget is rewritten from it, keeping any cost code you set against a line that survived — a budget left showing a superseded plan is read by the variance report, the project page and the estimate's own headline, so it is not left to anybody to remember.
+
+A budget somebody has already **submitted** is not rewritten behind your back: the estimate says so and leaves it to you. Amend the budget and use **Refresh from Estimate** to bring it onto the new plan.
 
 From then on the budget is the thing you watch:
 
@@ -266,6 +272,21 @@ flowchart LR
 A forecast is optional. **Get from the Take-off** on a draft Material Request or Site Material Request asks the estimate directly what is still to buy, so a job bought line by line as the work comes up never needs one.
 
 Everything on this chain is tracked **per line of work**, not just per material. The same cement sits under the substructure, the blockwork mortar and the plaster, and **For Work** on every row says which of them it was bought and burnt for. It rides from the request to the order to the receipt to the stock movement on its own.
+
+Fill **For Work** first. Once a row says which work it is for, the item picker offers that work's own materials and nothing else — which is how the wrong grade of cement, or another trade's material, stops being a thing you can pick by accident. Clear it and the list widens again, so something nobody foresaw can still be bought, with the warning that goes with it.
+
+### Buying a different brand
+
+A job is estimated with one paint and built with whatever the merchant had that week. That is not a departure from the plan, and the system should not treat it as one.
+
+Tell it the two are interchangeable and it will not. On each Item tick **Allow Alternative Item**, then create an **Item Alternative** naming the planned material and its substitute; tick *two way* if either satisfies a plan written for the other. From then on:
+
+- buying the substitute for that work raises no warning — the line says *"standing in for X"* instead
+- the quantity **counts against the planned material's line** in Material Position, so the balance is right and the planned item does not sit there looking 100% unbought
+
+Two things it deliberately will not do. It follows **one hop only** — if A may be replaced by B and B by C, buying C does not satisfy a plan written for A, because nobody said it did. And it only ever folds a substitute **into something this job planned**, never the other way, since the alternative table says two items are equivalent, not that either belongs to every trade.
+
+One limit worth knowing: the position report shows the planned material's quantity *including* the substitute's, without naming the substitute. The purchase document itself still shows the real item, so nothing is hidden — but the report alone will not tell you which brand arrived.
 
 ### Material Forecast
 
@@ -428,7 +449,7 @@ Submitting raises a **Purchase Invoice** and pushes the running totals — claim
 
 ## What the system will stop you doing
 
-Ten checks guard the places where construction money goes wrong. Each one is a setting in **Construction Settings** with three positions:
+16 checks guard the places where construction money goes wrong. Each one is a setting in **Construction Settings** with three positions:
 
 - **Ignore** — silent
 - **Warn** — a message you can proceed past
@@ -449,9 +470,19 @@ Ten checks guard the places where construction money goes wrong. Each one is a s
 | Material Resource Not A Stock Item | A material row names a service item, so it can never be issued | Stop |
 | Work Item Has No Approved Analysis | Nothing can cost the line, so it plans no material at all | Warn |
 | Project Has No Cost Estimation | There is no plan to buy or check against | Stop |
+| Buying For Work Not On This Project | A purchase names a line of work the project never priced | **Stop** |
+| Buying Material The Plan Does Not Include | A purchase departs from the estimate for that work | Warn |
 | Unit Cannot Be Converted | A row's unit has no conversion to the unit the item is held in | Warn |
 
 Three of them have a companion tolerance so small overruns stay quiet: **Purchase Rate Tolerance %** (10), **Consumption Tolerance %** (10) and **Advance Recovery Threshold %** (75).
+
+### The small job that has no plan at all
+
+A day's repair, a call-out, a small fit-out — there is no BOQ, no cost estimation, and nobody intends to write one. On those, *Project Has No Cost Estimation* is noise standing between a buyer and a purchase order.
+
+Tick **Runs Without a Cost Plan** on the Project and the checks that need a plan stand down for that job. Not site-wide — a contractor runs both kinds at once, and the setting above would switch the check off on the big jobs too.
+
+Everything else still applies to it: the budget check, the cost centre, the default store, the rate-against-estimate warning. And the flag is only ever read **after** the system has found no estimate, so ticking it on a job that is estimated changes nothing at all.
 
 ### Why over-certification ships as Stop
 
@@ -469,6 +500,8 @@ These are not configurable, because there is no sensible way to allow them:
 - Releasing more retention than the project holds
 - Editing a locked Rate Analysis instead of taking a new version
 - Instructing work that another work order already covers
+- **The same line of work twice on one document** — every quantity carried forward, certified to date, ordered, billed, is matched to a line by its Item, so one line of work has to appear once. Put the whole quantity on a single row, or give the second one its own Item. It applies to the BOQ and its template, the Variation Order, the Cost Estimation, the IPC, the Subcontract Agreement, the Work Order and the Payment Certificate
+- A budget line against a **heading** — a group Cost Code totals what sits beneath it, so budgeting against it as well would count the same money twice
 
 ## Where to look
 

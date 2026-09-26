@@ -34,8 +34,9 @@ construction_management_suite/
   modules.txt           8 modules
   patches.txt           post_model_sync patches
   api/boq.py            the whitelisted API (25 endpoints)
-  utils/                settings, billing, titles, accounting,
-                        validations, permissions, helpers, notifications
+  utils/                settings, billing, titles, accounting, validations,
+                        alternatives, permissions, helpers, notifications
+  importers/            one-off imports of a client's own spreadsheet
   overrides/            project_dashboard
   public/js/cms.js      global desk JS, CMS.* helpers, CMS.calc
   fixtures/             number cards (the workspace is NOT a fixture — see below)
@@ -219,8 +220,19 @@ enforce(action, _("Row {0}: ...").format(item.idx), title=_("Over-certification"
 | `work_item_type_action` | `utils/validations.py :: validate_work_item` — BOQ, Cost Estimation, Variation Order, Rate Analysis, and every work row on a material document |
 | `material_resource_action` | `validate_material_resources` (Rate Analysis, on approval) and `validate_material_item` (every material row) |
 | `missing_rate_analysis_action` | `validate_rate_analysis_present` — Cost Estimation |
-| `no_estimate_action` | `require_estimate` — consumption and forecast |
+| `no_estimate_action` | `require_estimate` — consumption, forecast, and `purchase_controls.check_project_is_estimated` on all four buying documents. Skipped entirely for a project flagged `cms_no_cost_plan` |
+| `foreign_work_item_action` | `purchase_controls.check_against_the_plan` — a purchase naming work the project never priced |
+| `unplanned_material_action` | same function — material the estimate does not hold for that work. A declared `Item Alternative` is not unplanned |
 | `uom_mismatch_action` | `validate_uom_convertible` — Rate Analysis resources, forecast, consumption, site request, transfer |
+
+**Not every rule is a setting.** Three throw outright, because a configurable
+version would only let somebody produce a wrong number quietly:
+
+| Rule | Where |
+| --- | --- |
+| One row per work item | `validations.validate_one_row_per_work_item` — eight tables. `_previously_claimed_by_line` sums both duplicate rows' certified quantity and subtracts the total from each, so half the work bills twice and half never |
+| A budget line may not name a group Cost Code | `project_budget.validate_cost_codes` — a heading totals its children, so budgeting against it counts the money twice |
+| Cost Code tree integrity | `cost_code.py` (`NestedSet`) — a parent must be a group, a heading with children cannot become a leaf, a child belongs to its parent's company |
 
 `scope_rate_analysis_by_company` is a Check rather than an action: on, an item's analysis is looked up inside the document's company, the pickers filter to it and a line pointing at another company's analysis is refused.
 
@@ -299,9 +311,71 @@ Nothing is created. An earlier version auto-created a cost centre per project; c
 | --- | --- |
 | `settings.py` | `cms_setting`, `action_for`, `enforce` |
 | `validations.py` | `validate_project_company` and friends |
+| `alternatives.py` | `stand_in_map`, `stands_in_for` — the only reader of `Item Alternative` |
 | `permissions.py` | `get_company_filter`, `has_permission` for the row-level hooks |
 | `helpers.py` | The Jinja methods and filters for print formats |
 | `notifications.py` | `get_notification_config` |
+
+### `alternatives.py` — one material standing in for another
+
+ERPNext's `Item Alternative` names an item, its substitute, and whether the
+swap runs both ways. Nothing in this module read it, so buying the other brand
+of paint was two unrelated facts: the planned paint fully outstanding, the
+substitute unplanned, and a warning on every line.
+
+Two functions, and everything that cares reads through them so the purchase
+check, the line message and the take-off cannot disagree:
+
+```python
+stand_in_map()                     # {substitute: original}, per-request cached
+stands_in_for(item_code, planned)  # the planned code it may replace, or None
+```
+
+Three properties to preserve if you touch it:
+
+- **One hop.** A → B and B → C does not make C satisfy a plan for A. That chain
+  is somebody's assumption, not something they stated.
+- **Never the reverse.** Only a substitution *for something planned* is folded.
+  The table says two items are equivalent, not that either belongs to a trade.
+- **Nothing is inferred.** No guessing from item group or name; an alternative
+  exists because a human said so.
+
+The fold happens in exactly one place on the reporting side —
+`material_position._key`, which every ordered, received, transferred, invoiced
+and consumed row already passes through. Adding a new quantity source to that
+report gets substitution for free; bypassing `_key` loses it silently.
+
+### `importers/` — a client's spreadsheet, once
+
+`importers/misk_mawallah.py` reads one sheet of a contractor's workbook and
+builds work Items, material Items, a Rate Analysis per trade section and one
+Cost Estimation. It is a one-off by design, not a framework: the next client's
+sheet will be shaped differently and deserves its own module beside it.
+
+Run it with `bench execute`, never a Data Import template — the object graph is
+interlinked and needs the controllers to run:
+
+```
+bench --site <site> execute construction_management_suite.importers.misk_mawallah.run
+bench --site <site> execute construction_management_suite.importers.misk_mawallah.run \
+    --kwargs "{'sections': 'A,E', 'project': 'MM-TRIAL', 'dry': 0}"
+```
+
+`dry=1` is the default: it resolves everything, reconciles the money against the
+sheet and writes nothing.
+
+Four conventions in it are load-bearing, and all four were arrived at by being
+wrong first:
+
+| | |
+| --- | --- |
+| `output_qty = 1`, line qty 1 | Makes the take-off reproduce the sheet's own quantities undivided. Getting this backwards is invisible — `rate_per_unit * line_qty` still totals correctly while every material quantity is wrong |
+| Item `stock_uom` = the sheet's own unit | `validate_uom_convertible` fires on approval and none of the trade UOMs (Bag, Roll, Ls, Trip, Drum, RM) has a conversion factor. Equal units need none |
+| `contingency_percent = 0` | The sheet's total is the total; a default contingency puts the estimate silently above the document it came from |
+| Item code = the sheet's wording | Readable in every PO and stock report without a lookup. `*` → `x`, `"` → `in`, `/` → `-`; frappe itself only forbids `<` and `>` |
+
+The estimate is left **in draft**. Nothing downstream reads a draft, which is
+the point: read it, then submit it.
 
 ## The API surface
 
@@ -428,7 +502,11 @@ Four Script Reports are installed:
 
 Every report folder now installs a report. The three that held only an `__init__.py` — `billing_summary`, `cash_flow_projection`, `profitability_analysis` — have been removed rather than left as placeholders that read as features.
 
-**A report needs its `.js`.** `BOQ Summary` and `Project Cost Variance` have no `.js`, so the filters their Python reads (`filters.get("project")`) are dead — nothing ever supplies them. `Resource Take-off` and `Material Position` ship theirs.
+**A report needs its `.js`.** A Script Report's Python can read `filters.get("project")` all it likes; if no `.js` declares the filter, nothing ever supplies one and the report silently runs across every project on the site. All four ship theirs.
+
+`Project Cost Variance` is a **tree report** — `tree: true`, `name_field: "cost_code"`, `parent_field: "parent_cost_code"` in its `.js`, and rows carrying `indent`, emitted parent-before-children. It walks the `Cost Code` nested set so a heading shows what everything beneath it comes to. It also returns a message when project spend cannot be attributed to any row, which is what a Cost Code with no `debit_account` produces.
+
+`Resource Take-off` reads the **Cost Estimation** by default and the BOQ on request. It was called `BOQ Resource Analysis`, which told exactly the people it was written for that it was not for them; the rename carries a patch that repoints anything saved against the old name and drops the orphan.
 
 ### Print formats
 
@@ -664,9 +742,11 @@ now lives in the quantity rather than in a field nothing read.
 
 The Cash Flow Schedule is gone. `Project Cash Flow Item` was a child table on Project Budget that nothing wrote to and nothing read; building it properly needs a billing programme nobody enters, so the doctype, its section on the form and the `cash_flow_projection` folder were all removed. `billing_summary` and `profitability_analysis` went the same way.
 
-### Buying side
+### Buying side — resolved
 
-The Purchase Invoice a subcontractor certificate raises is **not** linked to the Purchase Order the agreement raised. ERPNext links the two through `items[].purchase_order` + `po_detail` with a matching item, which would require the invoice to mirror the order's item lines — and that conflicts with the single-line net-payable invoice the module deliberately produces. Left open on purpose; it needs a decision, not a patch.
+The Purchase Invoice a subcontractor certificate raises **is** linked to the agreement's Purchase Order now. It was not, because the single-line net-payable invoice could not carry `items[].purchase_order` + `po_detail` against a matching item, so `per_billed` never moved and every subcontract order stayed open for ever.
+
+The decision taken was to invoice **per line, gross** — the full certified amount including tax, with retention and advance recovery appearing as deductions on the certificate rather than as a smaller invoice. Each line carries `purchase_order` and `po_detail`, so the order is relieved properly. A service order can never be *received*, so `per_received` stays at zero however much is billed; the invoice's `on_submit` closes the order once `per_billed` reaches 100, which is ERPNext's own answer to a service order that is finished.
 
 ### Deliberately not done
 
