@@ -258,9 +258,40 @@ def _material_codes(sections):
     return codes
 
 
-def _item_group(kind):
-    """An Item Group that exists on any ERPNext site."""
-    return "Services" if kind == "work" else "Raw Material"
+# What an Item Group is called varies by site: the setup wizard's defaults can
+# be renamed, deleted or never created, and a site set up in another language
+# has none of these words. Tried in order, and the first that exists wins.
+GROUP_CANDIDATES = {
+    "work": ("Services", "Service", "Sub Assemblies"),
+    "material": ("Raw Material", "Raw Materials", "Consumable", "Products"),
+}
+
+
+def _item_group(kind, dry=False):
+    """An Item Group to file these Items under, on this site.
+
+    Hardcoding "Raw Material" was wrong — it is an ERPNext setup-wizard default,
+    not a guarantee, and a site without it failed halfway through the import
+    with `Could not find Item Group`. Existing groups are preferred over making
+    another one, because a site's item tree is somebody's filing system and an
+    import should fit into it rather than add to it.
+    """
+    for name in GROUP_CANDIDATES[kind]:
+        if frappe.db.exists("Item Group", name):
+            return name
+
+    wanted = GROUP_CANDIDATES[kind][0]
+    if dry:
+        return wanted
+    root = frappe.db.get_value("Item Group", {"is_group": 1, "parent_item_group": ("in", (None, ""))}, "name") \
+        or frappe.db.get_value("Item Group", {"is_group": 1}, "name")
+    frappe.get_doc({
+        "doctype": "Item Group", "item_group_name": wanted,
+        "parent_item_group": root, "is_group": 0,
+    }).insert(ignore_permissions=True)
+    print(f"  created Item Group {wanted!r} under {root!r} — this site had none of "
+          f"{GROUP_CANDIDATES[kind]}")
+    return wanted
 
 
 def _ensure_item(code, name, kind, uom, company=None, dry=True, log=None):
@@ -282,7 +313,7 @@ def _ensure_item(code, name, kind, uom, company=None, dry=True, log=None):
         "item_code": code,
         "item_name": name[:140],
         "description": name,
-        "item_group": _item_group(kind),
+        "item_group": _item_group(kind, dry),
         "stock_uom": uom,
         "is_stock_item": 0 if kind == "work" else 1,
         "is_purchase_item": 1,
@@ -448,6 +479,14 @@ def run(sections=None, project=None, company=None, dry=1, submit=0, folder=None)
         frappe.throw(f"No UOM mapping for: {unmapped}. Add them to importers.misk_mawallah.UOM.")
     print(f"\nunits resolved: "
           f"{sorted({r['uom'] for s in picked.values() for r in s['rows']})}")
+
+    # Said before anything is written. A site without the group this files
+    # Items under used to fail on the first material, after the work Items had
+    # already gone in.
+    for kind in ("work", "material"):
+        found = next((g for g in GROUP_CANDIDATES[kind] if frappe.db.exists("Item Group", g)), None)
+        print(f"item group ({kind:8}): "
+              + (found if found else f"{GROUP_CANDIDATES[kind][0]} — will be created"))
 
     # ── one stock unit per material, or the analysis cannot be approved ────
     units = {}
