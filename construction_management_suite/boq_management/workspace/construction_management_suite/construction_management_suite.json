@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\": \"cmsHdrKpi\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Contract Position</b></span>\", \"col\": 12}}, {\"id\": \"cmsNC0\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Contract Value\", \"col\": 3}}, {\"id\": \"cmsNC1\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Approved Variations\", \"col\": 3}}, {\"id\": \"cmsNC2\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Billed to Date\", \"col\": 3}}, {\"id\": \"cmsNC3\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Retention Held\", \"col\": 3}}, {\"id\": \"cmsNC4\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Actual Cost\", \"col\": 3}}, {\"id\": \"cmsNC5\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Subcontracted\", \"col\": 3}}, {\"id\": \"cmsNC6\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Certificates Awaiting\", \"col\": 3}}, {\"id\": \"cmsNC7\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Safety Incidents\", \"col\": 3}}, {\"id\": \"cmsHdrSc\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Jump To</b></span>\", \"col\": 12}}, {\"id\": \"cmsSC0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Projects\", \"col\": 3}}, {\"id\": \"cmsSC1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"BOQ\", \"col\": 3}}, {\"id\": \"cmsSC2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Certificates\", \"col\": 3}}, {\"id\": \"cmsSC3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Variation Orders\", \"col\": 3}}, {\"id\": \"cmsSC4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Daily Site Report\", \"col\": 3}}, {\"id\": \"cmsSC5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Subcontracts\", \"col\": 3}}, {\"id\": \"cmsSC6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"BOQ Summary\", \"col\": 3}}, {\"id\": \"cmsSC7\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Project Cost Variance\", \"col\": 3}}, {\"id\": \"cmsHdrDocs\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Documents</b></span>\", \"col\": 12}}, {\"id\": \"cmsCard0\", \"type\": \"card\", \"data\": {\"card_name\": \"BOQ Management\", \"col\": 4}}, {\"id\": \"cmsCard1\", \"type\": \"card\", \"data\": {\"card_name\": \"Estimation\", \"col\": 4}}, {\"id\": \"cmsCard2\", \"type\": \"card\", \"data\": {\"card_name\": \"Project Costing\", \"col\": 4}}, {\"id\": \"cmsCard3\", \"type\": \"card\", \"data\": {\"card_name\": \"Site Management\", \"col\": 4}}, {\"id\": \"cmsCard4\", \"type\": \"card\", \"data\": {\"card_name\": \"Progress Billing\", \"col\": 4}}, {\"id\": \"cmsCard5\", \"type\": \"card\", \"data\": {\"card_name\": \"Subcontractor Management\", \"col\": 4}}, {\"id\": \"cmsCard6\", \"type\": \"card\", \"data\": {\"card_name\": \"Material Planning\", \"col\": 4}}, {\"id\": \"cmsCard7\", \"type\": \"card\", \"data\": {\"card_name\": \"Project & Delivery\", \"col\": 4}}, {\"id\": \"cmsCard8\", \"type\": \"card\", \"data\": {\"card_name\": \"Procurement & Stock\", \"col\": 4}}, {\"id\": \"cmsCard9\", \"type\": \"card\", \"data\": {\"card_name\": \"Client Billing\", \"col\": 4}}, {\"id\": \"cmsCard10\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}]",
+ "content": "[{\"id\": \"cms-00\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Today</b></span>\", \"col\": 12}}, {\"id\": \"cms-01\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Material Requests\", \"col\": 3}}, {\"id\": \"cms-02\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Purchase Orders to Receive\", \"col\": 3}}, {\"id\": \"cms-03\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Purchase Orders to Bill\", \"col\": 3}}, {\"id\": \"cms-04\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Committed on Order\", \"col\": 3}}, {\"id\": \"cms-05\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Jump to</b></span>\", \"col\": 12}}, {\"id\": \"cms-06\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Projects\", \"col\": 3}}, {\"id\": \"cms-07\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Cost Estimation\", \"col\": 3}}, {\"id\": \"cms-08\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Material Position\", \"col\": 3}}, {\"id\": \"cms-09\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Resource Take-off\", \"col\": 3}}, {\"id\": \"cms-10\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Material Request\", \"col\": 3}}, {\"id\": \"cms-11\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Purchase Order\", \"col\": 3}}, {\"id\": \"cms-12\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Consumption\", \"col\": 3}}, {\"id\": \"cms-13\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Daily Site Report\", \"col\": 3}}, {\"id\": \"cms-14\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Project Cost Variance\", \"col\": 3}}, {\"id\": \"cms-15\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"BOQ\", \"col\": 3}}, {\"id\": \"cms-16\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Certificates\", \"col\": 3}}, {\"id\": \"cms-17\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Subcontracts\", \"col\": 3}}, {\"id\": \"cms-18\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Documents</b></span>\", \"col\": 12}}, {\"id\": \"cms-19\", \"type\": \"card\", \"data\": {\"card_name\": \"Procurement & Stock\", \"col\": 4}}, {\"id\": \"cms-20\", \"type\": \"card\", \"data\": {\"card_name\": \"Material Planning\", \"col\": 4}}, {\"id\": \"cms-21\", \"type\": \"card\", \"data\": {\"card_name\": \"Estimation\", \"col\": 4}}, {\"id\": \"cms-22\", \"type\": \"card\", \"data\": {\"card_name\": \"Site Management\", \"col\": 4}}, {\"id\": \"cms-23\", \"type\": \"card\", \"data\": {\"card_name\": \"Project Costing\", \"col\": 4}}, {\"id\": \"cms-24\", \"type\": \"card\", \"data\": {\"card_name\": \"BOQ Management\", \"col\": 4}}, {\"id\": \"cms-25\", \"type\": \"card\", \"data\": {\"card_name\": \"Subcontractor Management\", \"col\": 4}}, {\"id\": \"cms-26\", \"type\": \"card\", \"data\": {\"card_name\": \"Progress Billing\", \"col\": 4}}, {\"id\": \"cms-27\", \"type\": \"card\", \"data\": {\"card_name\": \"Client Billing\", \"col\": 4}}, {\"id\": \"cms-28\", \"type\": \"card\", \"data\": {\"card_name\": \"Project & Delivery\", \"col\": 4}}, {\"id\": \"cms-29\", \"type\": \"card\", \"data\": {\"card_name\": \"Cost & Material Reports\", \"col\": 4}}, {\"id\": \"cms-30\", \"type\": \"card\", \"data\": {\"card_name\": \"Stock & Buying Reports\", \"col\": 4}}]",
  "creation": "2026-09-10 10:10:38.456329",
  "custom_blocks": [],
  "docstatus": 0,
@@ -12,280 +12,6 @@
  "is_hidden": 0,
  "label": "Construction Management Suite",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "BOQ Management",
-   "link_count": 3,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "BOQ",
-   "link_count": 0,
-   "link_to": "BOQ",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "BOQ Template",
-   "link_count": 0,
-   "link_to": "BOQ Template",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Variation Order",
-   "link_count": 0,
-   "link_to": "Variation Order",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Estimation",
-   "link_count": 2,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Rate Analysis",
-   "link_count": 0,
-   "link_to": "Rate Analysis",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Cost Estimation",
-   "link_count": 0,
-   "link_to": "Cost Estimation",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Project Costing",
-   "link_count": 2,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Project Budget",
-   "link_count": 0,
-   "link_to": "Project Budget",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Cost Code",
-   "link_count": 0,
-   "link_to": "Cost Code",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Site Management",
-   "link_count": 2,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Daily Site Report",
-   "link_count": 0,
-   "link_to": "Daily Site Report",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Site Material Request",
-   "link_count": 0,
-   "link_to": "Site Material Request",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Progress Billing",
-   "link_count": 2,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Interim Payment Certificate",
-   "link_count": 0,
-   "link_to": "Interim Payment Certificate",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Retention Release",
-   "link_count": 0,
-   "link_to": "Retention Release",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Subcontractor Management",
-   "link_count": 3,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Subcontract Agreement",
-   "link_count": 0,
-   "link_to": "Subcontract Agreement",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Subcontractor Work Order",
-   "link_count": 0,
-   "link_to": "Subcontractor Work Order",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Subcontractor Payment Certificate",
-   "link_count": 0,
-   "link_to": "Subcontractor Payment Certificate",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Material Planning",
-   "link_count": 3,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Material Forecast",
-   "link_count": 0,
-   "link_to": "Material Forecast",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Site Transfer",
-   "link_count": 0,
-   "link_to": "Site Transfer",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Material Consumption Entry",
-   "link_count": 0,
-   "link_to": "Material Consumption Entry",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Project & Delivery",
-   "link_count": 4,
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Project",
-   "link_count": 0,
-   "link_to": "Project",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Task",
-   "link_count": 0,
-   "link_to": "Task",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Timesheet",
-   "link_count": 0,
-   "link_to": "Timesheet",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Issue",
-   "link_count": 0,
-   "link_to": "Issue",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -357,6 +83,232 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Material Planning",
+   "link_count": 3,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Material Forecast",
+   "link_count": 0,
+   "link_to": "Material Forecast",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Transfer",
+   "link_count": 0,
+   "link_to": "Site Transfer",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Material Consumption Entry",
+   "link_count": 0,
+   "link_to": "Material Consumption Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Estimation",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rate Analysis",
+   "link_count": 0,
+   "link_to": "Rate Analysis",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cost Estimation",
+   "link_count": 0,
+   "link_to": "Cost Estimation",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Management",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Daily Site Report",
+   "link_count": 0,
+   "link_to": "Daily Site Report",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Material Request",
+   "link_count": 0,
+   "link_to": "Site Material Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Project Costing",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Project Budget",
+   "link_count": 0,
+   "link_to": "Project Budget",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cost Code",
+   "link_count": 0,
+   "link_to": "Cost Code",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "BOQ Management",
+   "link_count": 3,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "BOQ",
+   "link_count": 0,
+   "link_to": "BOQ",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "BOQ Template",
+   "link_count": 0,
+   "link_to": "BOQ Template",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Variation Order",
+   "link_count": 0,
+   "link_to": "Variation Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Subcontractor Management",
+   "link_count": 3,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Subcontract Agreement",
+   "link_count": 0,
+   "link_to": "Subcontract Agreement",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Subcontractor Work Order",
+   "link_count": 0,
+   "link_to": "Subcontractor Work Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Subcontractor Payment Certificate",
+   "link_count": 0,
+   "link_to": "Subcontractor Payment Certificate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Progress Billing",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Interim Payment Certificate",
+   "link_count": 0,
+   "link_to": "Interim Payment Certificate",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Retention Release",
+   "link_count": 0,
+   "link_to": "Retention Release",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Client Billing",
    "link_count": 3,
    "onboard": 0,
@@ -395,20 +347,77 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Reports",
-   "link_count": 11,
+   "label": "Project & Delivery",
+   "link_count": 4,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Project",
+   "link_count": 0,
+   "link_to": "Project",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Task",
+   "link_count": 0,
+   "link_to": "Task",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Timesheet",
+   "link_count": 0,
+   "link_to": "Timesheet",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Issue",
+   "link_count": 0,
+   "link_to": "Issue",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cost & Material Reports",
+   "link_count": 5,
    "onboard": 0,
    "type": "Card Break"
   },
   {
    "hidden": 0,
    "is_query_report": 1,
-   "label": "BOQ Summary",
+   "label": "Resource Take-off",
    "link_count": 0,
-   "link_to": "BOQ Summary",
+   "link_to": "Resource Take-off",
    "link_type": "Report",
    "onboard": 0,
-   "report_ref_doctype": "BOQ",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Material Position",
+   "link_count": 0,
+   "link_to": "Material Position",
+   "link_type": "Report",
+   "onboard": 0,
    "type": "Link"
   },
   {
@@ -425,13 +434,32 @@
   {
    "hidden": 0,
    "is_query_report": 1,
-   "label": "Project Summary",
+   "label": "BOQ Summary",
    "link_count": 0,
-   "link_to": "Project Summary",
+   "link_to": "BOQ Summary",
    "link_type": "Report",
    "onboard": 0,
-   "report_ref_doctype": "Project",
+   "report_ref_doctype": "BOQ",
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Budget Variance Report",
+   "link_count": 0,
+   "link_to": "Budget Variance Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Cost Center",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stock & Buying Reports",
+   "link_count": 6,
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
    "hidden": 0,
@@ -458,12 +486,23 @@
   {
    "hidden": 0,
    "is_query_report": 1,
-   "label": "Budget Variance Report",
+   "label": "Stock Balance",
    "link_count": 0,
-   "link_to": "Budget Variance Report",
+   "link_to": "Stock Balance",
    "link_type": "Report",
    "onboard": 0,
-   "report_ref_doctype": "Cost Center",
+   "report_ref_doctype": "Stock Ledger Entry",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Project Summary",
+   "link_count": 0,
+   "link_to": "Project Summary",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Project",
    "type": "Link"
   },
   {
@@ -487,156 +526,111 @@
    "onboard": 0,
    "report_ref_doctype": "Purchase Invoice",
    "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Stock Balance",
-   "link_count": 0,
-   "link_to": "Stock Balance",
-   "link_type": "Report",
-   "onboard": 0,
-   "report_ref_doctype": "Stock Ledger Entry",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Resource Take-off",
-   "link_count": 0,
-   "link_to": "Resource Take-off",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Material Position",
-   "link_count": 0,
-   "link_to": "Material Position",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
   }
  ],
- "modified": "2026-09-25 12:00:00.000000",
+ "modified": "2026-09-28 12:15:49.076496",
  "modified_by": "Administrator",
  "module": "BOQ Management",
  "name": "Construction Management Suite",
  "number_cards": [
   {
-   "label": "Contract Value",
-   "number_card_name": "Contract Value"
+   "label": "Material Requests",
+   "number_card_name": "Material Requests"
   },
   {
-   "label": "Approved Variations",
-   "number_card_name": "Approved Variations"
+   "label": "Purchase Orders to Receive",
+   "number_card_name": "Purchase Orders to Receive"
   },
   {
-   "label": "Billed to Date",
-   "number_card_name": "Billed to Date"
+   "label": "Purchase Orders to Bill",
+   "number_card_name": "Purchase Orders to Bill"
   },
   {
-   "label": "Retention Held",
-   "number_card_name": "Retention Held"
-  },
-  {
-   "label": "Actual Cost",
-   "number_card_name": "Actual Cost"
-  },
-  {
-   "label": "Subcontracted",
-   "number_card_name": "Subcontracted"
-  },
-  {
-   "label": "Certificates Awaiting",
-   "number_card_name": "Certificates Awaiting"
-  },
-  {
-   "label": "Safety Incidents",
-   "number_card_name": "Safety Incidents"
+   "label": "Committed on Order",
+   "number_card_name": "Committed on Order"
   }
  ],
  "owner": "Administrator",
+ "parent_page": "",
  "public": 1,
  "quick_lists": [],
  "roles": [],
- "sequence_id": 20.0,
+ "sequence_id": 21.0,
  "shortcuts": [
   {
-   "color": "Grey",
    "doc_view": "",
-   "label": "BOQ",
-   "link_to": "BOQ",
-   "stats_filter": "[[\"BOQ\",\"docstatus\",\"!=\",\"2\",false]]",
+   "label": "Projects",
+   "link_to": "Project",
    "type": "DocType"
   },
   {
-   "color": "Blue",
    "doc_view": "",
    "label": "Cost Estimation",
    "link_to": "Cost Estimation",
-   "type": "DocType",
-   "stats_filter": ""
-  },
-  {
-   "color": "Blue",
-   "label": "Projects",
-   "link_to": "Project",
-   "stats_filter": "{\"status\": [\"=\", \"Open\"]}",
    "type": "DocType"
   },
   {
-   "color": "Green",
-   "label": "Payment Certificates",
-   "link_to": "Interim Payment Certificate",
-   "stats_filter": "{\"docstatus\": [\"=\", 0]}",
-   "type": "DocType"
-  },
-  {
-   "color": "Orange",
-   "label": "Variation Orders",
-   "link_to": "Variation Order",
-   "stats_filter": "{\"docstatus\": [\"=\", 0]}",
-   "type": "DocType"
-  },
-  {
-   "color": "Cyan",
-   "label": "Daily Site Report",
-   "link_to": "Daily Site Report",
-   "stats_filter": "{\"docstatus\": [\"=\", 0]}",
-   "type": "DocType"
-  },
-  {
-   "color": "Purple",
-   "label": "Subcontracts",
-   "link_to": "Subcontract Agreement",
-   "stats_filter": "{\"status\": [\"=\", \"Active\"]}",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "label": "BOQ Summary",
-   "link_to": "BOQ Summary",
-   "report_ref_doctype": "BOQ",
+   "doc_view": "",
+   "label": "Material Position",
+   "link_to": "Material Position",
+   "report_ref_doctype": "Material Forecast",
    "type": "Report"
   },
   {
-   "color": "Grey",
+   "doc_view": "",
+   "label": "Resource Take-off",
+   "link_to": "Resource Take-off",
+   "report_ref_doctype": "Cost Estimation",
+   "type": "Report"
+  },
+  {
+   "doc_view": "",
+   "label": "Material Request",
+   "link_to": "Material Request",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Purchase Order",
+   "link_to": "Purchase Order",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Consumption",
+   "link_to": "Material Consumption Entry",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Daily Site Report",
+   "link_to": "Daily Site Report",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
    "label": "Project Cost Variance",
    "link_to": "Project Cost Variance",
    "report_ref_doctype": "Project Budget",
    "type": "Report"
   },
   {
-   "color": "Grey",
-   "doc_view": "Report",
-   "label": "Material Position",
-   "link_to": "Material Position",
-   "type": "Report",
-   "stats_filter": "",
-   "report_ref_doctype": "Material Forecast"
+   "doc_view": "",
+   "label": "BOQ",
+   "link_to": "BOQ",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Payment Certificates",
+   "link_to": "Interim Payment Certificate",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Subcontracts",
+   "link_to": "Subcontract Agreement",
+   "type": "DocType"
   }
  ],
  "title": "Construction Management Suite"
