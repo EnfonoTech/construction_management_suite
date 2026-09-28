@@ -1,0 +1,30 @@
+[project]
+name = "construction_management_suite"
+version = "1.0.0"
+description = "BOQ, cost estimation, progress billing and subcontracting for ERPNext"
+authors = [{ name = "Enfono Technologies", email = "admin@enfono.com" }]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+readme = "README.md"
+
+# No dependencies, on purpose.
+#
+# A Frappe app is installed into a bench that already has frappe and erpnext;
+# naming them here makes the installer resolve frappe's own dependency tree,
+# which contains pypika as a git URL — and uv refuses a URL dependency that
+# arrives transitively:
+#
+#   Failed to resolve dependencies for `frappe`
+#   Package `pypika` was included as a URL dependency
+#
+# That is what `bench get-app` hit on a clean server. Everything this app
+# imports beyond the two of them — openpyxl, for the spreadsheet importer —
+# already ships with frappe.
+dependencies = []
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["construction_management_suite*"]

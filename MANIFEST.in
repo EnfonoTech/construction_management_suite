@@ -1,4 +1,3 @@
-include requirements.txt
 recursive-include construction_management_suite/fixtures *.json
 recursive-include construction_management_suite/public *
 recursive-include construction_management_suite/templates *
