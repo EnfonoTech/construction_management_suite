@@ -130,7 +130,26 @@ def _uom(raw):
     return UOM.get(key)
 
 
-def read_sheet(path=None):
+def _source(name, folder=None):
+    """Where a source file is, with a straight answer when it is not there.
+
+    Both files are gitignored — they carry the client's rates — so they do not
+    arrive with a `git pull` and have to be copied onto the server by hand.
+    That is the commonest way this import fails on a machine it has not been
+    run on before, and a bare FileNotFoundError does not say it.
+    """
+    path = os.path.join(folder or _app_dir(), name)
+    if not os.path.exists(path):
+        frappe.throw(
+            f"{name} is not at {path}.<br><br>The workbook and its classification "
+            "file are deliberately not in git — they hold the client's rates — so "
+            "they have to be copied onto this server. Put both beside each other "
+            "and pass the folder: <code>--kwargs \"{'folder': '/path/to/them'}\"</code>"
+        )
+    return path
+
+
+def read_sheet(path):
     """The cost sheet, as sections each holding their own priced rows.
 
     A section opens on a row whose first cell is a single letter; a priced row
@@ -139,7 +158,6 @@ def read_sheet(path=None):
     """
     import openpyxl
 
-    path = path or os.path.join(_app_dir(), WORKBOOK)
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb[SHEET]
 
@@ -167,7 +185,7 @@ def read_sheet(path=None):
     return sections
 
 
-def read_classification(path=None):
+def read_classification(path):
     """Resource type per sheet row, keyed by the row number it came from.
 
     The classification was done by hand against this workbook and its `Row`
@@ -175,7 +193,6 @@ def read_classification(path=None):
     two are joined on that rather than on description text, which has been
     edited on both sides.
     """
-    path = path or os.path.join(_app_dir(), CLASSIFICATION)
     out = {}
     with open(path, encoding="utf-8-sig") as fh:
         for line in csv.DictReader(fh):
@@ -186,10 +203,10 @@ def read_classification(path=None):
     return out
 
 
-def load(sections=None):
+def load(sections=None, folder=None):
     """The sheet and the classification, joined, ready to build from."""
-    sheet = read_sheet()
-    kinds = read_classification()
+    sheet = read_sheet(_source(WORKBOOK, folder))
+    kinds = read_classification(_source(CLASSIFICATION, folder))
     wanted = [s.strip().upper() for s in sections.split(",")] if sections else list(sheet)
 
     picked = {}
@@ -353,7 +370,7 @@ def _project(name, company, dry=True):
     return doc.name
 
 
-def run(sections=None, project=None, company=None, dry=1, submit=0):
+def run(sections=None, project=None, company=None, dry=1, submit=0, folder=None):
     """Read the cost sheet and build the estimate. Prints what it did either way.
 
     `dry=1` — the default — reads everything, resolves every Item and every
@@ -361,12 +378,42 @@ def run(sections=None, project=None, company=None, dry=1, submit=0):
     import should go in without that having been read first.
     """
     dry, submit = int(dry), int(submit)
-    company = company or frappe.defaults.get_user_default("Company") \
-        or frappe.db.get_value("Company", {}, "name")
+
+    # Named, never inferred. The site default is whichever company the person
+    # running this last worked in, and an estimate built against the wrong one
+    # carries the wrong currency, the wrong cost centre and the wrong accounts
+    # into every document raised from it afterwards.
+    if not company:
+        print("\nName the company. This import will not guess it:")
+        print("      --kwargs \"{'company': 'Your Company Name'}\"")
+        print("\n  companies on this site:")
+        for name in frappe.get_all("Company", pluck="name"):
+            print(f"      {name}")
+        return None
+    if not frappe.db.exists("Company", company):
+        print(f"\nNo company called {company!r} on this site. They are:")
+        for name in frappe.get_all("Company", pluck="name"):
+            print(f"      {name}")
+        return None
+
+    # `bench execute` catches any exception and retries the call through eval,
+    # which then fails with a bare NameError — so a thrown message never
+    # reaches the person at the terminal. Say it here instead, where it prints.
+    missing = [f for f in (WORKBOOK, CLASSIFICATION)
+               if not os.path.exists(os.path.join(folder or _app_dir(), f))]
+    if missing:
+        print(f"\nCannot find: {', '.join(missing)}")
+        print(f"  looked in: {folder or _app_dir()}")
+        print("  Both files are deliberately not in git — they hold the client's")
+        print("  rates — so they have to be copied onto this server by hand.")
+        print("  Put them side by side and pass the folder:")
+        print("      --kwargs \"{'folder': '/path/to/them'}\"")
+        return None
+
     currency = frappe.get_cached_value("Company", company, "default_currency")
     project = project or "MM-TRIAL"
 
-    picked = load(sections)
+    picked = load(sections, folder)
     codes = _material_codes(picked)
     log = []
 

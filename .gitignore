@@ -11,11 +11,18 @@ build/
 .DS_Store
 Thumbs.db
 
-# Client data — commercial rates, subcontract prices, margins. This repo is a
-# fork with a public upstream; none of it belongs in a code history.
+# Client data — commercial rates, subcontract prices, margins. This repo has a
+# second remote, `bajrang-original`, which is a third party's public GitHub.
+# Push master to `origin` (EnfonoTech) only.
 *.xlsx
 *.xls
 *.csv
 ~$*
 # Planning notes that quote those rates back — same reason.
 docs/import-plan.md
+
+# Two exceptions, by explicit decision. The importer cannot run on a server
+# that does not have them, and copying them across by hand was the step that
+# kept being forgotten. Everything else above still stands.
+!Misk Mawallah.xlsx
+!Misk Mawallah - classification.csv
