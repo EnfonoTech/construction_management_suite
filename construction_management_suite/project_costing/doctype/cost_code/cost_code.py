@@ -102,10 +102,19 @@ def get_children(doctype=None, parent=None, company=None, is_root=False):
 
 @frappe.whitelist()
 def add_node():
-    """Create from the tree view's "New" button, with the parent pre-filled."""
-    from frappe.desk.treeview import make_tree_args
+    """Create from the tree view's "New" button, with the parent pre-filled.
 
-    args = make_tree_args(**frappe.form_dict)
-    if args.parent_cost_code == "All Cost Codes":
-        args.parent_cost_code = None
+    The four lines `frappe.desk.treeview.make_tree_args` would do are done
+    here instead. This app is meant to run on frappe 15 generally, and a desk
+    helper is a moving target — one such import already broke a form on a
+    bench two patch releases behind this one.
+    """
+    args = frappe._dict(frappe.form_dict)
+    args.pop("cmd", None)
+    args.pop("is_root", None)
+
+    parent = args.get("parent") or args.get("parent_cost_code")
+    # The tree's synthetic root is a label, not a record.
+    args.parent_cost_code = None if parent == "All Cost Codes" else parent
+    args.doctype = "Cost Code"
     frappe.get_doc(args).insert()

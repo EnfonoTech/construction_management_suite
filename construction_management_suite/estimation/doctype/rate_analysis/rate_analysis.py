@@ -102,26 +102,33 @@ class RateAnalysis(Document):
 	# ----- Locking -----
 
 	def submitted_references(self):
-		"""Submitted BOQs and Cost Estimations that priced a line from this.
+		"""Submitted documents that priced a line from this analysis.
 
-		`method="Cancel"` is what restricts get_linked_docs to docstatus 1, and
-		it resolves the child-table hop (BOQ Item -> BOQ) that a plain
-		frappe.db.exists on the child table would miss.
+		Asked of the schema rather than of a frappe internal. This used to call
+		`frappe.model.delete_doc.get_linked_docs`, which is not in every frappe
+		15 — it is absent in 15.92 and present in 15.114 — so opening a Rate
+		Analysis raised ImportError on the older one. A private helper that
+		moves between patch releases is not something a controller should
+		depend on, and the question here is narrow enough to ask directly.
+
+		Every Link field pointing at Rate Analysis is found from the schema, so
+		a doctype added later is picked up without editing this. The child-table
+		hop (BOQ Item -> BOQ) is resolved through `parenttype`/`parent`, which
+		is what a plain lookup on the child table would miss.
 		"""
 		if self.is_new():
 			return []
 		if getattr(self.flags, "_submitted_refs", None) is not None:
 			return self.flags._submitted_refs
 
-		from frappe.model.delete_doc import get_linked_docs
-
 		seen, refs = set(), []
-		for link in get_linked_docs(self, method="Cancel") or []:
-			key = (link.get("reference_doctype"), link.get("reference_docname"))
-			if key in seen or not key[1]:
-				continue
-			seen.add(key)
-			refs.append({"doctype": key[0], "name": key[1]})
+		for doctype, fieldname in _fields_linking_here():
+			for parent_type, name in _referring_docs(doctype, fieldname, self.name):
+				key = (parent_type, name)
+				if key in seen or not name:
+					continue
+				seen.add(key)
+				refs.append({"doctype": parent_type, "name": name})
 
 		self.flags._submitted_refs = refs
 		return refs
@@ -366,3 +373,69 @@ class RateAnalysis(Document):
 			"before": before,
 			"after": {"total_cost": flt(self.total_cost), "rate_per_unit": flt(self.rate_per_unit)},
 		}
+
+
+def _fields_linking_here():
+	"""Every Link field on the site that points at a Rate Analysis.
+
+	Read from the schema, standard fields and customisations alike, so a
+	doctype added later needs no edit here. Rate Analysis's own
+	`previous_version` is excluded: a superseding version is a successor, not
+	something that priced a line from this one, and the lock state reports it
+	separately.
+	"""
+	found = frappe.get_all(
+		"DocField",
+		filters={"fieldtype": "Link", "options": "Rate Analysis"},
+		fields=["parent AS doctype", "fieldname"],
+	) + frappe.get_all(
+		"Custom Field",
+		filters={"fieldtype": "Link", "options": "Rate Analysis"},
+		fields=["dt AS doctype", "fieldname"],
+	)
+	return [(f.doctype, f.fieldname) for f in found if f.doctype != "Rate Analysis"]
+
+
+def _referring_docs(doctype, fieldname, analysis):
+	"""Submitted documents of one doctype that name this analysis.
+
+	A child table answers with its parent — a BOQ Item belongs to a BOQ, and it
+	is the BOQ whose docstatus decides whether this analysis is locked. The
+	parent type is read from the row rather than assumed, because one child
+	table can sit under several doctypes.
+	"""
+	try:
+		meta = frappe.get_meta(doctype)
+	except frappe.DoesNotExistError:
+		return []
+	if not meta.get_field(fieldname):
+		return []
+
+	if not meta.istable:
+		return [
+			(doctype, name)
+			for name in frappe.get_all(
+				doctype, filters={fieldname: analysis, "docstatus": 1}, pluck="name"
+			)
+		]
+
+	rows = frappe.get_all(
+		doctype,
+		filters={fieldname: analysis},
+		fields=["parent", "parenttype"],
+		distinct=True,
+	)
+	out, by_type = [], {}
+	for row in rows:
+		if row.parent and row.parenttype:
+			by_type.setdefault(row.parenttype, set()).add(row.parent)
+	for parent_type, names in by_type.items():
+		if not frappe.db.exists("DocType", parent_type):
+			continue
+		out += [
+			(parent_type, name)
+			for name in frappe.get_all(
+				parent_type, filters={"name": ("in", list(names)), "docstatus": 1}, pluck="name"
+			)
+		]
+	return out
