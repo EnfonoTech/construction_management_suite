@@ -8,6 +8,7 @@ def after_install():
     create_roles()
     create_missing_uoms()
     create_custom_fields_on_erpnext()
+    create_item_groups()
     create_billing_items()
     seed_check_defaults()
     frappe.db.commit()
@@ -16,6 +17,7 @@ def after_install():
 def after_migrate():
     create_missing_uoms()
     create_custom_fields_on_erpnext()
+    create_item_groups()
     create_billing_items()
     seed_check_defaults()
     frappe.db.commit()
@@ -55,6 +57,36 @@ def create_missing_uoms():
     for uom in ("Bag", "Roll", "Month", "Ls", "Trip", "Drum", "Qtn", "Ctn", "Pkt", "RM"):
         if not frappe.db.exists("UOM", uom):
             frappe.get_doc({"doctype": "UOM", "uom_name": uom}).insert(ignore_permissions=True)
+
+
+# What the estimate prices, and therefore what an Item can be. ERPNext ships
+# Services and Raw Material; nothing on a fresh site is called the rest, so a
+# labour gang and a subcontract had nowhere to be filed and every report and
+# picker lost the one handle that says what a thing IS.
+#
+# Seeded here rather than shipped in `fixtures/`: Item Group is a nested-set
+# tree, and a fixture would carry a hardcoded parent. "All Item Groups" is the
+# English name of that root — a site set up in another language has a different
+# one, and the import would fail the migrate rather than the group.
+RESOURCE_ITEM_GROUPS = ("Labour", "Equipment", "Subcontract", "Overhead")
+
+
+def create_item_groups():
+    """A group per resource kind, under whatever this site calls its root."""
+    root = frappe.db.get_value(
+        "Item Group", {"is_group": 1, "parent_item_group": ("in", (None, ""))}, "name"
+    ) or frappe.db.get_value("Item Group", {"is_group": 1}, "name")
+    if not root:
+        # A site mid-install has no item tree yet; after_migrate will catch it.
+        return
+
+    for name in RESOURCE_ITEM_GROUPS:
+        if frappe.db.exists("Item Group", name):
+            continue
+        frappe.get_doc({
+            "doctype": "Item Group", "item_group_name": name,
+            "parent_item_group": root, "is_group": 0,
+        }).insert(ignore_permissions=True)
 
 
 def create_billing_items():

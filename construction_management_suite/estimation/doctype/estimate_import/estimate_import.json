@@ -1,0 +1,138 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-09-30 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "project",
+  "company",
+  "column_break_1",
+  "import_file",
+  "status",
+  "section_result",
+  "cost_estimation",
+  "works_count",
+  "column_break_2",
+  "resources_count",
+  "items_created",
+  "section_log",
+  "result_html",
+  "log"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "EIMP-.YYYY.-",
+   "default": "EIMP-.YYYY.-",
+   "reqd": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Into Project",
+   "options": "Project",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "fetch_from": "project.company"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "import_file",
+   "fieldtype": "Attach",
+   "label": "Filled-in Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nChecked\nImported\nFailed",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "section_result",
+   "fieldtype": "Section Break",
+   "label": "Result"
+  },
+  {
+   "fieldname": "cost_estimation",
+   "fieldtype": "Link",
+   "label": "Cost Estimation",
+   "options": "Cost Estimation",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "works_count",
+   "fieldtype": "Int",
+   "label": "Lines of Work",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "resources_count",
+   "fieldtype": "Int",
+   "label": "Resource Rows",
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_created",
+   "fieldtype": "Int",
+   "label": "Items Created",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_log",
+   "fieldtype": "Section Break",
+   "label": "What the File Says",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "result_html",
+   "fieldtype": "HTML",
+   "label": "Result"
+  },
+  {
+   "fieldname": "log",
+   "fieldtype": "Long Text",
+   "label": "Log",
+   "read_only": 1,
+   "hidden": 1
+  }
+ ],
+ "links": [],
+ "module": "Estimation",
+ "name": "Estimate Import",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "Construction Admin", "read": 1, "write": 1, "create": 1, "delete": 1},
+  {"role": "Construction Quantity Surveyor", "read": 1, "write": 1, "create": 1},
+  {"role": "Construction Project Manager", "read": 1}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "project",
+ "track_changes": 1
+}
