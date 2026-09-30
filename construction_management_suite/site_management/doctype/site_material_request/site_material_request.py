@@ -24,19 +24,31 @@ class SiteMaterialRequest(Document):
         set_auto_title(self, "request_title",
                        [project_label(self.project), short_date(self.request_date)])
         validate_project_company(self)
-        validate_item_kinds(self.items)
+        # This asks procurement, it does not hand anything over — on submit it
+        # becomes a Material Request. So plant hire, a labour gang and a
+        # subcontract priced inside an analysis all belong on it, and ERPNext
+        # requests a non-stock item perfectly well. Site Transfer is the one
+        # that moves stock, and it keeps the stricter rule.
+        validate_item_kinds(self.items, issuing=False)
         validate_uom_convertible(self.items)
         self.validate_quantities()
         self.set_default_warehouse()
         self.set_work_numbers()
 
     def set_default_warehouse(self):
-        """The job's store on every row that does not name one."""
+        """The job's store on every row that does not name one.
+
+        Stock rows only. A service item is never received into a store, and a
+        warehouse on its line is a field ERPNext then has to reconcile against
+        stock that does not exist.
+        """
         store = get_warehouse(self.project, self.company)
         if not store:
             return
         for row in self.items:
-            if not row.warehouse:
+            if row.warehouse or not row.item_code:
+                continue
+            if frappe.db.get_value("Item", row.item_code, "is_stock_item"):
                 row.warehouse = store
 
     def set_work_numbers(self):
@@ -65,7 +77,7 @@ class SiteMaterialRequest(Document):
 
         on_form = {(i.item_code, i.work_item) for i in self.items if i.item_code}
         added = 0
-        for line in take_off_outstanding(self.project):
+        for line in take_off_outstanding(self.project, types=None):
             key = (line["item_code"], line["cms_work_item"])
             if key in on_form:
                 continue

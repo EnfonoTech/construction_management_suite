@@ -30,6 +30,7 @@ class MaterialConsumptionEntry(Document):
         if not self.warehouse:
             self.warehouse = get_warehouse(self.project, self.company)
         validate_item_kinds(self.items)
+        self.refuse_unstocked_items()
         validate_uom_convertible(self.items)
         numbers = work_no_map(self.project) if self.project else {}
         for item in self.items:
@@ -37,6 +38,37 @@ class MaterialConsumptionEntry(Document):
             # Display only — the work Item is the key.
             item.work_no = numbers.get(item.work_item)
         self.check_against_take_off()
+
+    def refuse_unstocked_items(self):
+        """Stock cannot be issued where none is held.
+
+        On a site that allows service materials the kind rules stand down, so a
+        service item reaches here happily and then fails deep inside ERPNext's
+        Stock Entry on submit, with a message about the wrong document. Said
+        here instead, with what to do about it: nothing. The cost of a service
+        item is booked by its purchase invoice, so there is no second entry to
+        make — which is why this document simply is not used for them.
+        """
+        service = [
+            item for item in self.items
+            if item.item_code
+            and not frappe.db.get_value("Item", item.item_code, "is_stock_item")
+        ]
+        if not service:
+            return
+        frappe.throw(
+            "<br>".join(
+                _("Row {0}: {1}").format(item.idx, item.item_code) for item in service[:10]
+            )
+            + _(
+                "<br><br>These are service items, so no stock is held and none can "
+                "be issued. Their cost went to the job when the purchase invoice "
+                "was posted — there is nothing left to record here. Take the rows "
+                "off, or tick Maintain Stock on the items if the store really does "
+                "hold them."
+            ),
+            title=_("{0} line(s) hold no stock").format(len(service)),
+        )
 
     @frappe.whitelist()
     def get_items_from_site_report(self):
@@ -363,6 +395,7 @@ def take_off_detail(project, boq=None, source=None, types=STOCK_TYPES):
             "uom": res.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
             "boq_qty": 0.0,
             "estimated_rate": flt(res.get("rate")),
+            "resource_type": res.get("type") or res.get("resource_type"),
             "work_items": [],
         })
         entry["boq_qty"] += flt(row.qty) * per_unit
@@ -380,8 +413,14 @@ def take_off_by_item(project):
     return allowed
 
 
-def take_off_by_line(project, boq=None):
+def take_off_by_line(project, boq=None, types=STOCK_TYPES):
     """The same allowance, split by the line of work that asks for it.
+
+    `types` defaults to material and every caller that decides what to **buy**
+    leaves it alone — the forecast, the request, the pickers, the plan check.
+    Widening it there is how a subcontracted package gets ordered a second time
+    as though it were material. A report may pass None to see everything the
+    work is priced to take: labour, plant, subcontract and overhead included.
 
     Cement sits under concrete, under blockwork mortar and under plaster. Summed
     per item nobody can say which of those a bag was burnt on; keyed by work
@@ -391,7 +430,7 @@ def take_off_by_line(project, boq=None):
     survives a bill being revised — which a child-row name did not.
     """
     allowed = {}
-    for row, res, per_unit in _take_off_rows(project, boq):
+    for row, res, per_unit in _take_off_rows(project, boq, types=types):
         code = res.get("resource_item")
         key = (code, row.work_item)
         entry = allowed.setdefault(key, {
@@ -399,6 +438,7 @@ def take_off_by_line(project, boq=None):
             "work_item": row.work_item,
             "uom": res.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
             "estimated_rate": flt(res.get("rate")),
+            "resource_type": res.get("type") or res.get("resource_type"),
             "qty": 0.0,
         })
         entry["qty"] += flt(row.qty) * per_unit

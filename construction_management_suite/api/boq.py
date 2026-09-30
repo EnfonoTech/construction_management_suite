@@ -119,18 +119,34 @@ def get_site_progress_timeline(project, limit=30):
     )
 
 
+# Omitted means material, the way a store request reads it; None means every
+# kind the estimate prices.
+_MATERIAL_ONLY = object()
+
+
 @frappe.whitelist()
-def take_off_outstanding(project):
-    """What the priced work still needs bought, per material per line of work.
+def take_off_outstanding(project, types=_MATERIAL_ONLY):
+    """What the priced work still needs bought, per resource per line of work.
 
     A forecast is optional — a job can be bought straight off the estimate —
     and without one nothing filled the work reference on a request, so what
     was needed and what was bought never met in a report. This is the same
     figure a forecast would show, read live instead of planned.
+
+    `types` defaults to material, which is what a store request offers. Pass
+    None to include what is priced but never warehoused — a subcontract inside
+    an analysis, plant hire, a labour gang — which is bought on an ordinary
+    order and is just as capable of being over-ordered.
     """
     from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+        STOCK_TYPES,
         take_off_by_line,
     )
+
+    # None already means "every kind" downstream, so it cannot also mean
+    # "whatever the default is". A sentinel keeps the two apart.
+    if types is _MATERIAL_ONLY:
+        types = STOCK_TYPES
 
     if not project:
         frappe.throw(_("Choose a project"))
@@ -163,7 +179,7 @@ def take_off_outstanding(project):
 
     numbers = work_no_map(project)
     out = []
-    for (code, work_item), entry in take_off_by_line(project).items():
+    for (code, work_item), entry in take_off_by_line(project, types=types).items():
         outstanding = flt(entry["qty"]) - flt(asked.get((code, work_item)))
         if outstanding <= 0.0001:
             continue
@@ -208,7 +224,11 @@ def create_material_request_from_forecast(forecast_name):
                 "item_code": item.item_code,
                 "qty": flt(item.qty_to_order),
                 "uom": item.uom,
-                "warehouse": item.warehouse,
+                # A service item is never received into one, and ERPNext only
+                # wants a warehouse where stock is held.
+                "warehouse": item.warehouse if frappe.db.get_value(
+                    "Item", item.item_code, "is_stock_item"
+                ) else None,
                 "project": forecast.project,
                 "schedule_date": item.required_by_date or mr.schedule_date,
                 # Rides on to the order, the receipt and the invoice by itself:
@@ -837,6 +857,18 @@ def rate_library_is_company_scoped():
     than a filtered list.
     """
     return 1 if company_scoped_rates() else 0
+
+
+@frappe.whitelist()
+def materials_may_be_service_items():
+    """For the item pickers, which cannot read Construction Settings.
+
+    Same reason as above: the Single is readable by System Manager and Projects
+    Manager only, and a storeman filling a request is neither.
+    """
+    from construction_management_suite.utils.settings import service_materials_allowed
+
+    return 1 if service_materials_allowed() else 0
 
 
 @frappe.whitelist()
@@ -1531,9 +1563,21 @@ def materials_for_work(doctype, txt, searchfield, start, page_len, filters):
 
     planned = []
     if project and work and current_estimate(project):
-        planned = sorted({code for (code, w) in take_off_by_line(project) if w == work and code})
+        # Every kind the plan prices, not only material: a buyer raising an
+        # order for the excavation contract under Structural Works should find
+        # it offered, and so should plant hire and a labour gang.
+        planned = sorted({
+            code for (code, w) in take_off_by_line(project, types=None)
+            if w == work and code
+        })
 
-    where = ["i.is_stock_item = 1", "i.disabled = 0", "(i.name LIKE %(txt)s OR i.item_name LIKE %(txt)s)"]
+    from construction_management_suite.utils.settings import service_materials_allowed
+
+    where = ["i.disabled = 0", "(i.name LIKE %(txt)s OR i.item_name LIKE %(txt)s)"]
+    # Where nothing is stocked a material is a service item, so narrowing to
+    # stock items would offer an empty list.
+    if not service_materials_allowed():
+        where.insert(0, "i.is_stock_item = 1")
     values = {"txt": "%%%s%%" % (txt or ""), "start": start, "page_len": page_len}
     if planned:
         where.append("i.name IN %(planned)s")
@@ -1581,7 +1625,9 @@ def line_against_plan(project, item_code, work_item=None, qty=0):
             return {}
         return {"state": "no-plan", "message": _("{0} has no Cost Estimation to buy against.").format(project)}
 
-    plan = take_off_by_line(project)
+    # Same breadth as the purchase check that follows on save, or the line
+    # would be told it is unplanned and then saved without complaint.
+    plan = take_off_by_line(project, types=None)
     key = (item_code, work_item or None)
     entry = plan.get(key)
 
@@ -1626,7 +1672,8 @@ def line_against_plan(project, item_code, work_item=None, qty=0):
         }
 
     outstanding = {
-        (r["item_code"], r["cms_work_item"]): r for r in take_off_outstanding(project)
+        (r["item_code"], r["cms_work_item"]): r
+        for r in take_off_outstanding(project, types=None)
     }
     left = flt((outstanding.get(key) or {}).get("qty"))
     answer = {

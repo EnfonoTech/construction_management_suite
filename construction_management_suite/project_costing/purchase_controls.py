@@ -61,12 +61,37 @@ def check_project_is_estimated(doc):
         item = row.get("item_code")
         if not project or project in projects or not item:
             continue
-        if not frappe.db.get_value("Item", item, "is_stock_item"):
+        if not _buys_material(doc, row):
             continue
         projects.append(project)
 
     for project in projects:
         require_estimate(project, _("buying material for it"))
+
+
+def _buys_material(doc, row, works=None):
+    """Is this line buying material, as opposed to buying work?
+
+    Kind used to answer it: a stock item was material, a service item was a
+    subcontracted line of work. That breaks on a site where material is a
+    service item too — every line would read as work and every check below
+    would skip it, silently and completely.
+
+    So the plan answers instead, where there is one: a line naming an Item the
+    estimate prices as work is buying work. Where there is no plan to ask, a
+    subcontract order is the one document that is certainly buying work, and it
+    says so on itself.
+    """
+    from construction_management_suite.utils.settings import service_materials_allowed
+
+    if doc.get("cms_subcontract_ref"):
+        return False
+    if not service_materials_allowed():
+        # The model holds: material is stocked, work is not.
+        return bool(frappe.db.get_value("Item", row.get("item_code"), "is_stock_item"))
+    if works is None:
+        return True
+    return row.get("item_code") not in works
 
 
 def check_against_the_plan(doc):
@@ -105,12 +130,14 @@ def check_against_the_plan(doc):
         item = row.get("item_code")
         if not project or not item:
             continue
-        # A subcontract order buys work, not material; the work item IS the line.
-        if not frappe.db.get_value("Item", item, "is_stock_item"):
-            continue
         if project not in plans:
             plans[project] = _plan_for(project, current_estimate, take_off_by_line)
         plan = plans[project]
+        # A subcontract order buys work, not material; the work item IS the
+        # line. Decided against the plan rather than against the item's kind,
+        # which says nothing where material is a service item too.
+        if not _buys_material(doc, row, plan[0] if plan else None):
+            continue
         if plan is None:
             # No estimate at all. `check_project_is_estimated` has already said
             # so, at whatever severity the site set; there is nothing here to
@@ -181,14 +208,25 @@ def _stands_in(item, work, take_off):
 
 
 def _plan_for(project, current_estimate, take_off_by_line):
-    """What a project is priced to buy: its work items, and its take-off."""
+    """What a project is priced to buy: its work items, and its take-off.
+
+    Every resource kind, not only material. Subcontracting happens at two
+    levels — a whole line of work let to a trade, and a subcontract *resource*
+    inside a rate analysis, like an excavation contract priced within the
+    structural works. The second is bought on an ordinary purchase order, and
+    judging it against a material-only take-off called it unplanned every time.
+    The same holds for plant hire and a labour gang.
+
+    Widening it here is safe in a way that widening the forecast is not: this
+    decides whether to complain about a purchase, not what to go and order.
+    """
     estimate = current_estimate(project)
     if not estimate:
         return None
     works = set(
         frappe.get_all("Cost Estimation Item", filters={"parent": estimate}, pluck="item_code")
     )
-    return works, take_off_by_line(project)
+    return works, take_off_by_line(project, types=None)
 
 
 def set_project_warehouse(doc, method=None):
@@ -212,6 +250,14 @@ def set_project_warehouse(doc, method=None):
     stores = {}
     for row in doc.get("items") or []:
         if row.get("warehouse"):
+            continue
+        # A service item is never received into a store, so a warehouse on its
+        # line answers a question nobody asked. Harmless on a request; on a
+        # receipt it is a field ERPNext then has to reconcile against stock
+        # that does not exist.
+        if row.get("item_code") and not frappe.db.get_value(
+            "Item", row.get("item_code"), "is_stock_item"
+        ):
             continue
         project = row.get("project") or doc.get("project")
         if not project:

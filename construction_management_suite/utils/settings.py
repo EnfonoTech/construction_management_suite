@@ -42,6 +42,30 @@ def company_scoped_rates():
     return bool(cms_setting("scope_rate_analysis_by_company", 1))
 
 
+def service_materials_allowed():
+    """May a material be a service Item on this site?
+
+    Off by default, and the module's model holds: work is a service Item, a
+    material is a stock Item, and a store issues the second to build the first.
+
+    On for a contractor who buys material against the job and expenses it at
+    the purchase invoice without ever holding stock. Then a material is a
+    service Item too, ERPNext stops demanding a warehouse on every order line,
+    and nothing is valued — which is the point, because there is nothing to
+    value.
+
+    It relaxes a requirement rather than reversing it: both kinds may sit in
+    the same item master. A site that stocks cement and expenses paint is a
+    normal state, not a mistake, so nothing here forces one or the other.
+
+    What no setting can change is that stock cannot be issued where none is
+    held. A Material Consumption Entry posts a Stock Entry, and a service Item
+    cannot be in one — for those materials the cost is already in the books,
+    booked by the purchase invoice.
+    """
+    return bool(cms_setting("allow_service_materials", 0))
+
+
 def enforce(action, message, title=None):
     """Apply one of the three levels. Returns True when it blocked."""
     if action == "Stop":

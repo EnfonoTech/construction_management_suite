@@ -31,7 +31,9 @@ class MaterialForecast(Document):
         set_auto_title(self, "forecast_title", [_("Forecast"), project_label(self.project), month_of(self.forecast_date) if self.get("forecast_date") else None])
         validate_project_company(self)
         require_estimate(self.project, _("material can be forecast for it"))
-        validate_item_kinds(self.items)
+        # A forecast buys; it issues nothing. Plant, labour and a subcontract
+        # priced inside an analysis are all legitimately on it.
+        validate_item_kinds(self.items, issuing=False)
         validate_uom_convertible(self.items)
         self.recalculate()
         self.set_default_warehouse()
@@ -102,7 +104,12 @@ class MaterialForecast(Document):
         rows = {(i.item_code, i.work_item): i for i in self.items if i.item_code}
         added = updated = skipped = 0
         for entry in sorted(
-            take_off_by_line(self.project).values(),
+            # Every kind the estimate prices, not only material. ERPNext is
+            # perfectly happy to request and order a non-stock item — that is
+            # how plant hire, a labour gang and a subcontract priced inside an
+            # analysis get bought. Only a stock movement needs stock, and the
+            # forecast makes none: it ends in a Material Request.
+            take_off_by_line(self.project, types=None).values(),
             key=lambda e: (str(e["work_item"] or ""), e["item_code"]),
         ):
             key = (entry["item_code"], entry["work_item"])

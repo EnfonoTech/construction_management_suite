@@ -50,6 +50,8 @@ import re
 import frappe
 from frappe.utils import flt
 
+from construction_management_suite.utils.settings import service_materials_allowed
+
 WORKBOOK = "Misk Mawallah.xlsx"
 CLASSIFICATION = "Misk Mawallah - classification.csv"
 SHEET = "Misk Format"
@@ -240,8 +242,6 @@ def _material_codes(sections):
     codes, taken = {}, {}
     for sec in sections.values():
         for row in sec["rows"]:
-            if row["type"] != "Material":
-                continue
             key = row["description"].strip().lower()
             if key in codes:
                 continue
@@ -264,7 +264,18 @@ def _material_codes(sections):
 GROUP_CANDIDATES = {
     "work": ("Services", "Service", "Sub Assemblies"),
     "material": ("Raw Material", "Raw Materials", "Consumable", "Products"),
+    # A group per resource kind, so every report and picker can be narrowed by
+    # what a thing IS. Nothing on a site is called these by default, so they
+    # are created the first time an import needs them.
+    "Labour": ("Labour", "Labor"),
+    "Equipment": ("Equipment", "Plant"),
+    "Subcontract": ("Subcontract", "Subcontractors"),
+    "Overhead": ("Overhead", "Overheads"),
 }
+
+# Only material follows the stock setting. Labour, plant, a subcontracted
+# package and an overhead are never stocked whatever a site does.
+ALWAYS_SERVICE = ("work", "Labour", "Equipment", "Subcontract", "Overhead")
 
 
 def _item_group(kind, dry=False):
@@ -315,7 +326,9 @@ def _ensure_item(code, name, kind, uom, company=None, dry=True, log=None):
         "description": name,
         "item_group": _item_group(kind, dry),
         "stock_uom": uom,
-        "is_stock_item": 0 if kind == "work" else 1,
+        # A site that does not hold stock buys material as a service item and
+        # expenses it at the invoice; there is no warehouse to receive it into.
+        "is_stock_item": 0 if (kind in ALWAYS_SERVICE or service_materials_allowed()) else 1,
         "is_purchase_item": 1,
         "is_sales_item": 1 if kind == "work" else 0,
         "include_item_in_manufacturing": 0,
@@ -345,8 +358,11 @@ def _analysis_for(sec, codes, company, currency, dry=True, log=None):
             "rate": row["rate"],
             "amount": row["amount"],
         }
-        if kind == "Material":
-            line["resource_item"] = codes[row["description"].strip().lower()]
+        # Every resource names an Item, not only the material ones. The
+        # take-off keys on it, so a labour or subcontract row without one is
+        # invisible to every per-work figure — the plan can price it and no
+        # report can ever show it against the work it belongs to.
+        line["resource_item"] = codes[row["description"].strip().lower()]
         if not row["qty"] and not row["rate"]:
             # A unit but no price: a material the QS knew was needed and had
             # not costed. Kept at zero so the gap is visible and the trade it
@@ -483,7 +499,10 @@ def run(sections=None, project=None, company=None, dry=1, submit=0, folder=None)
     # Said before anything is written. A site without the group this files
     # Items under used to fail on the first material, after the work Items had
     # already gone in.
-    for kind in ("work", "material"):
+    print("materials      :",
+          "service items — nothing is stocked" if service_materials_allowed()
+          else "stock items")
+    for kind in ("work", "material", "Labour", "Equipment", "Subcontract", "Overhead"):
         found = next((g for g in GROUP_CANDIDATES[kind] if frappe.db.exists("Item Group", g)), None)
         print(f"item group ({kind:8}): "
               + (found if found else f"{GROUP_CANDIDATES[kind][0]} — will be created"))
@@ -508,13 +527,12 @@ def run(sections=None, project=None, company=None, dry=1, submit=0, folder=None)
     seen = set()
     for sec in picked.values():
         for row in sec["rows"]:
-            if row["type"] != "Material":
-                continue
             item = codes[row["description"].strip().lower()]
             if item in seen:
                 continue
             seen.add(item)
-            _ensure_item(item, row["description"], "material", row["uom"], company, dry, log)
+            kind = "material" if (row["type"] or "Material") == "Material" else row["type"]
+            _ensure_item(item, row["description"], kind, row["uom"], company, dry, log)
 
     # ── analyses, then the estimate ────────────────────────────────────────
     lines, unpriced = [], []
@@ -556,8 +574,13 @@ def run(sections=None, project=None, company=None, dry=1, submit=0, folder=None)
     works = {_work_code(sec) for sec in picked.values()}
     print(f"\nwork items      : {len(works)}"
           f"   ({len(made & works)} new)")
-    print(f"material items  : {len(seen)} distinct, from "
-          f"{sum(1 for s in picked.values() for r in s['rows'] if r['type'] == 'Material')} rows")
+    kinds = {}
+    for sec in picked.values():
+        for row in sec["rows"]:
+            kinds[row["type"] or "Material"] = kinds.get(row["type"] or "Material", 0) + 1
+    print(f"resource items  : {len(seen)} distinct, from {sum(kinds.values())} rows")
+    for kind, n in sorted(kinds.items(), key=lambda kv: -kv[1]):
+        print(f"    {kind:12} {n:>4} rows -> group {_item_group(kind if kind != 'Material' else 'material', dry=True)!r}")
     shared = sum(1 for c, u in units.items()
                  if sum(1 for s in picked.values() for r in s["rows"]
                         if r["type"] == "Material"

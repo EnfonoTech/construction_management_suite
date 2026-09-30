@@ -71,19 +71,36 @@ def validate_work_item(item_code, row_idx=None):
     )
 
 
-def validate_material_item(item_code, row_idx=None):
+def validate_material_item(item_code, row_idx=None, issuing=True):
     """Flag material being asked for against a service Item.
 
-    A service item is never issued from a store, so a request, a transfer or a
-    consumption naming one can never be fulfilled — and it is invisible to
-    every stock figure the module reports.
+    `issuing` is what makes this true. A store document — a site request, a
+    transfer, a consumption — hands over something it holds, and a service item
+    can never be handed over. A **buying** document has no such problem:
+    ERPNext requests and orders a non-stock item perfectly well, which is how
+    plant hire, a labour gang and a subcontract priced inside a rate analysis
+    get bought at all.
+
+    So the forecast, which ends in a Material Request, passes `issuing=False`
+    and may carry every kind the estimate prices.
     """
-    from construction_management_suite.utils.settings import action_for, enforce
+    from construction_management_suite.utils.settings import (
+        action_for,
+        enforce,
+        service_materials_allowed,
+    )
 
     action = action_for("material_resource_action", "Stop")
     if action == "Ignore" or not item_code:
         return
     if not is_work_item(item_code):
+        return
+    # Nothing is being handed over, so nothing need be held.
+    if not issuing:
+        return
+    # A site that does not hold stock buys material as a service item and
+    # expenses it at the invoice. Then this is the normal state, not a defect.
+    if service_materials_allowed():
         return
     where = _("Row {0}: ").format(row_idx) if row_idx else ""
     enforce(
@@ -98,7 +115,7 @@ def validate_material_item(item_code, row_idx=None):
     )
 
 
-def validate_item_kinds(rows, material_field="item_code", work_field="work_item"):
+def validate_item_kinds(rows, material_field="item_code", work_field="work_item", issuing=True):
     """Every row names material as material, and work as work.
 
     Both come out of the same Item master and sit side by side on a material
@@ -113,7 +130,7 @@ def validate_item_kinds(rows, material_field="item_code", work_field="work_item"
         if work_field:
             validate_work_item(row.get(work_field), row.idx)
         if material_field:
-            validate_material_item(row.get(material_field), row.idx)
+            validate_material_item(row.get(material_field), row.idx, issuing=issuing)
 
 
 def validate_material_resources(rows):
@@ -126,11 +143,21 @@ def validate_material_resources(rows):
     because `validate_locked_content` refuses any resource edit once the
     analysis is behind a submitted document.
     """
-    from construction_management_suite.utils.settings import action_for, enforce
+    from construction_management_suite.utils.settings import (
+        action_for,
+        enforce,
+        service_materials_allowed,
+    )
 
     action = action_for("material_resource_action", "Stop")
     if action == "Ignore":
         return
+
+    # Naming no Item at all is still a defect wherever stock is held or not: a
+    # row without one is skipped by the take-off, so the analysis looks priced
+    # and orders nothing. Being a service item is only a defect where the site
+    # expects to issue it from a store.
+    service_ok = service_materials_allowed()
 
     unnamed, not_stock = [], []
     for row in rows:
@@ -139,7 +166,7 @@ def validate_material_resources(rows):
         item = row.get("resource_item")
         if not item:
             unnamed.append(row)
-        elif is_work_item(item):
+        elif is_work_item(item) and not service_ok:
             not_stock.append(row)
 
     if not unnamed and not not_stock:

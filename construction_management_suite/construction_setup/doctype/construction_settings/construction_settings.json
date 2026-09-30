@@ -42,6 +42,7 @@
   "column_break_site",
   "consumption_tolerance_percent",
   "model_section",
+  "allow_service_materials",
   "work_item_type_action",
   "material_resource_action",
   "model_col",
@@ -275,6 +276,13 @@
    "fieldname": "model_section",
    "fieldtype": "Section Break",
    "label": "Work Items and Resources"
+  },
+  {
+   "fieldname": "allow_service_materials",
+   "fieldtype": "Check",
+   "label": "Materials May Be Service Items",
+   "default": "0",
+   "description": "For a job that buys material and expenses it without holding stock. Off: material must be a stock item."
   },
   {
    "fieldname": "work_item_type_action",

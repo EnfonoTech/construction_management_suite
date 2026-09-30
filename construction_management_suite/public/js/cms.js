@@ -380,6 +380,21 @@ CMS.APP_MODULES = [
     "Construction Setup",
 ];
 
+/**
+ * May a material be a service item on this site?
+ *
+ * Read once per session. Where it is on, narrowing a material picker to stock
+ * items offers an empty list, because there are none.
+ */
+CMS.loadServiceMaterials = function () {
+    if (CMS._serviceMaterials !== undefined) return;
+    CMS._serviceMaterials = false;
+    frappe.call({
+        method: "construction_management_suite.api.boq.materials_may_be_service_items",
+        callback: (r) => { CMS._serviceMaterials = Boolean(r.message); },
+    });
+};
+
 CMS.itemHasCompany = function () {
     if (!CMS._item_company) {
         // with_doctype resolves immediately once Item's meta is in locals.
@@ -472,7 +487,7 @@ CMS.itemQuery = function (doctype, fieldname, frm) {
                     },
                 };
             }
-            filters.push(["is_stock_item", "=", 1]);
+            if (!CMS._serviceMaterials) filters.push(["is_stock_item", "=", 1]);
         }
         return { filters };
     };
@@ -489,6 +504,7 @@ CMS.scopeItemPickers = function (frm) {
     if (!frm || !frm.meta || !CMS.APP_MODULES.includes(frm.meta.module)) return;
     const fields = frm.meta.fields || [];
 
+    CMS.loadServiceMaterials();
     CMS.itemHasCompany().then((scoped) => {
         CMS._itemScoped = scoped;
         fields.forEach((df) => {

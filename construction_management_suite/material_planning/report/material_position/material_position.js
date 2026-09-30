@@ -15,6 +15,13 @@ frappe.query_reports["Material Position"] = {
             }),
         },
         { fieldname: "item_group", label: __("Item Group"), fieldtype: "Link", options: "Item Group" },
+        {
+            // Blank keeps what this report has always shown — material only,
+            // which is what a store issues. The rest are real costs against a
+            // line of work that nobody buys into a warehouse.
+            fieldname: "resource_type", label: __("Resource Type"), fieldtype: "Select",
+            options: ["", "All", "Material", "Labour", "Equipment", "Subcontract", "Overhead"].join("\n"),
+        },
         { fieldname: "by_work", label: __("Split by work"), fieldtype: "Check" },
         { fieldname: "only_over", label: __("Over-consumed only"), fieldtype: "Check" },
     ],

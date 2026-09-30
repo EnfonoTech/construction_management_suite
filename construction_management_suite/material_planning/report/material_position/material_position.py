@@ -26,6 +26,13 @@ def execute(filters=None):
 		frappe.throw(_("Choose a project"))
 
 	rows = build_rows(filters)
+	# Rows are the union of the plan and everything actually bought or used, so
+	# narrowing to one type has to be applied after they are built — otherwise
+	# every purchased material still appears while asking for Labour.
+	chosen = filters.get("resource_type")
+	if chosen and chosen != "All":
+		rows = [r for r in rows if r.get("resource_type") == chosen]
+
 	if filters.get("only_over"):
 		rows = [r for r in rows if flt(r["consumed"]) > flt(r["required"]) + 0.0001]
 	return get_columns(), rows, None, get_chart(rows), get_summary(rows)
@@ -45,6 +52,56 @@ def _work_label(work, detail):
 	return labels[0] if labels else work
 
 
+def _stocked_only():
+	"""The join that keeps a purchase of work out of a material report.
+
+	Empty where a site does not stock material: every row would be filtered out
+	and the report would come back blank. `_work_codes` takes over the job it
+	was doing.
+	"""
+	from construction_management_suite.utils.settings import service_materials_allowed
+
+	return "" if service_materials_allowed() else "AND it.is_stock_item = 1"
+
+
+def _kinds(filters):
+	"""The resource types this run reports on.
+
+	A named type narrows to it. `All` widens to every type the estimate prices.
+	Blank keeps the historical answer — material only — so an existing saved
+	view, a scheduled run or a link from elsewhere returns what it always did.
+	"""
+	from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
+		STOCK_TYPES,
+	)
+
+	chosen = filters.get("resource_type")
+	if not chosen:
+		return STOCK_TYPES
+	return None if chosen == "All" else (chosen,)
+
+
+def _work_codes(project):
+	"""The Items this project prices as work, which are not its materials.
+
+	Only needed where material is a service item too. Kind no longer separates
+	the two, so a subcontract order for a line of work turned up in this report
+	as a material with nothing required and everything unplanned. The estimate
+	knows which Items are work; nothing else has to.
+	"""
+	from construction_management_suite.utils.settings import service_materials_allowed
+	from construction_management_suite.utils.validations import current_estimate
+
+	if not service_materials_allowed():
+		return set()
+	estimate = current_estimate(project)
+	if not estimate:
+		return set()
+	return set(
+		frappe.get_all("Cost Estimation Item", filters={"parent": estimate}, pluck="item_code")
+	)
+
+
 def build_rows(filters):
 	from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
 		take_off_detail,
@@ -53,6 +110,13 @@ def build_rows(filters):
 
 	project = filters.project
 	by_work = bool(filters.get("by_work"))
+	stocked = _stocked_only()
+	# Material alone by default, which is what a store issues and what the
+	# forecast orders. Everything on request: labour, plant, subcontract and
+	# overhead are real costs against a line of work, and a job wants them
+	# tracked even though nobody buys them into a warehouse.
+	kinds = _kinds(filters)
+	work_codes = _work_codes(project)
 
 	if by_work:
 		from construction_management_suite.material_planning.doctype.material_consumption_entry.material_consumption_entry import (
@@ -66,12 +130,14 @@ def build_rows(filters):
 			(e["item_code"], e["work_item"]): {
 				"item_code": e["item_code"], "uom": e["uom"], "boq_qty": e["qty"],
 				"estimated_rate": e["estimated_rate"],
+				"resource_type": e.get("resource_type"),
 				"work_items": [numbers.get(e["work_item"]) or e["work_item"]],
 			}
-			for e in take_off_by_line(project, filters.get("boq")).values()
+			for e in take_off_by_line(project, filters.get("boq"), types=kinds).values()
 		}
 	else:
-		take_off = {d["item_code"]: d for d in take_off_detail(project, boq=filters.get("boq"))}
+		take_off = {d["item_code"]: d
+		            for d in take_off_detail(project, boq=filters.get("boq"), types=kinds)}
 	# A substitute is counted under the material it stands in for, so buying the
 	# other brand of paint nets off the planned one rather than sitting beside it
 	# as unplanned with the plan still showing everything outstanding. Built from
@@ -92,19 +158,19 @@ def build_rows(filters):
 		SELECT i.item_code AS code, i.work_item AS work, SUM(i.net_qty_required) AS qty
 		FROM `tabMaterial Forecast Item` i JOIN `tabMaterial Forecast` f ON f.name = i.parent
 		WHERE f.project = %(p)s AND f.docstatus = 1
-		GROUP BY i.item_code, i.work_item""", project, by_work, stand_in)
+		GROUP BY i.item_code, i.work_item""".format(stocked=stocked), project, by_work, stand_in)
 	requested = _sum("""
 		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty
 		FROM `tabMaterial Request Item` i JOIN `tabMaterial Request` m ON m.name = i.parent
-		JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
+		JOIN `tabItem` it ON it.name = i.item_code {stocked}
 		WHERE i.project = %(p)s AND m.docstatus = 1
-		GROUP BY i.item_code, i.cms_work_item""", project, by_work, stand_in)
+		GROUP BY i.item_code, i.cms_work_item""".format(stocked=stocked), project, by_work, stand_in)
 	ordered, ordered_value = _sum_value("""
 		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Order Item` i JOIN `tabPurchase Order` o ON o.name = i.parent
-		JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
+		JOIN `tabItem` it ON it.name = i.item_code {stocked}
 		WHERE i.project = %(p)s AND o.docstatus = 1
-		GROUP BY i.item_code, i.cms_work_item""", project, by_work, stand_in)
+		GROUP BY i.item_code, i.cms_work_item""".format(stocked=stocked), project, by_work, stand_in)
 	# Stock comes in two ways: a Purchase Receipt, or a Purchase Invoice that
 	# updates stock — some purchases never get a receipt. ERPNext will not let
 	# an invoice update stock when any line came from a receipt, so the two
@@ -113,22 +179,22 @@ def build_rows(filters):
 		SELECT code, work, SUM(qty) AS qty, SUM(value) AS value FROM (
 			SELECT i.item_code AS code, i.cms_work_item AS work, i.qty AS qty, i.base_amount AS value
 			FROM `tabPurchase Receipt Item` i JOIN `tabPurchase Receipt` r ON r.name = i.parent
-			JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
+			JOIN `tabItem` it ON it.name = i.item_code {stocked}
 			WHERE i.project = %(p)s AND r.docstatus = 1
 			UNION ALL
 			SELECT i.item_code, i.cms_work_item, i.qty, i.base_amount
 			FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
-			JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
+			JOIN `tabItem` it ON it.name = i.item_code {stocked}
 			WHERE i.project = %(p)s AND v.docstatus = 1 AND v.update_stock = 1
-		) x GROUP BY code, work""", project, by_work, stand_in)
+		) x GROUP BY code, work""".format(stocked=stocked), project, by_work, stand_in)
 
 	# What the suppliers have actually billed, receipt or not.
 	invoiced, invoiced_value = _sum_value("""
 		SELECT i.item_code AS code, i.cms_work_item AS work, SUM(i.qty) AS qty, SUM(i.base_amount) AS value
 		FROM `tabPurchase Invoice Item` i JOIN `tabPurchase Invoice` v ON v.name = i.parent
-		JOIN `tabItem` it ON it.name = i.item_code AND it.is_stock_item = 1
+		JOIN `tabItem` it ON it.name = i.item_code {stocked}
 		WHERE i.project = %(p)s AND v.docstatus = 1
-		GROUP BY i.item_code, i.cms_work_item""", project, by_work, stand_in)
+		GROUP BY i.item_code, i.cms_work_item""".format(stocked=stocked), project, by_work, stand_in)
 	# Material also arrives by transfer, and the Received column read purchase
 	# receipts alone — so a store moved onto site showed as never delivered.
 	# Older entries carry the project on the header only, newer ones on the row.
@@ -142,14 +208,14 @@ def build_rows(filters):
 		  AND IFNULL(i.t_warehouse, '') != ''
 		  AND (i.project = %(p)s OR (IFNULL(i.project, '') = '' AND e.project = %(p)s))
 		  AND IFNULL(t.from_project, '') != %(p)s
-		GROUP BY i.item_code, i.cms_work_item""", project, by_work, stand_in)
+		GROUP BY i.item_code, i.cms_work_item""".format(stocked=stocked), project, by_work, stand_in)
 
 	consumed, consumed_value = _sum_value("""
 		SELECT i.item_code AS code, i.work_item AS work, SUM(i.qty) AS qty, SUM(i.amount) AS value
 		FROM `tabMaterial Consumption Item` i
 		JOIN `tabMaterial Consumption Entry` e ON e.name = i.parent
 		WHERE e.project = %(p)s AND e.docstatus = 1
-		GROUP BY i.item_code, i.work_item""", project, by_work, stand_in)
+		GROUP BY i.item_code, i.work_item""".format(stocked=stocked), project, by_work, stand_in)
 
 	codes = (set(take_off) | set(forecast) | set(requested) | set(ordered)
 	         | set(received) | set(transferred) | set(invoiced) | set(consumed))
@@ -159,6 +225,9 @@ def build_rows(filters):
 	for key in sorted(codes, key=lambda k: (k[0], str(k[1])) if by_work else (k, "")):
 		code = key[0] if by_work else key
 		work = key[1] if by_work else None
+		# A line of work bought on a subcontract order is not this job's material.
+		if code in work_codes:
+			continue
 		detail = take_off.get(key) or {}
 		item_group = frappe.db.get_value("Item", code, "item_group")
 		if group_filter and item_group != group_filter:
@@ -179,6 +248,7 @@ def build_rows(filters):
 			"item_code": code,
 			"work": _work_label(work, detail) if by_work else None,
 			"item_group": item_group,
+			"resource_type": detail.get("resource_type"),
 			"uom": detail.get("uom") or frappe.db.get_value("Item", code, "stock_uom"),
 			"boq_items": ", ".join(str(x) for x in (detail.get("work_items") or []) if x),
 			"required": required,
@@ -262,6 +332,7 @@ def get_columns():
 		col("Item Group", "item_group", "Link", 120, options="Item Group"),
 		col("UOM", "uom", "Link", 90, options="UOM"),
 		col("For BOQ Items", "boq_items", "Data", 120),
+		col("Type", "resource_type", "Data", 90),
 		col("Required", "required", precision=2, width=110),
 		col("BOQ Qty", "boq_qty", precision=2, width=100),
 		col("Forecast", "forecast", precision=2),
