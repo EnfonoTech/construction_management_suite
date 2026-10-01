@@ -4,6 +4,7 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
+  "work_item",
   "item_code",
   "work_no",
   "description",
@@ -23,13 +24,17 @@
    "label": "Work Item Description",
    "reqd": 1,
    "in_list_view": 1,
-   "columns": 3
+   "columns": 3,
+   "fetch_from": "item_code.description",
+   "fetch_if_empty": 1
   },
   {
    "fieldname": "uom",
    "fieldtype": "Link",
    "label": "UOM",
-   "options": "UOM"
+   "options": "UOM",
+   "fetch_from": "item_code.stock_uom",
+   "fetch_if_empty": 1
   },
   {
    "fieldname": "column_break_1",
@@ -78,6 +83,15 @@
    "in_list_view": 1,
    "columns": 2,
    "allow_on_submit": 1
+  },
+  {
+   "fieldname": "work_item",
+   "fieldtype": "Link",
+   "label": "For Work",
+   "options": "Item",
+   "in_list_view": 1,
+   "columns": 2,
+   "description": "The line of work this belongs to"
   },
   {
    "fieldname": "item_code",

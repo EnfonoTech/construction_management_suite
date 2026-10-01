@@ -3,7 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
-from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.accounting import get_cost_center, get_warehouse
 from construction_management_suite.utils.settings import action_for, cms_setting, enforce
 from construction_management_suite.utils.validations import (
     validate_one_row_per_work_item,
@@ -42,7 +42,11 @@ class SubcontractAgreement(Document):
         validate_project_company(self)
         validate_one_row_per_work_item(self.items)
         self.calculate_items()
+        self.fill_costed_rates()
+        self.check_stock_lines_have_a_store()
         self.check_against_estimate()
+        self.check_against_the_library()
+        self.check_against_budget()
         self.calculate_advance()
         self.fetch_payment_summary()
         self.calculate_document_taxes()
@@ -67,6 +71,89 @@ class SubcontractAgreement(Document):
             self.append("items", row)
             added += 1
         return added
+
+    def fill_costed_rates(self):
+        """What the estimate costed each line at, for rows picked by hand.
+
+        `Get Work from the Estimate` fills this; choosing an item from the
+        picker did not, so the "above the costed rate" check skipped every row
+        somebody added themselves — which is most of them once a subcontract
+        priced *inside* a line of work can be chosen at all.
+
+        A line of work is costed at its unit cost. A subcontract resource is
+        costed at its own rate on the analysis it sits in. Only ever filled
+        where it is blank: a rate somebody typed is theirs.
+        """
+        from construction_management_suite.utils.validations import current_estimate
+
+        blank = [row for row in self.items if row.item_code and not flt(row.boq_cost_rate)]
+        if not blank or not self.project:
+            return
+        estimate = current_estimate(self.project)
+        if not estimate:
+            return
+
+        costed = {
+            row.item_code: flt(row.unit_cost)
+            for row in frappe.get_all(
+                "Cost Estimation Item",
+                filters={"parent": estimate},
+                fields=["item_code", "unit_cost"],
+            )
+        }
+        for row in frappe.db.sql(
+            """
+            SELECT r.resource_item AS code, r.rate AS rate
+            FROM `tabRate Analysis Resource` r
+            JOIN `tabCost Estimation Item` i ON i.rate_analysis_ref = r.parent
+            WHERE i.parent = %s AND r.resource_type = 'Subcontract'
+              AND IFNULL(r.resource_item, '') != ''
+            """,
+            estimate,
+            as_dict=True,
+        ):
+            costed.setdefault(row.code, flt(row.rate))
+
+        for row in blank:
+            if costed.get(row.item_code):
+                row.boq_cost_rate = costed[row.item_code]
+
+    def check_stock_lines_have_a_store(self):
+        """A material let to a trade has to be delivered somewhere.
+
+        Subcontracting used to mean a whole line of work, which is a service —
+        no warehouse, no question. Now that a resource priced inside a line can
+        be let, a material can reach the order, and ERPNext refuses a stock line
+        with no warehouse: `Row #1: Warehouse is mandatory for stock Item`.
+
+        `Deliver To` on the agreement answers it, defaulting to the project's
+        own store and overridable per agreement — a trade may take delivery
+        somewhere other than the site the job usually works from. Asked here,
+        where somebody is looking at a form, rather than out of the purchase
+        order a submission happens to create.
+        """
+        if not self.warehouse:
+            self.warehouse = get_warehouse(self.project, self.company)
+
+        stock = [
+            item for item in self.items
+            if item.item_code
+            and frappe.db.get_value("Item", item.item_code, "is_stock_item")
+        ]
+        if not stock or self.warehouse:
+            return
+        frappe.throw(
+            "<br>".join(
+                _("Row {0}: {1}").format(item.idx, item.item_code) for item in stock[:10]
+            )
+            + _(
+                "<br><br>These are stock items, so the order has to say where they "
+                "are delivered. Fill in <b>Deliver To</b>, give {0} a Default "
+                "Warehouse, or let the work itself rather than the material inside "
+                "it."
+            ).format(self.project or _("the project")),
+            title=_("{0} line(s) need a store").format(len(stock)),
+        )
 
     def check_against_estimate(self):
         """Flag paying a trade more than the work was costed at.
@@ -103,6 +190,32 @@ class SubcontractAgreement(Document):
             ),
             title=_("{0} line(s) above the costed rate").format(len(over)),
         )
+
+    def check_against_the_library(self):
+        """The rate agreed, against what the rate library costed the item at.
+
+        Asked here, on save, because the purchase order that used to ask it is
+        only raised on submit — and a warning about a commitment already made
+        is not a warning, it is a note.
+        """
+        from construction_management_suite.project_costing.purchase_controls import (
+            warn_above_estimated_rate,
+        )
+
+        warn_above_estimated_rate(self, self.items)
+
+    def check_against_budget(self):
+        """Ask the budget question here, where it can still be answered.
+
+        It was asked by the purchase order this agreement raises, which happens
+        on submit — so the warning arrived after the commitment, and the only
+        way to act on it was to cancel.
+        """
+        from construction_management_suite.project_costing.purchase_controls import (
+            warn_if_over_budget,
+        )
+
+        warn_if_over_budget(self, self.project, flt(self.subcontract_value))
 
     def calculate_items(self):
         for row in self.items:
@@ -235,8 +348,9 @@ class SubcontractAgreement(Document):
         if self.payment_terms:
             po.payment_terms_template = self.payment_terms
         cost_center = get_cost_center(self.project, self.company)
+        store = self.warehouse or get_warehouse(self.project, self.company)
         for item in self.items:
-            po.append("items", {
+            line = {
                 "item_code": item.item_code,
                 "item_name": item.description,
                 "description": item.description,
@@ -246,7 +360,17 @@ class SubcontractAgreement(Document):
                 "project": self.project,
                 "cost_center": cost_center,
                 "schedule_date": po.schedule_date,
-            })
+                # The line of work this order is against. It rides from here to
+                # the receipt and the invoice on its own, because the field is
+                # named the same on all of them — but only if it starts here.
+                "cms_work_item": item.work_item or item.item_code,
+            }
+            # Letting a material to a trade — the plywood to a formwork
+            # specialist — puts a stock item on the order, and ERPNext will not
+            # order stock without saying where it lands. A service needs none.
+            if item.item_code and frappe.db.get_value("Item", item.item_code, "is_stock_item"):
+                line["warehouse"] = store
+            po.append("items", line)
         # The tax the agreement was signed with is the tax the order is placed
         # at. The certificate path has always carried it; this one imported the
         # helper and never called it, so an agreed VAT reached the supplier's

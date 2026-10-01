@@ -38,12 +38,12 @@ def get_warehouse(project=None, company=None):
             not company or frappe.db.get_value("Warehouse", warehouse, "company") == company
         ):
             return warehouse
-    if company:
-        # Stock Settings is the only site-wide default ERPNext keeps, and it is
-        # not per company — so it is used only when it belongs to this one.
-        default = frappe.db.get_single_value("Stock Settings", "default_warehouse")
-        if default and frappe.db.get_value("Warehouse", default, "company") == company:
-            return default
+    # No site-wide fallback, deliberately. Stock Settings keeps a default and
+    # it was being used here, which meant a job with no store of its own had
+    # its material quietly booked into whichever warehouse that setting names —
+    # usually the wrong one, and never noticed, because a filled-in field looks
+    # like an answered question. A job either names its store or somebody
+    # chooses one on the document.
     return None
 
 

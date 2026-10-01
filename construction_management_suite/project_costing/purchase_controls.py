@@ -268,6 +268,46 @@ def set_project_warehouse(doc, method=None):
             row.warehouse = stores[project]
 
 
+def warn_if_over_budget(doc, project, amount):
+    """Say when a figure would take a project past its budget.
+
+    Split out so a document can ask before it commits anything. An agreement
+    used to find out at submit, from the purchase order it had just raised —
+    by which point the thing being warned about had already happened and the
+    only way back was to cancel.
+    """
+    action = action_for("po_over_budget_action")
+    if action == "Ignore" or not project or not flt(amount):
+        return
+    budget = frappe.db.get_value(
+        "Project Budget",
+        {"project": project, "docstatus": ("<", 2)},
+        ["name", "total_budget", "total_actual_cost", "total_committed_cost"],
+        as_dict=True,
+    )
+    if not budget or not flt(budget.total_budget):
+        return
+    committed = flt(budget.total_actual_cost) + flt(budget.total_committed_cost)
+    after = committed + flt(amount)
+    if after <= flt(budget.total_budget):
+        return
+    enforce(
+        action,
+        _(
+            "{0} is budgeted at {1}. {2} is already spent or committed, and this "
+            "adds {3} — taking it to {4}, over by {5}."
+        ).format(
+            project,
+            _fmt(budget.total_budget, doc),
+            _fmt(committed, doc),
+            _fmt(amount, doc),
+            _fmt(after, doc),
+            _fmt(after - flt(budget.total_budget), doc),
+        ),
+        title=_("Over the project budget"),
+    )
+
+
 def check_against_project_budget(doc):
     """Flag an order that would take a project past what was budgeted for it.
 
@@ -318,14 +358,35 @@ def check_rates_against_estimate(doc):
     wrong, but it is the moment a job starts losing money, and it is invisible
     otherwise.
     """
+    # The agreement raises this order on submit and has already asked the same
+    # question at save, where it could still be answered. Asking again here
+    # would warn about a commitment that has just been made.
+    if doc.get("cms_subcontract_ref"):
+        return
+    warn_above_estimated_rate(
+        doc,
+        [row for row in doc.get("items") or [] if row.get("project")],
+    )
+
+
+def warn_above_estimated_rate(doc, rows):
+    """Flag paying more for something than the rate library costed it at.
+
+    Shared, so a subcontract agreement asks it while it is being written rather
+    than discovering it from the purchase order it raises on submit. Putting a
+    material item on a subcontract line and agreeing a rate that has nothing to
+    do with what that material was costed at is worth knowing either way — it
+    usually means the line should have named the work, or a resource inside it,
+    rather than the material.
+    """
     action = action_for("purchase_rate_action")
     if action == "Ignore":
         return
     tolerance = flt(cms_setting("purchase_rate_tolerance_percent", 0))
 
     over = []
-    for row in doc.get("items") or []:
-        if not row.get("project") or not row.get("item_code"):
+    for row in rows:
+        if not row.get("item_code"):
             continue
         estimated = _estimated_rate(row.item_code)
         if not estimated:

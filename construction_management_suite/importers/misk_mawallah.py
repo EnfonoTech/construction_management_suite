@@ -313,11 +313,18 @@ def _ensure_item(code, name, kind, uom, company=None, dry=True, log=None):
     of the trade UOMs has a conversion factor — so an Item held in anything but
     its own sheet unit makes the analysis unapprovable.
     """
-    exists = frappe.db.exists("Item", code)
+    # `frappe.db.exists` compares case-insensitively, so asking for
+    # "Excavation Contract" finds "Excavation contract" and reports it there.
+    # Return the name it is ACTUALLY stored under: everything downstream — the
+    # take-off key, the plan check, a dict lookup — compares exactly, and a
+    # reference in the other case matches nothing.
+    exists = frappe.db.get_value("Item", code, "name")
     if log is not None:
-        log.append(("item", code, name[:46], uom, "exists" if exists else "new"))
-    if dry or exists:
-        return code
+        log.append(("item", exists or code, name[:46], uom, "exists" if exists else "new"))
+    if dry:
+        return exists or code
+    if exists:
+        return exists
 
     doc = frappe.get_doc({
         "doctype": "Item",

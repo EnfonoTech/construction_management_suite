@@ -39,7 +39,11 @@ class SubcontractorWorkOrder(Document):
 
         numbers = work_no_map(self.project) if self.project else {}
         for row in self.items:
-            row.work_no = numbers.get(row.item_code)
+            # The bill number belongs to the line of WORK. Read off the item it
+            # was, which is now sometimes the resource being let rather than
+            # the work it sits inside — and a subcontracted excavation is not
+            # a line on anybody's bill.
+            row.work_no = numbers.get(row.work_item or row.item_code)
 
     @frappe.whitelist()
     def get_scope_from_agreement(self):

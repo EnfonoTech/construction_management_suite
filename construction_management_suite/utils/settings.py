@@ -66,8 +66,38 @@ def service_materials_allowed():
     return bool(cms_setting("allow_service_materials", 0))
 
 
+def soft_checks():
+    """A draft is a work in progress, so nothing refuses it yet.
+
+    Every check the module makes is more use while a document is being written
+    than at the moment it is submitted — a warning about a commitment already
+    made is a note, not a warning. So they run on save too. But a Stop-level
+    rule applied to a half-finished draft makes it unsaveable, and a document
+    you cannot save is worse than a late warning.
+
+    Inside this, Stop reads as Warn. The full severity is applied again at
+    submit, where refusing is the right answer.
+    """
+    return bool(getattr(frappe.local, "_cms_soft_checks", False))
+
+
+class soft:
+    """`with soft():` — run checks at warning level, whatever the setting says."""
+
+    def __enter__(self):
+        self.was = getattr(frappe.local, "_cms_soft_checks", False)
+        frappe.local._cms_soft_checks = True
+        return self
+
+    def __exit__(self, *exc):
+        frappe.local._cms_soft_checks = self.was
+        return False
+
+
 def enforce(action, message, title=None):
     """Apply one of the three levels. Returns True when it blocked."""
+    if action == "Stop" and soft_checks():
+        action = "Warn"
     if action == "Stop":
         frappe.throw(message, title=title)
     if action == "Warn":

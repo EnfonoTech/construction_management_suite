@@ -24,6 +24,7 @@ class CostEstimation(Document):
         self.set_missing_defaults()
         self.pull_costs_from_rate_analysis()
         self.calculate_totals()
+        self.preview_submit_checks()
 
     def validate_model(self):
         """Every line must be a line of work, and something must be able to cost it."""
@@ -39,6 +40,15 @@ class CostEstimation(Document):
             validate_work_item(row.item_code, row.idx)
         validate_rate_analysis_company(self)
         validate_rate_analysis_present(self.items, company=self.company)
+
+    def preview_submit_checks(self):
+        """What `before_submit` would say, said while the estimate is a draft."""
+        from construction_management_suite.utils.settings import soft
+
+        if self.docstatus != 0:
+            return
+        with soft():
+            self.validate_model()
 
     def before_submit(self):
         self.validate_model()

@@ -40,6 +40,25 @@ class BOQ(Document):
         self.validate_items()
         self.warn_priced_below_cost()
         self.capture_rate_build_ups()
+        self.preview_submit_checks()
+
+    def preview_submit_checks(self):
+        """Say on save what would be said at submit.
+
+        These four used to fire only at submit, by which point the bill had
+        been written and a refusal meant going back through it. They are shown
+        while it is being written instead; a Stop still refuses, but only when
+        the bill is actually submitted.
+        """
+        from construction_management_suite.utils.settings import soft
+
+        if self.docstatus != 0:
+            return
+        with soft():
+            self.validate_work_items()
+            self.validate_analysis_company()
+            self.validate_analyses_approved()
+            self.validate_minimum_margin()
 
     def before_submit(self):
         self.validate_work_items()

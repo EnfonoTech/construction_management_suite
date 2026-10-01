@@ -44,6 +44,7 @@ class InterimPaymentCertificate(Document):
         self.calculate_taxes()
         self.validate_deductions()
         self.validate_over_certification()
+        self.preview_submit_checks()
 
     def set_contract_value(self):
         """Fall back to the BOQ's total when nobody has stated a contract value.
@@ -225,6 +226,19 @@ class InterimPaymentCertificate(Document):
             {"p": self.project, "n": self.name or ""})[0][0]) + flt(self.advance_recovery_amount)
         check_advance_recovery(self, advance, recovered,
                                self.cumulative_amount_to_date, self.contract_value, _("client"))
+
+    def preview_submit_checks(self):
+        """The advance question, asked while the certificate is still a draft.
+
+        It decides how much to recover on this certificate, so being told at
+        submit is being told too late — the figure is already typed.
+        """
+        from construction_management_suite.utils.settings import soft
+
+        if self.docstatus != 0:
+            return
+        with soft():
+            self.check_advance()
 
     def before_submit(self):
         self.check_advance()

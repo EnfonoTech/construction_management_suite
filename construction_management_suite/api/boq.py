@@ -627,6 +627,59 @@ def get_completed_work(agreement, certificate=None, work_order=None):
 
 
 @frappe.whitelist()
+def uncertified_agreement_lines(agreement, certificate=None):
+    """The agreed scope, less what has already been certified against it.
+
+    A work order is an instruction, and plenty of subcontracts never get one —
+    the scope is agreed, the trade does it, and a certificate is raised against
+    the agreement itself. Until now the certificate could only pull from work
+    orders, so those jobs had to have a work order invented for the sake of the
+    button, or every line typed by hand.
+
+    Netted against **submitted** certificates only: a draft is a proposal, and
+    counting it would stop the very certificate being written from claiming its
+    own quantity. Lines certified in full are left out rather than offered at
+    nought.
+    """
+    doc = frappe.get_doc("Subcontract Agreement", agreement)
+    if doc.docstatus != 1:
+        frappe.throw(_("Only a signed agreement can be certified against"))
+
+    claimed = {
+        r.code: flt(r.qty)
+        for r in frappe.db.sql(
+            """
+            SELECT i.item_code AS code, SUM(i.qty_completed) AS qty
+            FROM `tabSubcontractor Payment Item` i
+            JOIN `tabSubcontractor Payment Certificate` c ON c.name = i.parent
+            WHERE c.subcontract_agreement = %(a)s AND c.docstatus = 1
+              AND c.name != %(c)s AND IFNULL(i.item_code, '') != ''
+            GROUP BY i.item_code
+            """,
+            {"a": agreement, "c": certificate or ""},
+            as_dict=True,
+        )
+    }
+
+    lines = []
+    for row in doc.items:
+        left = flt(row.qty) - flt(claimed.get(row.item_code))
+        if left <= 0.0001:
+            continue
+        lines.append({
+            "work_item": row.get("work_item") or row.item_code,
+            "item_code": row.item_code,
+            "work_no": row.work_no,
+            "description": row.description or row.item_code,
+            "uom": row.uom,
+            "qty_completed": left,
+            "contract_rate": flt(row.rate),
+            "amount_claimed": left * flt(row.rate),
+        })
+    return lines
+
+
+@frappe.whitelist()
 def make_payment_certificate(source_name, target_doc=None):
     """Open a certificate carrying what a work order has actually built.
 
@@ -732,8 +785,13 @@ def get_work_lines_for_subcontract(project):
     numbers = work_no_map(project)
     return [
         {
+            # Getting the whole line from the estimate lets that line to the
+            # trade, so the work and the thing being let are the same Item.
+            # A subcontract priced inside a line is added by hand, and then
+            # they differ.
+            "work_item": row.item_code,
             "item_code": row.item_code,
-            "work_no": numbers.get(row.item_code),
+            "work_no": numbers.get(row.get("work_item") or row.item_code),
             "boq_cost_rate": flt(row.unit_cost),
             "description": row.description or row.item_code,
             "uom": row.uom,
@@ -1509,7 +1567,8 @@ def work_items_for_project(doctype, txt, searchfield, start, page_len, filters):
     """
     from construction_management_suite.utils.validations import current_estimate
 
-    project = (filters or {}).get("project")
+    filters = filters or {}
+    project, work = filters.get("project"), filters.get("work_item")
     estimate = current_estimate(project) if project else None
     like = "%%%s%%" % (txt or "")
 
@@ -1533,6 +1592,89 @@ def work_items_for_project(doctype, txt, searchfield, start, page_len, filters):
              AND (i.item_code LIKE %(txt)s OR i.description LIKE %(txt)s)
            ORDER BY i.idx LIMIT %(start)s, %(page_len)s""",
         {"estimate": estimate, "txt": like, "start": start, "page_len": page_len},
+    )
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def subcontractable_for_project(doctype, txt, searchfield, start, page_len, filters):
+    """What can be let to a trade — narrowed to one line of work once it is named.
+
+    A subcontract line says two things, the way a material line does: which
+    work it belongs to, and what is actually being let. Name the work and this
+    offers that line of work itself — the whole thing to one trade — and every
+    resource priced inside it.
+
+    **Every** resource, not only the ones the estimate typed as Subcontract.
+    What gets let is the contractor's decision at the time, not a classification
+    made months earlier while costing: the blockwork labour goes to a gang, the
+    shuttering to a formwork specialist who brings his own plywood, the tiling
+    to a trade who supplies and fixes. Filtering to `resource_type =
+    'Subcontract'` offered an empty list on most lines of work and answered a
+    question nobody asked. The type is shown on each row instead, so the
+    difference is visible without being enforced.
+
+    With no work named it offers everything the project could let, so a line
+    can still be typed in either order.
+
+    The picker offered the estimate's lines of work only, and that is half the
+    truth. A trade is engaged for a whole line — the tiling, the blockwork —
+    but just as often for something priced **within** one: an excavation
+    contract inside the structural works, an MEP package inside the fit-out.
+    Those are Subcontract resources on the rate analysis behind the line, not
+    lines themselves, so they could not be chosen and the agreement had to name
+    the whole work item instead — which then billed and reported as though the
+    entire line had been let.
+
+    Both, therefore, and labelled so the two are told apart on screen.
+    """
+    from construction_management_suite.utils.validations import current_estimate
+
+    filters = filters or {}
+    project, work = filters.get("project"), filters.get("work_item")
+    estimate = current_estimate(project) if project else None
+    like = "%%%s%%" % (txt or "")
+
+    if not estimate:
+        # Nothing priced to scope to; the only rule left is the one that always
+        # holds — work let to a trade is a service, not something a store issues.
+        return frappe.db.sql(
+            """SELECT name, item_name FROM `tabItem`
+               WHERE is_stock_item = 0 AND disabled = 0
+                 AND (name LIKE %(txt)s OR item_name LIKE %(txt)s)
+               ORDER BY name LIMIT %(start)s, %(page_len)s""",
+            {"txt": like, "start": start, "page_len": page_len},
+        )
+
+    return frappe.db.sql(
+        """
+        SELECT code, label FROM (
+            SELECT i.item_code AS code,
+                   CONCAT(IFNULL(i.description, i.item_code), ' — the whole line') AS label,
+                   i.idx AS ord, 0 AS grp
+            FROM `tabCost Estimation Item` i
+            WHERE i.parent = %(estimate)s AND IFNULL(i.item_code, '') != ''
+              AND (%(work)s = '' OR i.item_code = %(work)s)
+
+            UNION
+
+            SELECT r.resource_item AS code,
+                   CONCAT(IFNULL(r.description, r.resource_item), ' — ',
+                          LOWER(IFNULL(r.resource_type, 'resource')), ' within ',
+                          IFNULL(i.item_code, '')) AS label,
+                   r.idx AS ord, 1 AS grp
+            FROM `tabRate Analysis Resource` r
+            JOIN `tabCost Estimation Item` i ON i.rate_analysis_ref = r.parent
+            WHERE i.parent = %(estimate)s
+              AND IFNULL(r.resource_item, '') != ''
+              AND (%(work)s = '' OR i.item_code = %(work)s)
+        ) x
+        WHERE code LIKE %(txt)s OR label LIKE %(txt)s
+        ORDER BY grp, ord
+        LIMIT %(start)s, %(page_len)s
+        """,
+        {"estimate": estimate, "work": work or "", "txt": like,
+         "start": start, "page_len": page_len},
     )
 
 

@@ -3,7 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, formatdate, getdate, nowdate
 
-from construction_management_suite.utils.accounting import get_cost_center
+from construction_management_suite.utils.accounting import get_cost_center, get_warehouse
 from construction_management_suite.utils.billing import (
     add_line,
     billing_item,
@@ -39,11 +39,13 @@ class SubcontractorPaymentCertificate(Document):
         validate_project_company(self)
         validate_one_row_per_work_item(self.items)
         self.validate_period()
+        self.check_stock_lines_have_a_store()
         self.set_work_numbers()
         self.set_previous_certified()
         self.calculate_totals()
         self.validate_payable()
         self.calculate_document_taxes()
+        self.preview_submit_checks()
 
     def invoice_line_description(self):
         """The subcontractor and the certificate period, not an internal id."""
@@ -92,6 +94,53 @@ class SubcontractorPaymentCertificate(Document):
             added += 1
         return added
 
+    @frappe.whitelist()
+    def get_from_agreement(self):
+        """Claim the agreed scope directly, where no work order was raised."""
+        from construction_management_suite.api.boq import uncertified_agreement_lines
+
+        if not self.subcontract_agreement:
+            frappe.throw(_("Choose the agreement this certificate is against"))
+        existing = {i.item_code for i in self.items if i.item_code}
+        added = 0
+        for line in uncertified_agreement_lines(self.subcontract_agreement,
+                                                certificate=self.name):
+            if line["item_code"] in existing:
+                continue
+            self.append("items", line)
+            added += 1
+        return added
+
+    def check_stock_lines_have_a_store(self):
+        """A certified material has to be delivered somewhere.
+
+        Same question the agreement asks, asked again here because a
+        certificate can be raised straight off an agreement with no work order
+        in between, and because the store may differ from the one the order
+        went to.
+        """
+        if not self.warehouse:
+            self.warehouse = get_warehouse(self.project, self.company)
+
+        stock = [
+            row for row in self.items
+            if row.item_code
+            and frappe.db.get_value("Item", row.item_code, "is_stock_item")
+        ]
+        if not stock or self.warehouse:
+            return
+        frappe.throw(
+            "<br>".join(
+                _("Row {0}: {1}").format(row.idx, row.item_code) for row in stock[:10]
+            )
+            + _(
+                "<br><br>These are stock items, so the invoice has to say where they "
+                "were delivered. Fill in <b>Deliver To</b>, or give {0} a Default "
+                "Warehouse."
+            ).format(self.project or _("the project")),
+            title=_("{0} line(s) need a store").format(len(stock)),
+        )
+
     def validate_period(self):
         """A certificate covers a period, and a period runs forwards."""
         if not (self.period_from and self.period_to):
@@ -112,9 +161,14 @@ class SubcontractorPaymentCertificate(Document):
 
         numbers = work_no_map(self.project) if self.project else {}
         for row in self.items:
-            row.work_no = numbers.get(row.item_code)
+            # The bill number belongs to the line of WORK. Read off the item it
+            # was, which is now sometimes the resource being let rather than
+            # the work it sits inside — and a subcontracted excavation is not
+            # a line on anybody's bill.
+            row.work_no = numbers.get(row.work_item or row.item_code)
 
     def calculate_totals(self):
+        self.price_rows()
         self.gross_amount_claimed = sum(flt(i.amount_claimed) for i in self.items)
         # A certificate certifies what was claimed unless the engineer reduces
         # it. Left at zero it produced a nil payment and an invoice with no
@@ -128,6 +182,21 @@ class SubcontractorPaymentCertificate(Document):
             - flt(self.advance_recovery)
             - flt(self.other_deductions)
         )
+
+    def price_rows(self):
+        """A claimed amount is the quantity at the agreed rate.
+
+        Only the browser worked this out, and only when the amount itself was
+        edited — typing a quantity computed nothing, so a certificate could be
+        submitted claiming a quantity and an amount that had no relation to each
+        other. Recomputed here, where it cannot be skipped.
+
+        A row with no quantity is a lump sum — a mobilisation, a prelim — and
+        keeps the amount it was given. There is nothing to multiply.
+        """
+        for row in self.items:
+            if flt(row.qty_completed) and flt(row.contract_rate):
+                row.amount_claimed = flt(row.qty_completed) * flt(row.contract_rate)
 
     def validate_payable(self):
         """There has to be something to pay before an invoice is raised."""
@@ -164,6 +233,19 @@ class SubcontractorPaymentCertificate(Document):
         billed = flt(self.previous_amount_certified) + flt(self.certified_amount)
         check_advance_recovery(self, sca.advance_amount, recovered, billed,
                                sca.subcontract_value, self.subcontractor)
+
+    def preview_submit_checks(self):
+        """The advance question, asked while the certificate is still a draft.
+
+        It decides how much to recover on this certificate, so being told at
+        submit is being told too late — the figure is already typed.
+        """
+        from construction_management_suite.utils.settings import soft
+
+        if self.docstatus != 0:
+            return
+        with soft():
+            self.check_advance()
 
     def before_submit(self):
         self.check_advance()
@@ -254,6 +336,7 @@ class SubcontractorPaymentCertificate(Document):
         # from the payment: the invoice stands at its gross and the withheld
         # part remains outstanding against it until it is released, which is
         # then simply another payment against the same invoice.
+        store = self.warehouse or get_warehouse(self.project, self.company)
         order, po_rows = self.order_rows()
         claimed = flt(self.gross_amount_claimed)
         # An engineer who certifies less than was claimed is certifying every
@@ -271,7 +354,14 @@ class SubcontractorPaymentCertificate(Document):
                 "rate": flt(row.amount_claimed) * factor / qty,
                 "project": self.project,
                 "cost_center": cost_center,
+                # Which line of work this spend belongs to. Without it the
+                # invoice landed on the project and nowhere in particular, so
+                # every per-work figure — Material Position, the take-off, the
+                # variance — left a subcontractor's bill out entirely.
+                "cms_work_item": row.work_item or row.item_code,
             }
+            if row.item_code and frappe.db.get_value("Item", row.item_code, "is_stock_item"):
+                line["warehouse"] = store
             if row.uom:
                 line["uom"] = row.uom
                 line["conversion_factor"] = 1

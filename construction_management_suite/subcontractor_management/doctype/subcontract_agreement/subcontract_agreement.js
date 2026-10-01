@@ -17,6 +17,7 @@ frappe.ui.form.on("Subcontract Agreement", {
         }
         CMS.uomQuery(frm, "items", "item_code");
         CMS.filterProjects(frm);
+        CMS.filterByCompany(frm, "warehouse", { is_group: 0 });
         CMS.linkButton(frm, __("Purchase Order"), "Purchase Order", frm.doc.purchase_order_ref);
         show_position(frm);
 
@@ -41,12 +42,19 @@ frappe.ui.form.on("Subcontract Agreement", {
     },
 
     project(frm) {
-        CMS.fillFromProject(frm, { company: "company", end_date: "expected_end_date" });
+        // The job's own store, where it names one. Only a material let to a
+        // trade needs it; letting the work itself needs none.
+        CMS.fillFromProject(frm, {
+            company: "company",
+            end_date: "expected_end_date",
+            warehouse: "cms_default_warehouse",
+        });
     },
 
     company(frm) {
         CMS.defaultTaxTemplate(frm);
         CMS.filterProjects(frm);
+        CMS.filterByCompany(frm, "warehouse", { is_group: 0 });
         CMS.clearForeignProject(frm);
         if (frm.doc.company) CMS.currencyFromCompany(frm, frm.doc.company);
     },

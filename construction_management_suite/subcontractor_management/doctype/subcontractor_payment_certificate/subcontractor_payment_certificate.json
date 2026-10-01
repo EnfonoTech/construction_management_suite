@@ -24,6 +24,7 @@
   "previous_amount_certified",
   "column_break_2",
   "certified_amount",
+  "warehouse",
   "retention_percent",
   "retention_deduction",
   "advance_recovery",
@@ -166,9 +167,20 @@
    "bold": 1
   },
   {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Deliver To",
+   "options": "Warehouse",
+   "fetch_from": "subcontract_agreement.warehouse",
+   "fetch_if_empty": 1,
+   "description": "Only needed where a material was let, not the work itself"
+  },
+  {
    "fieldname": "retention_percent",
    "fieldtype": "Percent",
-   "label": "Retention %"
+   "label": "Retention %",
+   "fetch_from": "subcontract_agreement.retention_percent",
+   "fetch_if_empty": 1
   },
   {
    "fieldname": "retention_deduction",

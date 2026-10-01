@@ -212,8 +212,14 @@ def _ensure_item(code, name, kind, uom, company):
     Never touched if it already exists. An import brings a plan in; it does not
     get to restate what an item already on the site is.
     """
-    if frappe.db.exists("Item", code):
-        return code
+    # `frappe.db.exists` compares case-insensitively, so asking for
+    # "Excavation Contract" finds "Excavation contract" and reports it there.
+    # Return the name it is ACTUALLY stored under: everything downstream — the
+    # take-off key, the plan check, a dict lookup — compares exactly, and a
+    # reference in the other case matches nothing.
+    existing = frappe.db.get_value("Item", code, "name")
+    if existing:
+        return existing
     service = kind != "Material" or service_materials_allowed()
     doc = frappe.get_doc({
         "doctype": "Item",

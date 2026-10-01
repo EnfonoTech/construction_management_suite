@@ -4,6 +4,7 @@
  "document_type": "Child Table",
  "engine": "InnoDB",
  "field_order": [
+  "work_item",
   "item_code",
   "work_no",
   "description",
@@ -15,6 +16,15 @@
   "boq_cost_rate"
  ],
  "fields": [
+  {
+   "fieldname": "work_item",
+   "fieldtype": "Link",
+   "label": "For Work",
+   "options": "Item",
+   "in_list_view": 1,
+   "columns": 2,
+   "description": "The line of work this belongs to"
+  },
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
@@ -37,7 +47,9 @@
    "label": "Description",
    "reqd": 1,
    "in_list_view": 1,
-   "columns": 2
+   "columns": 2,
+   "fetch_from": "item_code.description",
+   "fetch_if_empty": 1
   },
   {
    "fieldname": "uom",

@@ -438,6 +438,19 @@ CMS.ITEM_KIND = {
     "Site Report Material.item_code": "material",
 };
 
+/**
+ * The three tables that engage a trade.
+ *
+ * They pick from a wider list than a bill does: a whole line of work, or a
+ * subcontract priced inside one. Everything else that asks for work — the
+ * bill, the estimate, the variation — means a line of work and nothing else.
+ */
+CMS.SUBCONTRACT_TABLES = [
+    "Subcontract Item",
+    "Subcontractor Work Order Item",
+    "Subcontractor Payment Item",
+];
+
 CMS.itemKind = function (doctype, fieldname, row) {
     if (fieldname === "work_item" || fieldname === "cms_work_item") return "work";
     // A resource is material only when the row says it is; labour, plant and
@@ -467,6 +480,16 @@ CMS.itemQuery = function (doctype, fieldname, frm) {
         // every per-work figure quietly leaves the document out.
         const project = row.project || d.project || d.to_project;
         if (kind === "work" && project) {
+            // `work_item` always means a line of work, on every document.
+            // On the three that engage a trade, `item_code` means what is
+            // being let — the whole line, or a subcontract priced inside it —
+            // and narrows once the work is named.
+            if (fieldname === "item_code" && CMS.SUBCONTRACT_TABLES.includes(doctype)) {
+                return {
+                    query: "construction_management_suite.api.boq.subcontractable_for_project",
+                    filters: { project, work_item: row.work_item || "" },
+                };
+            }
             return {
                 query: "construction_management_suite.api.boq.work_items_for_project",
                 filters: { project },

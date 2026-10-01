@@ -15,8 +15,25 @@ frappe.ui.form.on("Subcontractor Payment Certificate", {
         CMS.linkButton(frm, __("Purchase Invoice"), "Purchase Invoice", frm.doc.purchase_invoice_ref);
         CMS.linkButton(frm, __("Agreement"), "Subcontract Agreement", frm.doc.subcontract_agreement);
         show_position(frm);
+        CMS.filterByCompany(frm, "warehouse", { is_group: 0 });
 
         if (frm.doc.docstatus === 0 && frm.doc.subcontract_agreement) {
+            // Plenty of subcontracts never get a work order: the scope is
+            // agreed, the trade does it, and the certificate is raised against
+            // the agreement. That path had no button, so the lines were typed
+            // by hand or a work order was invented for the sake of one.
+            frm.add_custom_button(__("Get from the Agreement"), () => {
+                frm.call("get_from_agreement").then(r => {
+                    frm.refresh_field("items");
+                    CMS.recalc(frm);
+                    frappe.show_alert(r.message
+                        ? { message: __("{0} line(s) claimed from the agreement", [r.message]),
+                            indicator: "green" }
+                        : { message: __("Every line on this agreement is certified in full"),
+                            indicator: "orange" });
+                });
+            }, __("Get"));
+
             frm.add_custom_button(__("Get Completed Work"), () => {
                 frm.call("get_completed_from_work_orders").then(r => {
                     frm.refresh_field("items");
@@ -27,7 +44,7 @@ frappe.ui.form.on("Subcontractor Payment Certificate", {
                         : { message: __("Nothing built and unclaimed on this agreement"),
                             indicator: "orange" });
                 });
-            });
+            }, __("Get"));
         }
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__("Next Certificate"), () => {
@@ -65,7 +82,22 @@ frappe.ui.form.on("Subcontractor Payment Certificate", {
 
 });
 
-CMS.liveRows("Subcontractor Payment Item", ["amount_claimed"]);
+// The quantity and the rate drive the amount, so the grid has to react to all
+// three: watching the amount alone meant typing a quantity showed nothing.
+CMS.liveRows("Subcontractor Payment Item", ["qty_completed", "contract_rate", "amount_claimed"]);
+
+frappe.ui.form.on("Subcontractor Payment Item", {
+    qty_completed(frm, cdt, cdn) { price(frm, cdt, cdn); },
+    contract_rate(frm, cdt, cdn) { price(frm, cdt, cdn); },
+});
+
+function price(frm, cdt, cdn) {
+    const row = CMS.row(cdt, cdn);
+    if (flt(row.qty_completed) && flt(row.contract_rate)) {
+        frappe.model.set_value(cdt, cdn, "amount_claimed",
+                               flt(row.qty_completed) * flt(row.contract_rate));
+    }
+}
 
 CMS.liveRows("Purchase Taxes and Charges", ["charge_type", "rate", "tax_amount", "row_id"]);
 
